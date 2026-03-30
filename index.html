@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RecruitOS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-panel">
+        <div class="brand-mark">R</div>
+        <div>
+          <p class="eyebrow">Recruiting operating system</p>
+          <h1>RecruitOS</h1>
+        </div>
+      </div>
+
+      <nav class="side-nav" aria-label="Primary">
+        <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+        <button class="nav-tab" data-tab="applications">Applications</button>
+        <button class="nav-tab" data-tab="networking">Networking</button>
+        <button class="nav-tab" data-tab="casing">Casing</button>
+        <button class="nav-tab" data-tab="tips">Tips</button>
+        <button class="nav-tab nav-tab-settings" id="settingsButton" data-tab="settings">⚙ Settings</button>
+      </nav>
+
+      <section class="focus-card">
+        <div class="section-header">
+          <h2>Focus today</h2>
+          <span class="pill pill-warm">Coach mode</span>
+        </div>
+        <p class="muted">A static, rule-based nudge list to keep momentum high.</p>
+        <div id="focusTodayList" class="focus-list"></div>
+      </section>
+    </aside>
+
+    <div class="main-shell">
+      <header class="topbar">
+        <div class="topbar-left" id="topbarLeft"></div>
+      </header>
+
+      <main id="appContent" class="content"></main>
+    </div>
+  </div>
+
+  <div id="modalRoot"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

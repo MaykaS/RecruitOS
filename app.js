@@ -1,0 +1,1343 @@
+const STORAGE_KEY = "recruitos-v1";
+const STATUS_ORDER = ["Researching", "Applied", "Phone Screen", "Interview", "Final Round", "Offer", "Rejected"];
+const PRIORITY_OPTIONS = ["High", "Medium", "Low"];
+const APPLICATION_TYPES = ["Internship", "MBA Internship", "Full-time", "Part-time", "Fellowship", "Other"];
+const RELATIONSHIP_OPTIONS = ["Alumni", "Recruiter", "Mentor", "New", "Professional", "Peer", "Friend"];
+const CASE_TYPES = ["Market Sizing", "Profitability", "Growth Strategy", "Operations", "Product Strategy", "Pricing"];
+const FIRM_STYLES = ["Consulting", "Tech PM", "General Business", "Behavioral Prep", "Mixed"];
+const CASE_METHODS = ["Solo", "Partner", "Mock Interview", "Platform"];
+const DEFAULT_CADENCES = [
+  {
+    id: "cadence-case",
+    title: "Log a case session",
+    cadenceType: "Case practice",
+    intervalUnit: "days",
+    intervalValue: 2,
+    active: true,
+    lastCompletedDate: "",
+    nextDueDate: todayISO(),
+    createdAt: isoNow(),
+    updatedAt: isoNow()
+  },
+  {
+    id: "cadence-followup",
+    title: "Review networking follow-ups",
+    cadenceType: "Networking",
+    intervalUnit: "days",
+    intervalValue: 3,
+    active: true,
+    lastCompletedDate: "",
+    nextDueDate: todayISO(),
+    createdAt: isoNow(),
+    updatedAt: isoNow()
+  }
+];
+const FOCUS_TIPS = [
+  "Protect follow-ups already on the board before chasing brand-new leads.",
+  "Move one open application to a sharper next step before the day ends.",
+  "Convert one loose networking thought into a dated follow-up.",
+  "Review one recent case and write down the single pattern to fix next.",
+  "Keep notes specific enough that future-you can act in 30 seconds.",
+  "A calm pipeline beats a crowded spreadsheet. Clean the oldest loose end."
+];
+
+let activeTab = "dashboard";
+let state = loadState();
+
+const appContent = document.getElementById("appContent");
+const modalRoot = document.getElementById("modalRoot");
+const topbarLeft = document.getElementById("topbarLeft");
+
+document.querySelector(".side-nav").addEventListener("click", (event) => {
+  const button = event.target.closest(".nav-tab");
+  if (!button) return;
+  activeTab = button.dataset.tab;
+  syncTabState();
+  render();
+});
+
+document.addEventListener("click", (event) => {
+  const action = event.target.dataset.action;
+  if (!action) return;
+  if (action === "close-modal") closeModal();
+  if (action === "open-app") openApplicationModal(event.target.dataset.id);
+  if (action === "delete-app") deleteEntity("applications", event.target.dataset.id, "application");
+  if (action === "open-contact") openContactModal(event.target.dataset.id);
+  if (action === "delete-contact") deleteEntity("contacts", event.target.dataset.id, "contact");
+  if (action === "open-case") openCaseModal(event.target.dataset.id);
+  if (action === "delete-case") deleteEntity("caseSessions", event.target.dataset.id, "case session");
+  if (action === "open-tip") openTipModal(event.target.dataset.id);
+  if (action === "delete-tip") deleteEntity("tips", event.target.dataset.id, "tip");
+  if (action === "open-cadence") openCadenceModal(event.target.dataset.id);
+  if (action === "delete-cadence") deleteEntity("cadenceRules", event.target.dataset.id, "cadence rule");
+  if (action === "complete-cadence") completeCadence(event.target.dataset.id);
+  if (action === "switch-tab") {
+    activeTab = event.target.dataset.tab;
+    syncTabState();
+    render();
+  }
+  if (action === "open-settings") {
+    activeTab = "settings";
+    syncTabState();
+    render();
+  }
+  if (action === "new-application") openApplicationModal();
+  if (action === "new-contact") openContactModal();
+  if (action === "new-case") openCaseModal();
+  if (action === "new-tip") openTipModal();
+});
+
+document.addEventListener("submit", (event) => {
+  const form = event.target;
+  if (form.matches("#applicationForm")) handleApplicationSubmit(event);
+  if (form.matches("#contactForm")) handleContactSubmit(event);
+  if (form.matches("#caseForm")) handleCaseSubmit(event);
+  if (form.matches("#tipForm")) handleTipSubmit(event);
+  if (form.matches("#settingsForm")) handleSettingsSubmit(event);
+  if (form.matches("#cadenceForm")) handleCadenceSubmit(event);
+});
+
+document.addEventListener("input", (event) => {
+  if (event.target.matches("#applicationStatus")) toggleApplicationNextStepState(event.target.value);
+  if (event.target.matches("[data-filter]")) render();
+});
+
+document.addEventListener("change", (event) => {
+  if (event.target.matches("[data-filter]")) render();
+});
+
+document.addEventListener("click", (event) => {
+  if (event.target.classList.contains("modal-backdrop")) closeModal();
+});
+
+renderFocusToday();
+syncTabState();
+render();
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return createInitialState();
+    const parsed = JSON.parse(raw);
+    return {
+      applications: parsed.applications || [],
+      contacts: parsed.contacts || [],
+      caseSessions: parsed.caseSessions || [],
+      tips: parsed.tips || [],
+      cadenceRules: parsed.cadenceRules?.length ? parsed.cadenceRules : DEFAULT_CADENCES,
+      activityEvents: parsed.activityEvents || [],
+      settings: {
+        recentActivityLimit: parsed.settings?.recentActivityLimit || 6
+      }
+    };
+  } catch (error) {
+    console.error("Unable to load RecruitOS state.", error);
+    return createInitialState();
+  }
+}
+
+function createInitialState() {
+  return {
+    applications: [],
+    contacts: [],
+    caseSessions: [],
+    tips: [],
+    cadenceRules: DEFAULT_CADENCES,
+    activityEvents: [],
+    settings: { recentActivityLimit: 6 }
+  };
+}
+
+function persistState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function render() {
+  persistState();
+  topbarLeft.innerHTML = "";
+  if (activeTab === "dashboard") appContent.innerHTML = renderDashboard();
+  if (activeTab === "applications") appContent.innerHTML = renderApplications();
+  if (activeTab === "networking") appContent.innerHTML = renderNetworking();
+  if (activeTab === "casing") appContent.innerHTML = renderCasing();
+  if (activeTab === "tips") appContent.innerHTML = renderTips();
+  if (activeTab === "settings") appContent.innerHTML = renderSettings();
+}
+
+function renderFocusToday() {
+  const list = document.getElementById("focusTodayList");
+  const dayIndex = new Date().getDate() % FOCUS_TIPS.length;
+  const tips = [
+    FOCUS_TIPS[dayIndex],
+    FOCUS_TIPS[(dayIndex + 2) % FOCUS_TIPS.length],
+    FOCUS_TIPS[(dayIndex + 4) % FOCUS_TIPS.length]
+  ];
+  list.innerHTML = tips.map((tip, index) => `
+    <div class="focus-item">
+      <div class="focus-index">${index + 1}</div>
+      <div>${escapeHtml(tip)}</div>
+    </div>
+  `).join("");
+}
+
+function renderDashboard() {
+  const openApplications = state.applications.filter((item) => item.status !== "Rejected");
+  const interviewCount = state.applications.filter((item) => ["Phone Screen", "Interview", "Final Round"].includes(item.status)).length;
+  const offersCount = state.applications.filter((item) => item.status === "Offer").length;
+  const attentionItems = getAttentionItems();
+  const recentApps = [...state.applications].sort(sortByUpdatedDesc).slice(0, 3);
+  const activity = [...state.activityEvents].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, state.settings.recentActivityLimit);
+  const stageCounts = STATUS_ORDER.map((status) => ({
+    status,
+    count: state.applications.filter((item) => item.status === status).length
+  }));
+  const maxStageCount = Math.max(1, ...stageCounts.map((entry) => entry.count));
+
+  return `
+    ${renderHero("Here's your internship search overview")}
+    <section class="stats-grid">
+      ${renderStatCard("Active Applications", openApplications.length)}
+      ${renderStatCard("Interviews", interviewCount)}
+      ${renderStatCard("Contacts", state.contacts.length)}
+      ${renderStatCard("Offers", offersCount)}
+    </section>
+    <section class="dashboard-grid">
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h2>What needs attention now</h2>
+            <p class="card-subtitle">Overdue or upcoming actions across cadences, applications, and deadlines.</p>
+          </div>
+        </div>
+        <div class="attention-list">
+          ${attentionItems.length ? attentionItems.map(renderAttentionItem).join("") : renderInlineEmpty("Nothing urgent right now. Keep the board clean and your next steps dated.")}
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h2>Snapshot</h2>
+            <p class="card-subtitle">Current application pipeline by stage.</p>
+          </div>
+        </div>
+        <div class="pipeline-list">
+          ${stageCounts.map((entry) => `
+            <div class="pipeline-row">
+              <strong>${entry.status}</strong>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width:${(entry.count / maxStageCount) * 100}%"></div>
+              </div>
+              <span>${entry.count}</span>
+            </div>
+          `).join("")}
+        </div>
+      </section>
+    </section>
+    <section class="split-grid">
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h2>Recent applications</h2>
+            <p class="card-subtitle">The latest changes on your board.</p>
+          </div>
+          <button class="link-button" data-action="switch-tab" data-tab="applications">View all</button>
+        </div>
+        <div class="record-list">
+          ${recentApps.length ? recentApps.map(renderRecentApplication).join("") : renderInlineEmpty("Add your first application to start tracking the pipeline.")}
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h2>Recent activity</h2>
+            <p class="card-subtitle">Showing the latest ${state.settings.recentActivityLimit} actions.</p>
+          </div>
+          <button class="link-button" data-action="open-settings">Adjust feed length</button>
+        </div>
+        <div class="activity-list">
+          ${activity.length ? activity.map(renderActivityEntry).join("") : renderInlineEmpty("Actions you take in RecruitOS will show up here.")}
+        </div>
+      </section>
+    </section>
+  `;
+}
+
+function renderApplications() {
+  const query = (document.querySelector('[data-filter="applications"]')?.value || "").toLowerCase();
+  const filtered = state.applications.filter((item) => {
+    const haystack = `${item.company} ${item.role} ${item.location} ${item.tags || ""}`.toLowerCase();
+    return haystack.includes(query);
+  }).sort(sortByUpdatedDesc);
+
+  return `
+    ${renderModuleHeader("Applications", "Track the full story of each role, including the next step that drives the dashboard.", `
+      <button class="btn btn-primary" data-action="new-application">Add application</button>
+    `)}
+    <section class="list-card">
+      <div class="filter-bar">
+        <input class="search" data-filter="applications" placeholder="Search company, role, location, or tag" value="${escapeHtml(query)}">
+      </div>
+      <div class="record-list" style="margin-top: 18px;">
+        ${filtered.length ? filtered.map(renderApplicationRow).join("") : renderEmptyState("No applications yet", "Add your first application and give it a dated next step so RecruitOS can coach the work.", "Add application", "new-application")}
+      </div>
+    </section>
+  `;
+}
+
+function renderNetworking() {
+  const query = (document.querySelector('[data-filter="networking"]')?.value || "").toLowerCase();
+  const filtered = state.contacts.filter((item) => {
+    const haystack = `${item.name} ${item.company} ${item.role} ${item.tags || ""}`.toLowerCase();
+    return haystack.includes(query);
+  }).sort(sortByUpdatedDesc);
+
+  return `
+    ${renderModuleHeader("Networking", "A lightweight relationship tracker for follow-ups, notes, and warm paths into opportunities.", `
+      <button class="btn btn-secondary" data-action="new-contact">New contact</button>
+    `)}
+    <section class="list-card">
+      <div class="filter-bar">
+        <input class="search" data-filter="networking" placeholder="Search name, company, role, or tag" value="${escapeHtml(query)}">
+      </div>
+      <div class="cards-grid" style="margin-top: 18px;">
+        ${filtered.length ? filtered.map(renderContactCard).join("") : renderEmptyState("No contacts yet", "Add people you want to keep warm so follow-ups stop living only in your head.", "Add contact", "new-contact")}
+      </div>
+    </section>
+  `;
+}
+
+function renderCasing() {
+  const query = (document.querySelector('[data-filter="casing"]')?.value || "").toLowerCase();
+  const filtered = state.caseSessions.filter((item) => {
+    const haystack = `${item.title} ${item.caseType} ${item.firmStyle} ${item.partnerLabel || ""} ${item.tags || ""}`.toLowerCase();
+    return haystack.includes(query);
+  }).sort(sortByUpdatedDesc);
+
+  return `
+    ${renderModuleHeader("Casing", "Log PM-style case practice, reflect quickly, and keep your prep rhythm visible.", `
+      <button class="btn btn-secondary" data-action="new-case">Log case session</button>
+    `)}
+    <section class="list-card">
+      <div class="filter-bar">
+        <input class="search" data-filter="casing" placeholder="Search title, case type, firm style, partner, or tag" value="${escapeHtml(query)}">
+      </div>
+      <div class="cards-grid" style="margin-top: 18px;">
+        ${filtered.length ? filtered.map(renderCaseCard).join("") : renderEmptyState("No case sessions yet", "Log your sessions consistently so patterns show up instead of getting lost.", "Log case session", "new-case")}
+      </div>
+    </section>
+  `;
+}
+
+function renderTips() {
+  const query = (document.querySelector('[data-filter="tips"]')?.value || "").toLowerCase();
+  const filtered = state.tips.filter((item) => {
+    const haystack = `${item.title} ${item.category} ${item.body || ""} ${item.tags || ""}`.toLowerCase();
+    return haystack.includes(query);
+  }).sort((a, b) => a.category.localeCompare(b.category) || sortByUpdatedDesc(a, b));
+
+  const grouped = groupBy(filtered, (item) => item.category || "Uncategorized");
+
+  return `
+    ${renderModuleHeader("Tips", "Build a reusable personal knowledge base and link advice to the work it supports.", `
+      <button class="btn btn-secondary" data-action="new-tip">Add tip</button>
+    `)}
+    <section class="list-card">
+      <div class="filter-bar">
+        <input class="search" data-filter="tips" placeholder="Search category, title, body, or tag" value="${escapeHtml(query)}">
+      </div>
+      <div class="record-list" style="margin-top: 18px;">
+        ${filtered.length ? Object.entries(grouped).map(([category, items]) => `
+          <section class="card">
+            <div class="card-header">
+              <h3>${escapeHtml(category)}</h3>
+              <span class="pill">${items.length} tip${items.length === 1 ? "" : "s"}</span>
+            </div>
+            <div class="cards-grid" style="margin-top: 16px;">
+              ${items.map(renderTipCard).join("")}
+            </div>
+          </section>
+        `).join("") : renderEmptyState("No tips yet", "Capture advice you want to reuse, from coffee chat scripts to casing heuristics.", "Add tip", "new-tip")}
+      </div>
+    </section>
+  `;
+}
+
+function renderSettings() {
+  return `
+    ${renderModuleHeader("Settings", "Control the cadence engine and the dashboard feed without adding product clutter.")}
+    <section class="settings-layout">
+      <form id="settingsForm" class="settings-card">
+        <div class="card-header">
+          <div>
+            <h2>Workspace preferences</h2>
+            <p class="card-subtitle">Core v1 settings only, kept intentionally lightweight.</p>
+          </div>
+        </div>
+        <label>
+          Recent activity item count
+          <input type="number" min="1" max="30" name="recentActivityLimit" value="${state.settings.recentActivityLimit}">
+        </label>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Save settings</button>
+        </div>
+      </form>
+
+      <section class="settings-card">
+        <div class="card-header">
+          <div>
+            <h2>Cadence rules</h2>
+            <p class="card-subtitle">Recurring habits that surface inside “What needs attention now”.</p>
+          </div>
+          <button class="btn btn-secondary small" data-action="open-cadence">Add cadence rule</button>
+        </div>
+        <div class="record-list">
+          ${state.cadenceRules.length ? state.cadenceRules.map(renderCadenceRow).join("") : renderInlineEmpty("No cadence rules yet. Add one to define the rhythm you want RecruitOS to protect.")}
+        </div>
+      </section>
+    </section>
+  `;
+}
+
+function renderHero(subtitle) {
+  const greeting = getGreeting();
+  const greetingIcon = getGreetingIcon();
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
+  return `
+    <section class="hero-card">
+      <div class="eyebrow">${today}</div>
+      <div class="greeting-row">
+        <div class="greeting-title-wrap">
+          <span class="greeting-icon" aria-hidden="true">${greetingIcon}</span>
+          <div class="hero-title">${greeting}</div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-secondary" data-action="new-contact">+ Contact</button>
+          <button class="btn btn-primary" data-action="new-application">+ Application</button>
+        </div>
+      </div>
+      <div class="hero-meta">${escapeHtml(subtitle)}</div>
+    </section>
+  `;
+}
+
+function renderModuleHeader(title, subtitle, actions = "") {
+  return `
+    <section class="page-header hero-card">
+      <div>
+        <div class="eyebrow">RecruitOS module</div>
+        <h2 class="hero-title" style="font-size:2.1rem;">${title}</h2>
+        <p class="hero-meta">${subtitle}</p>
+      </div>
+      <div class="row-actions">${actions}</div>
+    </section>
+  `;
+}
+
+function renderStatCard(label, value) {
+  return `
+    <section class="stat-card">
+      <div class="stat-label">${label}</div>
+      <div class="stat-value">${value}</div>
+    </section>
+  `;
+}
+
+function renderAttentionItem(item) {
+  return `
+    <div class="attention-item ${item.isOverdue ? "overdue" : ""}">
+      <div class="attention-main">
+        <div class="tag-row">
+          <span class="status-badge" data-tone="${item.isOverdue ? "danger" : "warm"}">${item.isOverdue ? "Overdue" : "Upcoming"}</span>
+          <span class="pill">${item.kind}</span>
+        </div>
+        <h4>${escapeHtml(item.title)}</h4>
+        <div class="attention-meta">${escapeHtml(item.detail)}</div>
+      </div>
+      <div class="row-actions">${item.actionHtml}</div>
+    </div>
+  `;
+}
+
+function renderRecentApplication(item) {
+  return `
+    <div class="record-card">
+      <div class="table-row-header">
+        <div>
+          <h3>${escapeHtml(item.company)}</h3>
+          <div class="entity-meta">${escapeHtml(item.role)}</div>
+        </div>
+        ${statusBadge(item.status)}
+      </div>
+      <div class="entity-meta">Next step: ${item.nextStep ? `${escapeHtml(item.nextStep)} by ${formatDate(item.nextStepDate)}` : "No next step set"}</div>
+      <div class="row-actions">
+        <button class="btn btn-ghost small" data-action="open-app" data-id="${item.id}">Open</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderActivityEntry(item) {
+  return `
+    <div class="activity-entry">
+      <strong>${escapeHtml(item.title)}</strong>
+      <div class="entity-meta">${escapeHtml(item.detail)}</div>
+      <div class="tiny">${formatTimestamp(item.timestamp)}</div>
+    </div>
+  `;
+}
+
+function renderApplicationRow(item) {
+  const linkedContacts = item.linkedContactIds.map(getContactName).filter(Boolean).join(", ") || "None linked";
+  return `
+    <article class="table-row">
+      <div class="table-row-header">
+        <div>
+          <h3>${escapeHtml(item.company)}</h3>
+          <div class="entity-meta">${escapeHtml(item.role)}${item.location ? ` • ${escapeHtml(item.location)}` : ""}</div>
+        </div>
+        <div class="tag-row">
+          ${statusBadge(item.status)}
+          ${priorityBadge(item.priority)}
+        </div>
+      </div>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="meta-label">Next step</div>
+          <div class="meta-value">${item.nextStep ? `${escapeHtml(item.nextStep)} • ${formatDate(item.nextStepDate)}` : "No next step"}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Application date</div>
+          <div class="meta-value">${formatDate(item.applicationDate)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Deadline</div>
+          <div class="meta-value">${formatDate(item.deadline)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Linked contacts</div>
+          <div class="meta-value">${escapeHtml(linkedContacts)}</div>
+        </div>
+      </div>
+      <div class="entity-meta">${escapeHtml(item.notes || "No notes yet.")}</div>
+      <div class="row-actions">
+        <button class="btn btn-ghost small" data-action="open-app" data-id="${item.id}">Edit</button>
+        <button class="btn btn-danger small" data-action="delete-app" data-id="${item.id}">Delete</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderContactCard(item) {
+  return `
+    <article class="record-card">
+      <div class="table-row-header">
+        <div>
+          <h3>${escapeHtml(item.name)}</h3>
+          <div class="entity-meta">${escapeHtml([item.company, item.role].filter(Boolean).join(" • ") || "No company details")}</div>
+        </div>
+        <span class="status-badge" data-tone="neutral">${escapeHtml(item.relationship)}</span>
+      </div>
+      <div class="entity-meta">Next follow-up: ${item.nextFollowUpDate ? formatDate(item.nextFollowUpDate) : "No date"}</div>
+      <div class="entity-meta">${escapeHtml(item.notes || "No notes yet.")}</div>
+      <div class="row-actions">
+        <button class="btn btn-ghost small" data-action="open-contact" data-id="${item.id}">Edit</button>
+        <button class="btn btn-danger small" data-action="delete-contact" data-id="${item.id}">Delete</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderCaseCard(item) {
+  const partner = item.linkedContactId ? getContactName(item.linkedContactId) : item.partnerLabel;
+  return `
+    <article class="record-card">
+      <div class="table-row-header">
+        <div>
+          <h3>${escapeHtml(item.title)}</h3>
+          <div class="entity-meta">${escapeHtml(item.caseType)} • ${escapeHtml(item.firmStyle)}</div>
+        </div>
+        <span class="status-badge" data-tone="success">${escapeHtml(`${item.rating || 0}/5`)}</span>
+      </div>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="meta-label">Date</div>
+          <div class="meta-value">${formatDate(item.date)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Duration</div>
+          <div class="meta-value">${item.durationMinutes ? `${item.durationMinutes} min` : "Not set"}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Partner</div>
+          <div class="meta-value">${escapeHtml(partner || "Solo / not listed")}</div>
+        </div>
+      </div>
+      <div class="entity-meta"><strong>What went well:</strong> ${escapeHtml(item.whatWentWell || "Not captured yet.")}</div>
+      <div class="entity-meta"><strong>What to improve:</strong> ${escapeHtml(item.whatToImprove || "Not captured yet.")}</div>
+      <div class="row-actions">
+        <button class="btn btn-ghost small" data-action="open-case" data-id="${item.id}">Edit</button>
+        <button class="btn btn-danger small" data-action="delete-case" data-id="${item.id}">Delete</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderTipCard(item) {
+  const linkedCount = (item.linkedApplicationIds?.length || 0) + (item.linkedContactIds?.length || 0) + (item.linkedCaseSessionIds?.length || 0);
+  return `
+    <article class="record-card">
+      <div class="table-row-header">
+        <div>
+          <h3>${escapeHtml(item.title)}</h3>
+          <div class="entity-meta">${escapeHtml(item.category)}</div>
+        </div>
+        <span class="pill">${linkedCount} linked</span>
+      </div>
+      <div class="entity-meta">${escapeHtml(truncate(item.body || "", 180) || "No tip body yet.")}</div>
+      <div class="row-actions">
+        <button class="btn btn-ghost small" data-action="open-tip" data-id="${item.id}">Edit</button>
+        <button class="btn btn-danger small" data-action="delete-tip" data-id="${item.id}">Delete</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderCadenceRow(item) {
+  return `
+    <div class="cadence-row">
+      <div>
+        <strong>${escapeHtml(item.title)}</strong>
+        <div class="entity-meta">${escapeHtml(item.cadenceType)} • Every ${item.intervalValue} ${item.intervalUnit}</div>
+        <div class="tiny">Next due: ${formatDate(item.nextDueDate)} • ${item.active ? "Active" : "Paused"}</div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-secondary small" data-action="complete-cadence" data-id="${item.id}">Mark complete</button>
+        <button class="btn btn-ghost small" data-action="open-cadence" data-id="${item.id}">Edit</button>
+        <button class="btn btn-danger small" data-action="delete-cadence" data-id="${item.id}">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderEmptyState(title, body, ctaLabel, ctaAction) {
+  return `
+    <section class="empty-state">
+      <h3>${title}</h3>
+      <p class="muted">${body}</p>
+      <button class="btn btn-primary" data-action="${ctaAction}">${ctaLabel}</button>
+    </section>
+  `;
+}
+
+function renderInlineEmpty(body) {
+  return `<div class="empty-state"><p class="muted">${body}</p></div>`;
+}
+
+function openApplicationModal(id = "") {
+  const item = state.applications.find((entry) => entry.id === id) || createApplicationRecord();
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-panel">
+        <div class="card-header">
+          <div>
+            <h2>${id ? "Edit application" : "Add application"}</h2>
+            <p class="card-subtitle">The next step pairing is what powers the dashboard.</p>
+          </div>
+          <button class="btn btn-ghost small" data-action="close-modal">Close</button>
+        </div>
+        <form id="applicationForm" class="form-grid">
+          <input type="hidden" name="id" value="${item.id}">
+          ${textField("Company name", "company", item.company, true)}
+          ${textField("Role title", "role", item.role, true)}
+          ${textField("Location", "location", item.location)}
+          ${selectField("Type", "type", APPLICATION_TYPES, item.type || "MBA Internship")}
+          ${selectField("Priority", "priority", PRIORITY_OPTIONS, item.priority || "Medium")}
+          ${selectField("Status", "status", STATUS_ORDER, item.status || "Researching", "", "applicationStatus")}
+          ${textField("Salary / compensation", "salary", item.salary)}
+          ${dateField("Application date", "applicationDate", item.applicationDate)}
+          ${dateField("Deadline", "deadline", item.deadline)}
+          ${textField("Job URL", "jobUrl", item.jobUrl)}
+          ${textField("Next step", "nextStep", item.nextStep, false, "full", "applicationNextStep")}
+          ${dateField("Next step date", "nextStepDate", item.nextStepDate, false, "", "applicationNextStepDate")}
+          <label class="full">
+            Linked contacts
+            ${checkboxList("linkedContactIds", state.contacts, item.linkedContactIds, (contact) => `${contact.name} ${contact.company ? `(${contact.company})` : ""}`)}
+          </label>
+          ${textField("Tags", "tags", item.tags, false, "full")}
+          ${textareaField("Notes", "notes", item.notes, "full")}
+          <div class="full form-actions">
+            <button class="btn btn-primary" type="submit">${id ? "Save changes" : "Create application"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  toggleApplicationNextStepState(item.status);
+}
+
+function openContactModal(id = "") {
+  const item = state.contacts.find((entry) => entry.id === id) || createContactRecord();
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-panel">
+        <div class="card-header">
+          <div>
+            <h2>${id ? "Edit contact" : "Add contact"}</h2>
+            <p class="card-subtitle">Keep relationship context and your next follow-up in one place.</p>
+          </div>
+          <button class="btn btn-ghost small" data-action="close-modal">Close</button>
+        </div>
+        <form id="contactForm" class="form-grid">
+          <input type="hidden" name="id" value="${item.id}">
+          ${textField("Name", "name", item.name, true)}
+          ${selectField("Relationship", "relationship", RELATIONSHIP_OPTIONS, item.relationship || "New")}
+          ${textField("Company", "company", item.company)}
+          ${textField("Role", "role", item.role)}
+          ${textField("Email", "email", item.email)}
+          ${textField("Phone", "phone", item.phone)}
+          ${textField("LinkedIn URL", "linkedInUrl", item.linkedInUrl)}
+          ${textField("How we met", "howWeMet", item.howWeMet)}
+          ${dateField("Last contact date", "lastContactDate", item.lastContactDate)}
+          ${dateField("Next follow-up date", "nextFollowUpDate", item.nextFollowUpDate)}
+          ${textField("Tags", "tags", item.tags, false, "full")}
+          ${textareaField("Notes", "notes", item.notes, "full")}
+          <div class="full form-actions">
+            <button class="btn btn-primary" type="submit">${id ? "Save changes" : "Create contact"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+function openCaseModal(id = "") {
+  const item = state.caseSessions.find((entry) => entry.id === id) || createCaseRecord();
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-panel">
+        <div class="card-header">
+          <div>
+            <h2>${id ? "Edit case session" : "Log case session"}</h2>
+            <p class="card-subtitle">Capture what happened while the learning is still fresh.</p>
+          </div>
+          <button class="btn btn-ghost small" data-action="close-modal">Close</button>
+        </div>
+        <form id="caseForm" class="form-grid">
+          <input type="hidden" name="id" value="${item.id}">
+          ${textField("Title", "title", item.title, true)}
+          ${selectField("Case type", "caseType", CASE_TYPES, item.caseType || CASE_TYPES[0])}
+          ${selectField("Firm style", "firmStyle", FIRM_STYLES, item.firmStyle || FIRM_STYLES[0])}
+          ${selectField("Method", "method", CASE_METHODS, item.method || CASE_METHODS[0])}
+          ${dateField("Date", "date", item.date)}
+          ${numberField("Duration (minutes)", "durationMinutes", item.durationMinutes)}
+          ${textField("Source / case book", "source", item.source)}
+          ${numberField("Rating (0-5)", "rating", item.rating, 0, 5, 1)}
+          ${selectField("Linked contact partner", "linkedContactId", [{ value: "", label: "None" }, ...state.contacts.map((contact) => ({ value: contact.id, label: `${contact.name}${contact.company ? ` (${contact.company})` : ""}` }))], item.linkedContactId, "value-label", "linkedContactId")}
+          ${textField("Partner label fallback", "partnerLabel", item.partnerLabel)}
+          ${textareaField("What went well", "whatWentWell", item.whatWentWell)}
+          ${textareaField("What to improve", "whatToImprove", item.whatToImprove)}
+          ${textareaField("Notes", "notes", item.notes, "full")}
+          ${textField("Tags", "tags", item.tags, false, "full")}
+          <div class="full form-actions">
+            <button class="btn btn-primary" type="submit">${id ? "Save changes" : "Log session"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+function openTipModal(id = "") {
+  const item = state.tips.find((entry) => entry.id === id) || createTipRecord();
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-panel">
+        <div class="card-header">
+          <div>
+            <h2>${id ? "Edit tip" : "Add tip"}</h2>
+            <p class="card-subtitle">Use free-text categories so new groups appear naturally.</p>
+          </div>
+          <button class="btn btn-ghost small" data-action="close-modal">Close</button>
+        </div>
+        <form id="tipForm" class="form-grid">
+          <input type="hidden" name="id" value="${item.id}">
+          ${textField("Title", "title", item.title, true)}
+          ${textField("Category", "category", item.category, true)}
+          ${checkboxFieldGroup("Linked applications", "linkedApplicationIds", state.applications, item.linkedApplicationIds, (app) => `${app.company} — ${app.role}`)}
+          ${checkboxFieldGroup("Linked contacts", "linkedContactIds", state.contacts, item.linkedContactIds, (contact) => `${contact.name} ${contact.company ? `(${contact.company})` : ""}`)}
+          ${checkboxFieldGroup("Linked case sessions", "linkedCaseSessionIds", state.caseSessions, item.linkedCaseSessionIds, (session) => session.title)}
+          ${textField("Tags", "tags", item.tags, false, "full")}
+          ${textareaField("Body", "body", item.body, "full")}
+          <div class="full form-actions">
+            <button class="btn btn-primary" type="submit">${id ? "Save changes" : "Create tip"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+function openCadenceModal(id = "") {
+  const item = state.cadenceRules.find((entry) => entry.id === id) || createCadenceRecord();
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-panel">
+        <div class="card-header">
+          <div>
+            <h2>${id ? "Edit cadence rule" : "Add cadence rule"}</h2>
+            <p class="card-subtitle">Define recurring habits and let the dashboard pull them forward when due.</p>
+          </div>
+          <button class="btn btn-ghost small" data-action="close-modal">Close</button>
+        </div>
+        <form id="cadenceForm" class="form-grid">
+          <input type="hidden" name="id" value="${item.id}">
+          ${textField("Title", "title", item.title, true)}
+          ${textField("Cadence type", "cadenceType", item.cadenceType, true)}
+          ${numberField("Interval value", "intervalValue", item.intervalValue || 1, 1, 365, 1)}
+          ${selectField("Interval unit", "intervalUnit", ["days", "weeks"], item.intervalUnit || "days")}
+          ${dateField("Last completed date", "lastCompletedDate", item.lastCompletedDate)}
+          ${dateField("Next due date", "nextDueDate", item.nextDueDate || todayISO())}
+          <label>
+            Active
+            <select name="active">
+              <option value="true" ${item.active ? "selected" : ""}>Yes</option>
+              <option value="false" ${!item.active ? "selected" : ""}>No</option>
+            </select>
+          </label>
+          <div class="full form-actions">
+            <button class="btn btn-primary" type="submit">${id ? "Save changes" : "Create cadence rule"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+function closeModal() {
+  modalRoot.innerHTML = "";
+}
+
+function handleApplicationSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  const id = formData.get("id");
+  const existing = state.applications.find((item) => item.id === id);
+  const status = formData.get("status");
+  const payload = {
+    id,
+    company: formData.get("company").trim(),
+    role: formData.get("role").trim(),
+    location: formData.get("location").trim(),
+    type: formData.get("type"),
+    priority: formData.get("priority"),
+    status,
+    salary: formData.get("salary").trim(),
+    applicationDate: formData.get("applicationDate"),
+    deadline: formData.get("deadline"),
+    jobUrl: formData.get("jobUrl").trim(),
+    nextStep: status === "Rejected" ? "" : formData.get("nextStep").trim(),
+    nextStepDate: status === "Rejected" ? "" : formData.get("nextStepDate"),
+    linkedContactIds: formData.getAll("linkedContactIds"),
+    notes: formData.get("notes").trim(),
+    tags: formData.get("tags").trim(),
+    createdAt: existing?.createdAt || isoNow(),
+    updatedAt: isoNow()
+  };
+  upsertEntity("applications", payload, "application", `${payload.company} • ${payload.role}`);
+  closeModal();
+}
+
+function handleContactSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  const id = formData.get("id");
+  const existing = state.contacts.find((item) => item.id === id);
+  const payload = {
+    id,
+    name: formData.get("name").trim(),
+    relationship: formData.get("relationship"),
+    company: formData.get("company").trim(),
+    role: formData.get("role").trim(),
+    email: formData.get("email").trim(),
+    phone: formData.get("phone").trim(),
+    linkedInUrl: formData.get("linkedInUrl").trim(),
+    howWeMet: formData.get("howWeMet").trim(),
+    lastContactDate: formData.get("lastContactDate"),
+    nextFollowUpDate: formData.get("nextFollowUpDate"),
+    notes: formData.get("notes").trim(),
+    tags: formData.get("tags").trim(),
+    createdAt: existing?.createdAt || isoNow(),
+    updatedAt: isoNow()
+  };
+  upsertEntity("contacts", payload, "contact", payload.name);
+  closeModal();
+}
+
+function handleCaseSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  const id = formData.get("id");
+  const existing = state.caseSessions.find((item) => item.id === id);
+  const linkedContactId = formData.get("linkedContactId");
+  const payload = {
+    id,
+    title: formData.get("title").trim(),
+    caseType: formData.get("caseType"),
+    firmStyle: formData.get("firmStyle"),
+    method: formData.get("method"),
+    date: formData.get("date"),
+    durationMinutes: formData.get("durationMinutes"),
+    source: formData.get("source").trim(),
+    rating: formData.get("rating"),
+    whatWentWell: formData.get("whatWentWell").trim(),
+    whatToImprove: formData.get("whatToImprove").trim(),
+    notes: formData.get("notes").trim(),
+    linkedContactId,
+    partnerLabel: linkedContactId ? "" : formData.get("partnerLabel").trim(),
+    tags: formData.get("tags").trim(),
+    createdAt: existing?.createdAt || isoNow(),
+    updatedAt: isoNow()
+  };
+  upsertEntity("caseSessions", payload, "case session", payload.title);
+  closeModal();
+}
+
+function handleTipSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  const id = formData.get("id");
+  const existing = state.tips.find((item) => item.id === id);
+  const payload = {
+    id,
+    title: formData.get("title").trim(),
+    category: formData.get("category").trim(),
+    body: formData.get("body").trim(),
+    tags: formData.get("tags").trim(),
+    linkedApplicationIds: formData.getAll("linkedApplicationIds"),
+    linkedContactIds: formData.getAll("linkedContactIds"),
+    linkedCaseSessionIds: formData.getAll("linkedCaseSessionIds"),
+    createdAt: existing?.createdAt || isoNow(),
+    updatedAt: isoNow()
+  };
+  upsertEntity("tips", payload, "tip", payload.title);
+  closeModal();
+}
+
+function handleCadenceSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  const id = formData.get("id");
+  const existing = state.cadenceRules.find((item) => item.id === id);
+  const intervalValue = Number(formData.get("intervalValue")) || 1;
+  const intervalUnit = formData.get("intervalUnit");
+  const lastCompletedDate = formData.get("lastCompletedDate");
+  const payload = {
+    id,
+    title: formData.get("title").trim(),
+    cadenceType: formData.get("cadenceType").trim(),
+    intervalValue,
+    intervalUnit,
+    lastCompletedDate,
+    nextDueDate: formData.get("nextDueDate") || computeNextDueDate(lastCompletedDate || todayISO(), intervalValue, intervalUnit),
+    active: formData.get("active") === "true",
+    createdAt: existing?.createdAt || isoNow(),
+    updatedAt: isoNow()
+  };
+  upsertEntity("cadenceRules", payload, "cadence rule", payload.title);
+  closeModal();
+}
+
+function handleSettingsSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  state.settings.recentActivityLimit = Math.max(1, Math.min(30, Number(formData.get("recentActivityLimit")) || 6));
+  addActivity("Updated settings", `Recent activity feed now shows ${state.settings.recentActivityLimit} items.`);
+  render();
+}
+
+function upsertEntity(collectionName, payload, label, detailName) {
+  const index = state[collectionName].findIndex((item) => item.id === payload.id);
+  if (index >= 0) {
+    state[collectionName][index] = payload;
+    addActivity(`Updated ${label}`, `${detailName} was updated.`);
+  } else {
+    state[collectionName].unshift(payload);
+    addActivity(`Created ${label}`, `${detailName} was added.`);
+  }
+  render();
+}
+
+function deleteEntity(collectionName, id, label) {
+  const item = state[collectionName].find((entry) => entry.id === id);
+  if (!item) return;
+  const display = item.company || item.name || item.title || item.cadenceType || label;
+  state[collectionName] = state[collectionName].filter((entry) => entry.id !== id);
+  addActivity(`Deleted ${label}`, `${display} was removed.`);
+  render();
+}
+
+function completeCadence(id) {
+  const item = state.cadenceRules.find((entry) => entry.id === id);
+  if (!item) return;
+  item.lastCompletedDate = todayISO();
+  item.nextDueDate = computeNextDueDate(todayISO(), item.intervalValue, item.intervalUnit);
+  item.updatedAt = isoNow();
+  addActivity("Completed cadence task", `${item.title} was marked complete.`);
+  render();
+}
+
+function getAttentionItems() {
+  const today = todayISO();
+  const items = [];
+
+  state.cadenceRules
+    .filter((rule) => rule.active)
+    .forEach((rule) => {
+      const isOverdue = !!rule.nextDueDate && rule.nextDueDate < today;
+      const isUpcoming = !!rule.nextDueDate && rule.nextDueDate <= addDays(today, 2);
+      if (!isOverdue && !isUpcoming) return;
+      items.push({
+        kind: "Cadence",
+        title: rule.title,
+        detail: `Next due ${formatDate(rule.nextDueDate)} • every ${rule.intervalValue} ${rule.intervalUnit}`,
+        isOverdue,
+        actionHtml: `<button class="btn btn-secondary small" data-action="complete-cadence" data-id="${rule.id}">Mark complete</button><button class="btn btn-ghost small" data-action="open-cadence" data-id="${rule.id}">Edit</button>`
+      });
+    });
+
+  state.applications
+    .filter((item) => item.status !== "Rejected" && item.status !== "Offer")
+    .forEach((item) => {
+      if (item.nextStepDate) {
+        const isOverdue = item.nextStepDate < today;
+        const isUpcoming = item.nextStepDate <= addDays(today, 3);
+        if (isOverdue || isUpcoming) {
+          items.push({
+            kind: "Application next step",
+            title: `${item.company}: ${item.nextStep || "Next step missing"}`,
+            detail: `${item.role} • due ${formatDate(item.nextStepDate)}`,
+            isOverdue,
+            actionHtml: `<button class="btn btn-ghost small" data-action="open-app" data-id="${item.id}">Open application</button>`
+          });
+        }
+      }
+      if (item.deadline) {
+        const isOverdue = item.deadline < today;
+        const isUpcoming = item.deadline <= addDays(today, 5);
+        if (isOverdue || isUpcoming) {
+          items.push({
+            kind: "Deadline",
+            title: `${item.company} application deadline`,
+            detail: `${item.role} • ${formatDate(item.deadline)}`,
+            isOverdue,
+            actionHtml: `<button class="btn btn-ghost small" data-action="open-app" data-id="${item.id}">Review deadline</button>`
+          });
+        }
+      }
+    });
+
+  return items.sort((a, b) => Number(b.isOverdue) - Number(a.isOverdue) || a.title.localeCompare(b.title));
+}
+
+function toggleApplicationNextStepState(status) {
+  const nextStep = document.getElementById("applicationNextStep");
+  const nextStepDate = document.getElementById("applicationNextStepDate");
+  if (!nextStep || !nextStepDate) return;
+  const disabled = status === "Rejected";
+  nextStep.disabled = disabled;
+  nextStepDate.disabled = disabled;
+  if (disabled) {
+    nextStep.value = "";
+    nextStepDate.value = "";
+  }
+}
+
+function getContactName(id) {
+  return state.contacts.find((contact) => contact.id === id)?.name || "";
+}
+
+function addActivity(title, detail) {
+  state.activityEvents.unshift({
+    id: makeId(),
+    entityType: "system",
+    entityId: "",
+    actionType: "event",
+    title,
+    detail,
+    timestamp: isoNow()
+  });
+}
+
+function createApplicationRecord() {
+  return {
+    id: makeId(),
+    company: "",
+    role: "",
+    location: "",
+    type: "MBA Internship",
+    priority: "Medium",
+    status: "Researching",
+    salary: "",
+    applicationDate: "",
+    deadline: "",
+    jobUrl: "",
+    nextStep: "",
+    nextStepDate: "",
+    linkedContactIds: [],
+    notes: "",
+    tags: "",
+    createdAt: isoNow(),
+    updatedAt: isoNow()
+  };
+}
+
+function createContactRecord() {
+  return {
+    id: makeId(),
+    name: "",
+    relationship: "New",
+    company: "",
+    role: "",
+    email: "",
+    phone: "",
+    linkedInUrl: "",
+    howWeMet: "",
+    lastContactDate: "",
+    nextFollowUpDate: "",
+    notes: "",
+    tags: "",
+    createdAt: isoNow(),
+    updatedAt: isoNow()
+  };
+}
+
+function createCaseRecord() {
+  return {
+    id: makeId(),
+    title: "",
+    caseType: CASE_TYPES[0],
+    firmStyle: FIRM_STYLES[0],
+    method: CASE_METHODS[0],
+    date: "",
+    durationMinutes: "",
+    source: "",
+    rating: 0,
+    whatWentWell: "",
+    whatToImprove: "",
+    notes: "",
+    linkedContactId: "",
+    partnerLabel: "",
+    tags: "",
+    createdAt: isoNow(),
+    updatedAt: isoNow()
+  };
+}
+
+function createTipRecord() {
+  return {
+    id: makeId(),
+    title: "",
+    category: "",
+    body: "",
+    tags: "",
+    linkedApplicationIds: [],
+    linkedContactIds: [],
+    linkedCaseSessionIds: [],
+    createdAt: isoNow(),
+    updatedAt: isoNow()
+  };
+}
+
+function createCadenceRecord() {
+  return {
+    id: makeId(),
+    title: "",
+    cadenceType: "",
+    intervalUnit: "days",
+    intervalValue: 1,
+    active: true,
+    lastCompletedDate: "",
+    nextDueDate: todayISO(),
+    createdAt: isoNow(),
+    updatedAt: isoNow()
+  };
+}
+
+function syncTabState() {
+  document.querySelectorAll(".nav-tab").forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.tab === activeTab);
+  });
+}
+
+function checkboxList(name, options, selectedIds = [], formatter) {
+  if (!options.length) {
+    return `<div class="checkbox-grid"><div class="muted">No options yet. Add records first, then link them here.</div></div>`;
+  }
+  return `
+    <div class="checkbox-grid">
+      ${options.map((option) => `
+        <label class="checkbox-item">
+          <input type="checkbox" name="${name}" value="${option.id}" ${selectedIds.includes(option.id) ? "checked" : ""}>
+          <span>${escapeHtml(formatter(option))}</span>
+        </label>
+      `).join("")}
+    </div>
+  `;
+}
+
+function checkboxFieldGroup(label, name, options, selectedIds, formatter) {
+  return `
+    <label class="full">
+      ${label}
+      ${checkboxList(name, options, selectedIds, formatter)}
+    </label>
+  `;
+}
+
+function textField(label, name, value = "", required = false, extraClass = "", id = "") {
+  return `
+    <label class="${extraClass}">
+      ${label}${required ? " *" : ""}
+      <input ${id ? `id="${id}"` : ""} type="text" name="${name}" value="${escapeHtml(value)}" ${required ? "required" : ""}>
+    </label>
+  `;
+}
+
+function textareaField(label, name, value = "", extraClass = "") {
+  return `
+    <label class="${extraClass}">
+      ${label}
+      <textarea name="${name}">${escapeHtml(value)}</textarea>
+    </label>
+  `;
+}
+
+function dateField(label, name, value = "", required = false, extraClass = "", id = "") {
+  return `
+    <label class="${extraClass}">
+      ${label}${required ? " *" : ""}
+      <input ${id ? `id="${id}"` : ""} type="date" name="${name}" value="${escapeHtml(value)}" ${required ? "required" : ""}>
+    </label>
+  `;
+}
+
+function numberField(label, name, value = "", min = "", max = "", step = "1") {
+  return `
+    <label>
+      ${label}
+      <input type="number" name="${name}" value="${escapeHtml(String(value || ""))}" ${min !== "" ? `min="${min}"` : ""} ${max !== "" ? `max="${max}"` : ""} step="${step}">
+    </label>
+  `;
+}
+
+function selectField(label, name, options, value, mode = "", id = "") {
+  const items = Array.isArray(options) ? options : [];
+  return `
+    <label>
+      ${label}
+      <select ${id ? `id="${id}"` : ""} name="${name}">
+        ${items.map((option) => {
+          const actualValue = mode === "value-label" ? option.value : option;
+          const actualLabel = mode === "value-label" ? option.label : option;
+          return `<option value="${escapeHtml(actualValue)}" ${actualValue === value ? "selected" : ""}>${escapeHtml(actualLabel)}</option>`;
+        }).join("")}
+      </select>
+    </label>
+  `;
+}
+
+function statusBadge(status) {
+  const tone = status === "Rejected" ? "danger" : status === "Offer" ? "success" : status.includes("Interview") || status === "Phone Screen" ? "warm" : "neutral";
+  return `<span class="status-badge" data-tone="${tone}">${escapeHtml(status)}</span>`;
+}
+
+function priorityBadge(priority) {
+  return `<span class="priority-badge" data-tone="${priority.toLowerCase()}">${escapeHtml(priority)}</span>`;
+}
+
+function formatDate(value) {
+  if (!value) return "Not set";
+  return new Date(`${value}T00:00:00`).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
+function formatTimestamp(value) {
+  return new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning!";
+  if (hour < 18) return "Good afternoon!";
+  return "Good evening!";
+}
+
+function getGreetingIcon() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "☀";
+  if (hour < 18) return "◐";
+  return "☾";
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isoNow() {
+  return new Date().toISOString();
+}
+
+function addDays(isoDate, days) {
+  if (!isoDate) return "";
+  const date = new Date(`${isoDate}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function computeNextDueDate(baseDate, intervalValue, intervalUnit) {
+  const multiplier = intervalUnit === "weeks" ? 7 : 1;
+  return addDays(baseDate, intervalValue * multiplier);
+}
+
+function sortByUpdatedDesc(a, b) {
+  return (b.updatedAt || "").localeCompare(a.updatedAt || "");
+}
+
+function makeId() {
+  return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function groupBy(items, keyFn) {
+  return items.reduce((acc, item) => {
+    const key = keyFn(item);
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {});
+}
+
+function truncate(value, maxLength) {
+  if (!value || value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1)}...`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
