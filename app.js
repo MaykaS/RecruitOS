@@ -1,4 +1,3 @@
-const STORAGE_KEY = "recruitos-v1";
 const STATUS_ORDER = ["Researching", "Applied", "Phone Screen", "Interview", "Final Round", "Offer", "Rejected"];
 const PRIORITY_OPTIONS = ["High", "Medium", "Low"];
 const APPLICATION_TYPES = ["Internship", "MBA Internship", "Full-time", "Part-time", "Fellowship", "Other"];
@@ -42,7 +41,7 @@ const FOCUS_TIPS = [
 ];
 
 let activeTab = "dashboard";
-let state = loadState();
+let state = createInitialState();
 
 const appContent = document.getElementById("appContent");
 const modalRoot = document.getElementById("modalRoot");
@@ -61,16 +60,16 @@ document.addEventListener("click", (event) => {
   if (!action) return;
   if (action === "close-modal") closeModal();
   if (action === "open-app") openApplicationModal(event.target.dataset.id);
-  if (action === "delete-app") deleteEntity("applications", event.target.dataset.id, "application");
+  if (action === "delete-app") void deleteEntity("applications", event.target.dataset.id, "application");
   if (action === "open-contact") openContactModal(event.target.dataset.id);
-  if (action === "delete-contact") deleteEntity("contacts", event.target.dataset.id, "contact");
+  if (action === "delete-contact") void deleteEntity("contacts", event.target.dataset.id, "contact");
   if (action === "open-case") openCaseModal(event.target.dataset.id);
-  if (action === "delete-case") deleteEntity("caseSessions", event.target.dataset.id, "case session");
+  if (action === "delete-case") void deleteEntity("caseSessions", event.target.dataset.id, "case session");
   if (action === "open-tip") openTipModal(event.target.dataset.id);
-  if (action === "delete-tip") deleteEntity("tips", event.target.dataset.id, "tip");
+  if (action === "delete-tip") void deleteEntity("tips", event.target.dataset.id, "tip");
   if (action === "open-cadence") openCadenceModal(event.target.dataset.id);
-  if (action === "delete-cadence") deleteEntity("cadenceRules", event.target.dataset.id, "cadence rule");
-  if (action === "complete-cadence") completeCadence(event.target.dataset.id);
+  if (action === "delete-cadence") void deleteEntity("cadenceRules", event.target.dataset.id, "cadence rule");
+  if (action === "complete-cadence") void completeCadence(event.target.dataset.id);
   if (action === "switch-tab") {
     activeTab = event.target.dataset.tab;
     syncTabState();
@@ -113,26 +112,14 @@ document.addEventListener("click", (event) => {
 renderFocusToday();
 syncTabState();
 render();
+void loadState();
 
-function loadState() {
+async function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return createInitialState();
-    const parsed = JSON.parse(raw);
-    return {
-      applications: parsed.applications || [],
-      contacts: parsed.contacts || [],
-      caseSessions: parsed.caseSessions || [],
-      tips: parsed.tips || [],
-      cadenceRules: parsed.cadenceRules?.length ? parsed.cadenceRules : DEFAULT_CADENCES,
-      activityEvents: parsed.activityEvents || [],
-      settings: {
-        recentActivityLimit: parsed.settings?.recentActivityLimit || 6
-      }
-    };
+    state = await apiFetch("/api/bootstrap");
+    render();
   } catch (error) {
     console.error("Unable to load RecruitOS state.", error);
-    return createInitialState();
   }
 }
 
@@ -142,18 +129,13 @@ function createInitialState() {
     contacts: [],
     caseSessions: [],
     tips: [],
-    cadenceRules: DEFAULT_CADENCES,
+    cadenceRules: [],
     activityEvents: [],
     settings: { recentActivityLimit: 6 }
   };
 }
 
-function persistState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
 function render() {
-  persistState();
   topbarLeft.innerHTML = "";
   if (activeTab === "dashboard") appContent.innerHTML = renderDashboard();
   if (activeTab === "applications") appContent.innerHTML = renderApplications();
@@ -821,7 +803,7 @@ function closeModal() {
   modalRoot.innerHTML = "";
 }
 
-function handleApplicationSubmit(event) {
+async function handleApplicationSubmit(event) {
   event.preventDefault();
   const formData = new FormData(event.target);
   const id = formData.get("id");
@@ -847,11 +829,11 @@ function handleApplicationSubmit(event) {
     createdAt: existing?.createdAt || isoNow(),
     updatedAt: isoNow()
   };
-  upsertEntity("applications", payload, "application", `${payload.company} • ${payload.role}`);
+  await upsertEntity("applications", payload);
   closeModal();
 }
 
-function handleContactSubmit(event) {
+async function handleContactSubmit(event) {
   event.preventDefault();
   const formData = new FormData(event.target);
   const id = formData.get("id");
@@ -873,11 +855,11 @@ function handleContactSubmit(event) {
     createdAt: existing?.createdAt || isoNow(),
     updatedAt: isoNow()
   };
-  upsertEntity("contacts", payload, "contact", payload.name);
+  await upsertEntity("contacts", payload);
   closeModal();
 }
 
-function handleCaseSubmit(event) {
+async function handleCaseSubmit(event) {
   event.preventDefault();
   const formData = new FormData(event.target);
   const id = formData.get("id");
@@ -902,11 +884,11 @@ function handleCaseSubmit(event) {
     createdAt: existing?.createdAt || isoNow(),
     updatedAt: isoNow()
   };
-  upsertEntity("caseSessions", payload, "case session", payload.title);
+  await upsertEntity("caseSessions", payload);
   closeModal();
 }
 
-function handleTipSubmit(event) {
+async function handleTipSubmit(event) {
   event.preventDefault();
   const formData = new FormData(event.target);
   const id = formData.get("id");
@@ -923,11 +905,11 @@ function handleTipSubmit(event) {
     createdAt: existing?.createdAt || isoNow(),
     updatedAt: isoNow()
   };
-  upsertEntity("tips", payload, "tip", payload.title);
+  await upsertEntity("tips", payload);
   closeModal();
 }
 
-function handleCadenceSubmit(event) {
+async function handleCadenceSubmit(event) {
   event.preventDefault();
   const formData = new FormData(event.target);
   const id = formData.get("id");
@@ -947,46 +929,45 @@ function handleCadenceSubmit(event) {
     createdAt: existing?.createdAt || isoNow(),
     updatedAt: isoNow()
   };
-  upsertEntity("cadenceRules", payload, "cadence rule", payload.title);
+  await upsertEntity("cadenceRules", payload);
   closeModal();
 }
 
-function handleSettingsSubmit(event) {
+async function handleSettingsSubmit(event) {
   event.preventDefault();
   const formData = new FormData(event.target);
-  state.settings.recentActivityLimit = Math.max(1, Math.min(30, Number(formData.get("recentActivityLimit")) || 6));
-  addActivity("Updated settings", `Recent activity feed now shows ${state.settings.recentActivityLimit} items.`);
+  const payload = {
+    recentActivityLimit: Math.max(1, Math.min(30, Number(formData.get("recentActivityLimit")) || 6))
+  };
+  state = await apiFetch("/api/settings", {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
   render();
 }
 
-function upsertEntity(collectionName, payload, label, detailName) {
-  const index = state[collectionName].findIndex((item) => item.id === payload.id);
-  if (index >= 0) {
-    state[collectionName][index] = payload;
-    addActivity(`Updated ${label}`, `${detailName} was updated.`);
-  } else {
-    state[collectionName].unshift(payload);
-    addActivity(`Created ${label}`, `${detailName} was added.`);
-  }
+async function upsertEntity(collectionName, payload) {
+  const existing = state[collectionName].find((item) => item.id === payload.id);
+  state = await apiFetch(`${collectionPath(collectionName)}${existing ? `/${payload.id}` : ""}`, {
+    method: existing ? "PUT" : "POST",
+    body: JSON.stringify(payload)
+  });
   render();
 }
 
-function deleteEntity(collectionName, id, label) {
-  const item = state[collectionName].find((entry) => entry.id === id);
-  if (!item) return;
-  const display = item.company || item.name || item.title || item.cadenceType || label;
-  state[collectionName] = state[collectionName].filter((entry) => entry.id !== id);
-  addActivity(`Deleted ${label}`, `${display} was removed.`);
+async function deleteEntity(collectionName, id) {
+  if (!id) return;
+  state = await apiFetch(`${collectionPath(collectionName)}/${id}`, {
+    method: "DELETE"
+  });
   render();
 }
 
-function completeCadence(id) {
-  const item = state.cadenceRules.find((entry) => entry.id === id);
-  if (!item) return;
-  item.lastCompletedDate = todayISO();
-  item.nextDueDate = computeNextDueDate(todayISO(), item.intervalValue, item.intervalUnit);
-  item.updatedAt = isoNow();
-  addActivity("Completed cadence task", `${item.title} was marked complete.`);
+async function completeCadence(id) {
+  if (!id) return;
+  state = await apiFetch(`/api/cadence-rules/${id}/complete`, {
+    method: "POST"
+  });
   render();
 }
 
@@ -1058,18 +1039,6 @@ function toggleApplicationNextStepState(status) {
 
 function getContactName(id) {
   return state.contacts.find((contact) => contact.id === id)?.name || "";
-}
-
-function addActivity(title, detail) {
-  state.activityEvents.unshift({
-    id: makeId(),
-    entityType: "system",
-    entityId: "",
-    actionType: "event",
-    title,
-    detail,
-    timestamp: isoNow()
-  });
 }
 
 function createApplicationRecord() {
@@ -1317,6 +1286,35 @@ function sortByUpdatedDesc(a, b) {
 
 function makeId() {
   return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function collectionPath(collectionName) {
+  const paths = {
+    applications: "/api/applications",
+    contacts: "/api/contacts",
+    caseSessions: "/api/case-sessions",
+    tips: "/api/tips",
+    cadenceRules: "/api/cadence-rules"
+  };
+  return paths[collectionName];
+}
+
+async function apiFetch(url, options = {}) {
+  const response = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    },
+    ...options
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = data?.error || "Request failed.";
+    window.alert(message);
+    throw new Error(message);
+  }
+  return data;
 }
 
 function groupBy(items, keyFn) {
