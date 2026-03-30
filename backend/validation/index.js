@@ -5,6 +5,7 @@ const RELATIONSHIPS = ["Alumni", "Recruiter", "Mentor", "New", "Professional", "
 const CASE_TYPES = ["Market Sizing", "Profitability", "Growth Strategy", "Operations", "Product Strategy", "Pricing"];
 const FIRM_STYLES = ["Consulting", "Tech PM", "General Business", "Behavioral Prep", "Mixed"];
 const CASE_METHODS = ["Solo", "Partner", "Mock Interview", "Platform"];
+const INTERACTION_TYPES = ["Coffee Chat", "LinkedIn Message", "Email", "Call", "Meeting", "Referral Ask"];
 
 function normalizeApplication(payload) {
   const item = {
@@ -110,6 +111,28 @@ function normalizeCadenceRule(payload) {
   };
 }
 
+function normalizeInteraction(payload, contactIdFromRoute = "") {
+  const followUpNeeded = payload.followUpNeeded === true || payload.followUpNeeded === "true" || payload.followUpNeeded === 1;
+  const interaction = {
+    id: requiredString(payload.id, "Interaction id is required."),
+    contactId: requiredString(contactIdFromRoute || payload.contactId, "Contact id is required."),
+    type: enumValue(payload.type, INTERACTION_TYPES, "Invalid interaction type."),
+    date: safeDate(payload.date),
+    summary: safeString(payload.summary),
+    followUpNeeded,
+    followUpDate: safeDate(payload.followUpDate),
+    createdAt: requiredString(payload.createdAt, "createdAt is required."),
+    updatedAt: requiredString(payload.updatedAt, "updatedAt is required.")
+  };
+  if (interaction.followUpNeeded && !interaction.followUpDate) {
+    throw new Error("Follow-up date is required when follow-up is needed.");
+  }
+  if (!interaction.followUpNeeded) {
+    interaction.followUpDate = "";
+  }
+  return interaction;
+}
+
 function normalizeSettings(payload) {
   const limit = Number(payload.recentActivityLimit);
   if (!Number.isInteger(limit) || limit < 1 || limit > 30) throw new Error("Recent activity limit must be between 1 and 30.");
@@ -150,5 +173,6 @@ module.exports = {
   normalizeCaseSession,
   normalizeTip,
   normalizeCadenceRule,
-  normalizeSettings
+  normalizeSettings,
+  normalizeInteraction
 };

@@ -368,6 +368,16 @@ h1 {
   gap: 12px;
 }
 
+.attention-actions {
+  gap: 6px;
+  align-items: center;
+}
+
+.attention-actions .btn.small {
+  padding: 6px 9px;
+  min-height: 34px;
+}
+
 .attention-item.overdue {
   border: 1px solid rgba(165, 63, 43, 0.24);
 }
@@ -408,6 +418,132 @@ h1 {
 .record-card {
   display: grid;
   gap: 8px;
+}
+
+.contact-card {
+  gap: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.contact-card-expanded {
+  border-color: rgba(188, 142, 45, 0.36);
+}
+
+.contact-summary {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 14px 14px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.contact-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.contact-title-row h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.contact-role-line {
+  margin-top: 5px;
+  font-size: 0.82rem;
+}
+
+.contact-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.contact-link-icon {
+  color: #8090ab;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.muted-icon {
+  opacity: 0.38;
+}
+
+.contact-last-line {
+  margin-top: 10px;
+  color: #91a0be;
+  font-size: 0.84rem;
+}
+
+.contact-last-line-stale {
+  color: #d9730d;
+}
+
+.contact-menu-wrap {
+  position: relative;
+  padding: 10px 10px 0 0;
+}
+
+.contact-menu-button {
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.contact-menu-button:hover {
+  background: rgba(31, 34, 48, 0.06);
+}
+
+.contact-menu {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  min-width: 172px;
+  padding: 8px;
+  border-radius: 14px;
+  background: rgba(255, 252, 246, 0.98);
+  border: 1px solid rgba(31, 34, 48, 0.08);
+  box-shadow: 0 16px 30px rgba(47, 35, 21, 0.12);
+  display: grid;
+  gap: 4px;
+  z-index: 3;
+}
+
+.contact-menu-item {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.contact-menu-item:hover {
+  background: rgba(31, 34, 48, 0.05);
+}
+
+.contact-menu-item-danger {
+  color: var(--danger);
+}
+
+.contact-expanded {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--line);
 }
 
 .row-actions,

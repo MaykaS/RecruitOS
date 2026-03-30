@@ -5,6 +5,7 @@ const RELATIONSHIP_OPTIONS = ["Alumni", "Recruiter", "Mentor", "New", "Professio
 const CASE_TYPES = ["Market Sizing", "Profitability", "Growth Strategy", "Operations", "Product Strategy", "Pricing"];
 const FIRM_STYLES = ["Consulting", "Tech PM", "General Business", "Behavioral Prep", "Mixed"];
 const CASE_METHODS = ["Solo", "Partner", "Mock Interview", "Platform"];
+const INTERACTION_TYPES = ["Coffee Chat", "LinkedIn Message", "Email", "Call", "Meeting", "Referral Ask"];
 const DEFAULT_CADENCES = [
   {
     id: "cadence-case",
@@ -42,6 +43,8 @@ const FOCUS_TIPS = [
 
 let activeTab = "dashboard";
 let state = createInitialState();
+let expandedContactId = "";
+let openContactMenuId = "";
 
 const appContent = document.getElementById("appContent");
 const modalRoot = document.getElementById("modalRoot");
@@ -59,10 +62,22 @@ document.addEventListener("click", (event) => {
   const action = event.target.dataset.action;
   if (!action) return;
   if (action === "close-modal") closeModal();
+  if (action === "toggle-contact-expand") {
+    expandedContactId = expandedContactId === event.target.dataset.id ? "" : event.target.dataset.id;
+    openContactMenuId = "";
+    render();
+  }
+  if (action === "toggle-contact-menu") {
+    openContactMenuId = openContactMenuId === event.target.dataset.id ? "" : event.target.dataset.id;
+    render();
+  }
   if (action === "open-app") openApplicationModal(event.target.dataset.id);
   if (action === "delete-app") void deleteEntity("applications", event.target.dataset.id, "application");
   if (action === "open-contact") openContactModal(event.target.dataset.id);
   if (action === "delete-contact") void deleteEntity("contacts", event.target.dataset.id, "contact");
+  if (action === "log-interaction") openInteractionModal(event.target.dataset.contactId);
+  if (action === "edit-interaction") openInteractionModal(event.target.dataset.contactId, event.target.dataset.id);
+  if (action === "delete-interaction") void deleteInteraction(event.target.dataset.id);
   if (action === "open-case") openCaseModal(event.target.dataset.id);
   if (action === "delete-case") void deleteEntity("caseSessions", event.target.dataset.id, "case session");
   if (action === "open-tip") openTipModal(event.target.dataset.id);
@@ -86,10 +101,18 @@ document.addEventListener("click", (event) => {
   if (action === "new-tip") openTipModal();
 });
 
+document.addEventListener("click", (event) => {
+  if (!openContactMenuId) return;
+  if (event.target.closest(".contact-menu-wrap")) return;
+  openContactMenuId = "";
+  render();
+});
+
 document.addEventListener("submit", (event) => {
   const form = event.target;
   if (form.matches("#applicationForm")) handleApplicationSubmit(event);
   if (form.matches("#contactForm")) handleContactSubmit(event);
+  if (form.matches("#interactionForm")) handleInteractionSubmit(event);
   if (form.matches("#caseForm")) handleCaseSubmit(event);
   if (form.matches("#tipForm")) handleTipSubmit(event);
   if (form.matches("#settingsForm")) handleSettingsSubmit(event);
@@ -98,6 +121,7 @@ document.addEventListener("submit", (event) => {
 
 document.addEventListener("input", (event) => {
   if (event.target.matches("#applicationStatus")) toggleApplicationNextStepState(event.target.value);
+  if (event.target.matches("#interactionFollowUpNeeded")) toggleInteractionFollowUpState(event.target.checked);
   if (event.target.matches("[data-filter]")) render();
 });
 
@@ -439,7 +463,7 @@ function renderAttentionItem(item) {
         <h4>${escapeHtml(item.title)}</h4>
         <div class="attention-meta">${escapeHtml(item.detail)}</div>
       </div>
-      <div class="row-actions">${item.actionHtml}</div>
+      <div class="row-actions attention-actions">${item.actionHtml}</div>
     </div>
   `;
 }
@@ -514,23 +538,98 @@ function renderApplicationRow(item) {
 }
 
 function renderContactCard(item) {
+  const isExpanded = expandedContactId === item.id;
+  const menuOpen = openContactMenuId === item.id;
+  const lastContactMessage = getLastContactMessage(item.lastContactDate);
   return `
-    <article class="record-card">
+    <article class="record-card contact-card ${isExpanded ? "contact-card-expanded" : ""}">
       <div class="table-row-header">
-        <div>
-          <h3>${escapeHtml(item.name)}</h3>
-          <div class="entity-meta">${escapeHtml([item.company, item.role].filter(Boolean).join(" • ") || "No company details")}</div>
+        <button class="contact-summary" data-action="toggle-contact-expand" data-id="${item.id}">
+          <div class="contact-title-row">
+            <h3>${escapeHtml(item.name)}</h3>
+            <span class="status-badge" data-tone="neutral">${escapeHtml(item.relationship)}</span>
+          </div>
+          <div class="entity-meta contact-role-line">${escapeHtml(formatContactRole(item))}</div>
+          <div class="contact-links">
+            ${item.email ? `<a class="contact-link-icon" href="mailto:${escapeHtml(item.email)}" title="Email">✉</a>` : `<span class="contact-link-icon muted-icon">✉</span>`}
+            ${item.linkedInUrl ? `<a class="contact-link-icon" href="${escapeHtml(item.linkedInUrl)}" target="_blank" rel="noreferrer" title="LinkedIn">in</a>` : `<span class="contact-link-icon muted-icon">in</span>`}
+          </div>
+          <div class="contact-last-line ${lastContactMessage.isStale ? "contact-last-line-stale" : ""}">${escapeHtml(lastContactMessage.text)}</div>
+        </button>
+        <div class="contact-menu-wrap">
+          <button class="contact-menu-button" data-action="toggle-contact-menu" data-id="${item.id}" aria-label="Open contact menu">⋮</button>
+          ${menuOpen ? `
+            <div class="contact-menu">
+              <button class="contact-menu-item" data-action="log-interaction" data-contact-id="${item.id}">Log Interaction</button>
+              <button class="contact-menu-item" data-action="open-contact" data-id="${item.id}">Edit</button>
+              <button class="contact-menu-item contact-menu-item-danger" data-action="delete-contact" data-id="${item.id}">Delete</button>
+            </div>
+          ` : ""}
         </div>
-        <span class="status-badge" data-tone="neutral">${escapeHtml(item.relationship)}</span>
       </div>
-      <div class="entity-meta">Next follow-up: ${item.nextFollowUpDate ? formatDate(item.nextFollowUpDate) : "No date"}</div>
-      <div class="entity-meta">${escapeHtml(item.notes || "No notes yet.")}</div>
-      <div class="row-actions">
-        <button class="btn btn-ghost small" data-action="open-contact" data-id="${item.id}">Edit</button>
-        <button class="btn btn-danger small" data-action="delete-contact" data-id="${item.id}">Delete</button>
-      </div>
+      ${isExpanded ? renderExpandedContact(item) : ""}
     </article>
   `;
+}
+
+function renderInteractionRow(contactId, interaction) {
+  const followUpText = interaction.followUpNeeded
+    ? `Follow-up ${interaction.followUpDate ? formatDate(interaction.followUpDate) : "needed"}`
+    : "No follow-up";
+  return `
+    <div class="meta-item">
+      <div class="table-row-header">
+        <div>
+          <div class="meta-label">${escapeHtml(interaction.type)} - ${formatDate(interaction.date)}</div>
+          <div class="entity-meta">${escapeHtml(truncate(interaction.summary || "No summary", 90))}</div>
+        </div>
+        <span class="pill">${escapeHtml(followUpText)}</span>
+      </div>
+      <div class="row-actions" style="margin-top: 8px;">
+        <button class="btn btn-ghost small" data-action="edit-interaction" data-contact-id="${contactId}" data-id="${interaction.id}">Edit</button>
+        <button class="btn btn-danger small" data-action="delete-interaction" data-id="${interaction.id}">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderExpandedContact(item) {
+  const interactions = item.interactions || [];
+  return `
+    <div class="contact-expanded">
+      <div class="entity-meta">Next follow-up: ${item.nextFollowUpDate ? formatDate(item.nextFollowUpDate) : "No date"}</div>
+      <div class="entity-meta">${escapeHtml(item.notes || "No notes yet.")}</div>
+      <div class="inline-header">
+        <h3 style="font-size:0.95rem;">Interactions</h3>
+        <button class="btn btn-secondary small" data-action="log-interaction" data-contact-id="${item.id}">Log interaction</button>
+      </div>
+      <div class="record-list">
+        ${interactions.length ? interactions.map((interaction) => renderInteractionRow(item.id, interaction)).join("") : `<div class="entity-meta">No interactions logged yet.</div>`}
+      </div>
+    </div>
+  `;
+}
+
+function formatContactRole(item) {
+  if (item.role && item.company) return `${item.role} at ${item.company}`;
+  return item.role || item.company || "No company or role yet";
+}
+
+function getLastContactMessage(lastContactDate) {
+  if (!lastContactDate) {
+    return {
+      text: "Last contact: No date yet",
+      isStale: false
+    };
+  }
+  const daysSince = differenceInDays(todayISO(), lastContactDate);
+  const isStale = daysSince >= 14;
+  return {
+    text: isStale
+      ? `Last contact: ${formatDate(lastContactDate)} - Consider following up!`
+      : `Last contact: ${formatDate(lastContactDate)}`,
+    isStale
+  };
 }
 
 function renderCaseCard(item) {
@@ -696,6 +795,44 @@ function openContactModal(id = "") {
   `;
 }
 
+function openInteractionModal(contactId, interactionId = "") {
+  const contact = state.contacts.find((entry) => entry.id === contactId);
+  if (!contact) return;
+  const interaction = contact.interactions?.find((entry) => entry.id === interactionId) || createInteractionRecord(contactId);
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-panel">
+        <div class="card-header">
+          <div>
+            <h2>Log interaction with ${escapeHtml(contact.name)}</h2>
+            <p class="card-subtitle">Capture context now, then let follow-up dates drive the dashboard.</p>
+          </div>
+          <button class="btn btn-ghost small" data-action="close-modal">Close</button>
+        </div>
+        <form id="interactionForm" class="form-grid">
+          <input type="hidden" name="id" value="${interaction.id}">
+          <input type="hidden" name="contactId" value="${contactId}">
+          ${selectField("Type", "type", INTERACTION_TYPES, interaction.type || INTERACTION_TYPES[0])}
+          ${dateField("Date", "date", interaction.date || todayISO(), true)}
+          ${textareaField("Summary", "summary", interaction.summary, "full")}
+          <label class="full">
+            <span>Follow-up needed</span>
+            <div class="checkbox-item">
+              <input type="checkbox" id="interactionFollowUpNeeded" name="followUpNeeded" value="true" ${interaction.followUpNeeded ? "checked" : ""}>
+              <span>Yes, I want this to become a follow-up reminder.</span>
+            </div>
+          </label>
+          ${dateField("Follow-up date", "followUpDate", interaction.followUpDate, false, "full", "interactionFollowUpDate")}
+          <div class="full form-actions">
+            <button class="btn btn-primary" type="submit">${interactionId ? "Save interaction" : "Log interaction"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  toggleInteractionFollowUpState(interaction.followUpNeeded);
+}
+
 function openCaseModal(id = "") {
   const item = state.caseSessions.find((entry) => entry.id === id) || createCaseRecord();
   modalRoot.innerHTML = `
@@ -859,6 +996,31 @@ async function handleContactSubmit(event) {
   closeModal();
 }
 
+async function handleInteractionSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  const id = formData.get("id");
+  const contactId = formData.get("contactId");
+  const existing = findInteraction(id);
+  const payload = {
+    id,
+    contactId,
+    type: formData.get("type"),
+    date: formData.get("date"),
+    summary: formData.get("summary").trim(),
+    followUpNeeded: formData.get("followUpNeeded") === "true",
+    followUpDate: formData.get("followUpDate"),
+    createdAt: existing?.createdAt || isoNow(),
+    updatedAt: isoNow()
+  };
+  state = await apiFetch(existing ? `/api/interactions/${id}` : `/api/contacts/${contactId}/interactions`, {
+    method: existing ? "PUT" : "POST",
+    body: JSON.stringify(payload)
+  });
+  closeModal();
+  render();
+}
+
 async function handleCaseSubmit(event) {
   event.preventDefault();
   const formData = new FormData(event.target);
@@ -971,9 +1133,29 @@ async function completeCadence(id) {
   render();
 }
 
+async function deleteInteraction(id) {
+  if (!id) return;
+  state = await apiFetch(`/api/interactions/${id}`, { method: "DELETE" });
+  render();
+}
+
 function getAttentionItems() {
   const today = todayISO();
   const items = [];
+
+  state.contacts.forEach((contact) => {
+    if (!contact.nextFollowUpDate) return;
+    const isOverdue = contact.nextFollowUpDate < today;
+    const isUpcoming = contact.nextFollowUpDate <= addDays(today, 3);
+    if (!isOverdue && !isUpcoming) return;
+    items.push({
+      kind: "Networking follow-up",
+      title: `Follow up with ${contact.name}`,
+      detail: `${contact.company ? `${contact.company} - ` : ""}${formatDate(contact.nextFollowUpDate)}`,
+      isOverdue,
+      actionHtml: `<button class="btn btn-ghost small" data-action="log-interaction" data-contact-id="${contact.id}">Log interaction</button><button class="btn btn-ghost small" data-action="open-contact" data-id="${contact.id}">Open contact</button>`
+    });
+  });
 
   state.cadenceRules
     .filter((rule) => rule.active)
@@ -986,7 +1168,7 @@ function getAttentionItems() {
         title: rule.title,
         detail: `Next due ${formatDate(rule.nextDueDate)} • every ${rule.intervalValue} ${rule.intervalUnit}`,
         isOverdue,
-        actionHtml: `<button class="btn btn-secondary small" data-action="complete-cadence" data-id="${rule.id}">Mark complete</button><button class="btn btn-ghost small" data-action="open-cadence" data-id="${rule.id}">Edit</button>`
+        actionHtml: `<button class="btn btn-secondary small" data-action="complete-cadence" data-id="${rule.id}">Mark complete</button><button class="btn btn-ghost small" data-action="open-cadence" data-id="${rule.id}">Edit</button><button class="btn btn-danger small" data-action="delete-cadence" data-id="${rule.id}">Delete</button>`
       });
     });
 
@@ -1037,8 +1219,26 @@ function toggleApplicationNextStepState(status) {
   }
 }
 
+function toggleInteractionFollowUpState(enabled) {
+  const followUpDate = document.getElementById("interactionFollowUpDate");
+  if (!followUpDate) return;
+  followUpDate.disabled = !enabled;
+  followUpDate.required = enabled;
+  if (!enabled) {
+    followUpDate.value = "";
+  }
+}
+
 function getContactName(id) {
   return state.contacts.find((contact) => contact.id === id)?.name || "";
+}
+
+function findInteraction(id) {
+  for (const contact of state.contacts) {
+    const match = contact.interactions?.find((interaction) => interaction.id === id);
+    if (match) return match;
+  }
+  return null;
 }
 
 function createApplicationRecord() {
@@ -1079,6 +1279,20 @@ function createContactRecord() {
     nextFollowUpDate: "",
     notes: "",
     tags: "",
+    createdAt: isoNow(),
+    updatedAt: isoNow()
+  };
+}
+
+function createInteractionRecord(contactId) {
+  return {
+    id: makeId(),
+    contactId,
+    type: INTERACTION_TYPES[0],
+    date: todayISO(),
+    summary: "",
+    followUpNeeded: false,
+    followUpDate: "",
     createdAt: isoNow(),
     updatedAt: isoNow()
   };
@@ -1273,6 +1487,14 @@ function addDays(isoDate, days) {
   const date = new Date(`${isoDate}T00:00:00`);
   date.setDate(date.getDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+function differenceInDays(laterIsoDate, earlierIsoDate) {
+  if (!laterIsoDate || !earlierIsoDate) return 0;
+  const later = new Date(`${laterIsoDate}T00:00:00`);
+  const earlier = new Date(`${earlierIsoDate}T00:00:00`);
+  const millisecondsPerDay = 1000 * 60 * 60 * 24;
+  return Math.floor((later - earlier) / millisecondsPerDay);
 }
 
 function computeNextDueDate(baseDate, intervalValue, intervalUnit) {

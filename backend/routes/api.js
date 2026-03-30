@@ -7,7 +7,8 @@ const {
   normalizeCaseSession,
   normalizeTip,
   normalizeCadenceRule,
-  normalizeSettings
+  normalizeSettings,
+  normalizeInteraction
 } = require("../validation");
 
 const router = express.Router();
@@ -25,6 +26,37 @@ router.get("/contacts", (_request, response) => response.json(getState().contact
 router.post("/contacts", createHandler(saveContact));
 router.put("/contacts/:id", createHandler(saveContact));
 router.delete("/contacts/:id", createDeleteHandler(deleteContact));
+router.get("/contacts/:id/interactions", (request, response, next) => {
+  try {
+    response.json(getContactInteractions(request.params.id));
+  } catch (error) {
+    next(error);
+  }
+});
+router.post("/contacts/:id/interactions", (request, response, next) => {
+  try {
+    saveInteraction(request.body || {}, request.params.id);
+    response.json(getState());
+  } catch (error) {
+    next(error);
+  }
+});
+router.put("/interactions/:id", (request, response, next) => {
+  try {
+    saveInteraction({ ...(request.body || {}), id: request.params.id });
+    response.json(getState());
+  } catch (error) {
+    next(error);
+  }
+});
+router.delete("/interactions/:id", (request, response, next) => {
+  try {
+    deleteInteraction(request.params.id);
+    response.json(getState());
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get("/case-sessions", (_request, response) => response.json(getState().caseSessions));
 router.post("/case-sessions", createHandler(saveCaseSession));
@@ -185,6 +217,31 @@ function saveCaseSession(payload) {
   insertActivity("caseSession", item.id, existing ? "update" : "create", existing ? "Updated case session" : "Created case session", `${item.title} ${existing ? "was updated." : "was added."}`);
 }
 
+function saveInteraction(payload, contactIdFromRoute = "") {
+  const item = normalizeInteraction(payload, contactIdFromRoute);
+  ensureContactsExist([item.contactId]);
+  const existing = db.prepare("SELECT id FROM contact_interactions WHERE id = ?").get(item.id);
+  if (existing) {
+    db.prepare(`
+      UPDATE contact_interactions SET
+        contact_id = ?, type = ?, date = ?, summary = ?, follow_up_needed = ?, follow_up_date = ?, updated_at = ?
+      WHERE id = ?
+    `).run(
+      item.contactId, item.type, item.date, item.summary, item.followUpNeeded ? 1 : 0, item.followUpDate, item.updatedAt, item.id
+    );
+  } else {
+    db.prepare(`
+      INSERT INTO contact_interactions (
+        id, contact_id, type, date, summary, follow_up_needed, follow_up_date, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      item.id, item.contactId, item.type, item.date, item.summary, item.followUpNeeded ? 1 : 0, item.followUpDate, item.createdAt, item.updatedAt
+    );
+  }
+  syncContactFollowUps(item.contactId);
+  insertActivity("contactInteraction", item.id, existing ? "update" : "create", existing ? "Updated interaction" : "Logged interaction", `${item.type} ${existing ? "was updated." : "was logged."}`);
+}
+
 function saveTip(payload) {
   const item = normalizeTip(payload);
   ensureApplicationsExist(item.linkedApplicationIds);
@@ -279,6 +336,14 @@ function deleteCadenceRule(id) {
   insertActivity("cadenceRule", id, "delete", "Deleted cadence rule", `${item.title} was removed.`);
 }
 
+function deleteInteraction(id) {
+  const interaction = db.prepare("SELECT contact_id, type FROM contact_interactions WHERE id = ?").get(id);
+  if (!interaction) throw new Error("Interaction not found.");
+  db.prepare("DELETE FROM contact_interactions WHERE id = ?").run(id);
+  syncContactFollowUps(interaction.contact_id);
+  insertActivity("contactInteraction", id, "delete", "Deleted interaction", `${interaction.type} interaction was removed.`);
+}
+
 function getState() {
   return {
     applications: getApplications(),
@@ -317,6 +382,7 @@ function getApplications() {
 }
 
 function getContacts() {
+  const interactionsByContact = groupLinks(getContactInteractionRows(), "contact_id");
   return db.prepare("SELECT * FROM contacts ORDER BY updated_at DESC").all().map((row) => ({
     id: row.id,
     name: row.name,
@@ -331,6 +397,7 @@ function getContacts() {
     nextFollowUpDate: row.next_follow_up_date,
     notes: row.notes,
     tags: row.tags,
+    interactions: (interactionsByContact[row.id] || []).map(mapInteractionRow),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }));
@@ -409,6 +476,11 @@ function getSettings() {
   return { recentActivityLimit: row?.recent_activity_limit ?? 6 };
 }
 
+function getContactInteractions(contactId) {
+  ensureContactsExist([contactId]);
+  return getContactInteractionRows(contactId).map(mapInteractionRow);
+}
+
 function insertActivity(entityType, entityId, actionType, title, detail) {
   db.prepare(`
     INSERT INTO activity_events (id, entity_type, entity_id, action_type, title, detail, timestamp)
@@ -441,11 +513,47 @@ function resetJoinTable(tableName, ownerColumn, targetColumn, ownerId, ids) {
 }
 
 function groupLinks(rows, ownerKey, targetKey) {
+  if (!targetKey) {
+    return rows.reduce((accumulator, row) => {
+      if (!accumulator[row[ownerKey]]) accumulator[row[ownerKey]] = [];
+      accumulator[row[ownerKey]].push(row);
+      return accumulator;
+    }, {});
+  }
   return rows.reduce((accumulator, row) => {
     if (!accumulator[row[ownerKey]]) accumulator[row[ownerKey]] = [];
     accumulator[row[ownerKey]].push(row[targetKey]);
     return accumulator;
   }, {});
+}
+
+function getContactInteractionRows(contactId = "") {
+  if (contactId) {
+    return db.prepare("SELECT * FROM contact_interactions WHERE contact_id = ? ORDER BY date DESC, created_at DESC").all(contactId);
+  }
+  return db.prepare("SELECT * FROM contact_interactions ORDER BY date DESC, created_at DESC").all();
+}
+
+function mapInteractionRow(row) {
+  return {
+    id: row.id,
+    contactId: row.contact_id,
+    type: row.type,
+    date: row.date,
+    summary: row.summary,
+    followUpNeeded: Boolean(row.follow_up_needed),
+    followUpDate: row.follow_up_date,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function syncContactFollowUps(contactId) {
+  const interactions = db.prepare("SELECT date, follow_up_needed, follow_up_date FROM contact_interactions WHERE contact_id = ? ORDER BY date DESC, created_at DESC").all(contactId);
+  const lastContactDate = interactions[0]?.date || "";
+  const followUpSource = interactions.find((interaction) => interaction.follow_up_needed && interaction.follow_up_date);
+  db.prepare("UPDATE contacts SET last_contact_date = ?, next_follow_up_date = ?, updated_at = ? WHERE id = ?")
+    .run(lastContactDate, followUpSource?.follow_up_date || "", new Date().toISOString(), contactId);
 }
 
 function addDays(isoDate, days) {
