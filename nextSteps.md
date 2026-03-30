@@ -10,8 +10,8 @@
 - Keep the product personal-first before worrying about multi-user productization.
 
 ## Phase 1 - Foundation
-- Move from localStorage to a real backend database
-- Design backend schema for applications, contacts, case sessions, tips, cadence rules, activity events, and settings
+- ~~Move from localStorage to a real backend database~~
+- ~~Design backend schema for applications, contacts, case sessions, tips, cadence rules, activity events, and settings~~
 - Add migration/versioning strategy so saved data stays stable over time
 - Add import/export support for data safety and transition
 
@@ -19,9 +19,9 @@
 - Add application filters by status, priority, type, and tag
 - Add sorting controls across applications, contacts, case sessions, and tips
 - Improve dashboard prioritization so attention items sort by urgency and relevance
-- Add direct linking from dashboard attention items to the exact record or action that needs updating
-- Bring networking follow-up workflow more directly into the dashboard attention engine
-- Add richer contact detail view / contact profile panel
+- ~~Add direct linking from dashboard attention items to the exact record or action that needs updating~~
+- ~~Bring networking follow-up workflow more directly into the dashboard attention engine~~
+- ~~Add richer contact detail view / contact profile panel~~
 - Add dashboard quick actions for logging a case session and adding a tip
 
 ## Phase 3 - AI-Ready Capture

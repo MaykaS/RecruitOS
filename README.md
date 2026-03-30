@@ -6,13 +6,14 @@ RecruitOS is a personal recruiting operating system for MBA students pursuing in
 - Minimal dashboard with a time-based greeting, status snapshot, attention queue, recent applications, and recent activity
 - Left-rail navigation for `Dashboard`, `Applications`, `Networking`, `Casing`, `Tips`, and `Settings`
 - Global primary actions for creating contacts and applications directly from the dashboard header
-- Calm, compact interface tuned to fit more of the dashboard above the fold
-- Browser-based persistence using `localStorage`
+- Compact, light blue interface tuned to fit more of the dashboard above the fold
+- Local private persistence through a Node/Express API backed by SQLite
+- Contact interaction logging with per-contact history and follow-up tracking
 
 ## Core features
 ### Dashboard
 - Shows KPI cards for active applications, interviews, contacts, and offers
-- Surfaces overdue or upcoming application next steps, deadlines, and cadence tasks
+- Surfaces overdue or upcoming application next steps, networking follow-ups, deadlines, and cadence tasks
 - Displays a pipeline snapshot from `Researching` through `Rejected`
 - Shows recent applications and a configurable recent activity feed
 - Includes a static rule-based `Focus today` coaching card in the left rail
@@ -26,6 +27,8 @@ RecruitOS is a personal recruiting operating system for MBA students pursuing in
 ### Networking
 - CRM-lite contact tracking for recruiting relationships
 - Supports follow-up dates, notes, tags, relationship types, and basic profile/contact details
+- Includes interaction logging for coffee chats, messages, emails, calls, meetings, and referral asks
+- Shows compact contact cards with expandable interaction history and last-contact nudges
 
 ### Casing
 - Logs PM-style case interview practice sessions
@@ -42,14 +45,17 @@ RecruitOS is a personal recruiting operating system for MBA students pursuing in
 
 ## Tech stack
 - Plain `HTML`, `CSS`, and `JavaScript`
-- Small Node static server for local development
-- No framework, backend database, or authentication in the current MVP
+- `Node.js` + `Express` backend
+- `SQLite` via `better-sqlite3`
+- No framework or authentication in the current MVP
 
 ## Project files
 - `index.html` - app shell and global layout
 - `styles.css` - visual system, spacing, responsive behavior, and component styling
-- `app.js` - state management, rendering, CRUD flows, dashboard logic, and persistence
-- `server.js` - local dev server
+- `app.js` - state management, rendering, CRUD flows, dashboard logic, and API client logic
+- `server.js` - app server entrypoint and static file host
+- `backend/` - database setup, API routes, and validation
+- `data/` - local private SQLite database files (Git-ignored)
 - `package.json` - run scripts
 - `recruitos-prd.md` - living product requirements and scope doc
 - `nextSteps.md` - quick-capture backlog file
@@ -84,12 +90,11 @@ http://127.0.0.1:3000
 ## Current constraints
 - Single-user only
 - No authentication
-- No server-side persistence
+- No cloud sync
 - No external reminders
 - No background agent automation inside the app yet
 
 ## Likely next steps
-- Move from `localStorage` to real backend persistence
 - Add import/export
 - Add authentication
 - Add reminder delivery and calendar sync

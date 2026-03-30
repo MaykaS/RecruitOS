@@ -238,7 +238,7 @@ function renderDashboard() {
         </div>
       </section>
     </section>
-    <section class="split-grid">
+    <section class="dashboard-grid">
       <section class="card">
         <div class="card-header">
           <div>
