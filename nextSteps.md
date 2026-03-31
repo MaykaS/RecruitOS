@@ -12,7 +12,7 @@
 ## Phase 1 - Foundation
 - ~~Move from localStorage to a real backend database~~
 - ~~Design backend schema for applications, contacts, case sessions, tips, cadence rules, activity events, and settings~~
-- Add migration/versioning strategy so saved data stays stable over time
+- ~~Add migration/versioning strategy so saved data stays stable over time~~
 - Add import/export support for data safety and transition
 
 ## Phase 2 - Workflow Depth
@@ -24,6 +24,7 @@
 - ~~Add richer contact detail view / contact profile panel~~
 - Add dashboard quick actions for logging a case session and adding a tip
 - Fix styles and UI polish across the app
+- Fix "Focus today"
 
 ## Phase 3 - AI-Ready Capture
 - Prepare application flows for AI-generated drafts without breaking manual editing

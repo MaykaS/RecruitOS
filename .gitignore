@@ -3,3 +3,4 @@ dev-error.log
 node_modules/
 data/*.sqlite
 data/*.db
+data/backups/

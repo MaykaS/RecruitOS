@@ -24,6 +24,7 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 
 ### Near-term strategic focus
 - The backend persistence foundation is now in place through a local SQLite-backed app.
+- The app now uses forward-only migrations with automatic local backups before pending schema changes.
 - The next major build phase should focus on workflow depth, prioritization, and UI polish.
 - AI-ready capture flows should be designed before the first AI feature is implemented.
 
@@ -246,7 +247,7 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 - Continue visual polish so shared controls and layouts feel cohesive across modules.
 
 ### Remaining foundation work
-- Add migration/versioning strategy so the product can evolve without breaking saved user data.
+- Add import/export support for data safety and transition.
 
 ### AI-ready capture phase
 - Prepare application flows so AI-generated drafts fit naturally into the product.

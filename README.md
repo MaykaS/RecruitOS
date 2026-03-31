@@ -8,6 +8,7 @@ RecruitOS is a personal recruiting operating system for MBA students pursuing in
 - Global primary actions for creating contacts and applications directly from the dashboard header
 - Compact, light blue interface tuned to fit more of the dashboard above the fold
 - Local private persistence through a Node/Express API backed by SQLite
+- Forward-only SQLite migrations with automatic pre-migration backups
 - Contact interaction logging with per-contact history and follow-up tracking
 
 ## Core features
@@ -57,7 +58,7 @@ RecruitOS is a personal recruiting operating system for MBA students pursuing in
 - `styles.css` - visual system, spacing, responsive behavior, and component styling
 - `app.js` - state management, rendering, CRUD flows, dashboard logic, and API client logic
 - `server.js` - app server entrypoint and static file host
-- `backend/` - database setup, API routes, and validation
+- `backend/` - database setup, migrations, API routes, and validation
 - `data/` - local private SQLite database files (Git-ignored)
 - `package.json` - run scripts
 - `recruitos-prd.md` - living product requirements and scope doc
@@ -89,6 +90,12 @@ http://127.0.0.1:3000
 - Use `nextSteps.md` to capture fast ideas without rewriting the PRD
 - Example instruction: `add to nextsteps.md - add CSV import for applications`
 - When requested, update `README.md` to reflect the current product rather than leaving it as a stale setup file
+
+## Data safety and migrations
+- RecruitOS stores personal data locally in `data/recruitos.sqlite`
+- Schema changes now run through numbered SQLite migrations on server startup
+- Before pending migrations are applied, RecruitOS creates a timestamped backup in `data/backups/`
+- Database and backup files are Git-ignored, so your personal data stays local
 
 ## Current constraints
 - Single-user only
