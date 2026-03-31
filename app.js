@@ -106,6 +106,14 @@ document.addEventListener("click", (event) => {
     if (input) input.value = value;
     render();
   }
+  if (action === "add-token-option") {
+    const field = event.target.closest(".token-picker");
+    if (field) addTokenPickerValue(field, event.target.dataset.value, event.target.dataset.label);
+  }
+  if (action === "remove-token-option") {
+    const field = event.target.closest(".token-picker");
+    if (field) removeTokenPickerValue(field, event.target.dataset.value);
+  }
 });
 
 document.addEventListener("click", (event) => {
@@ -113,6 +121,12 @@ document.addEventListener("click", (event) => {
   if (event.target.closest(".contact-menu-wrap")) return;
   openContactMenuId = "";
   render();
+});
+
+document.addEventListener("click", (event) => {
+  document.querySelectorAll(".multi-select-field[open]").forEach((field) => {
+    if (!field.contains(event.target)) field.removeAttribute("open");
+  });
 });
 
 document.addEventListener("submit", (event) => {
@@ -1027,8 +1041,8 @@ function openTipModal(id = "") {
           ${textField("Title", "title", item.title, true)}
           ${textField("Category", "category", item.category, true)}
           ${checkboxFieldGroup("Linked applications", "linkedApplicationIds", state.applications, item.linkedApplicationIds, (app) => `${app.company} — ${app.role}`)}
-          ${checkboxFieldGroup("Linked contacts", "linkedContactIds", state.contacts, item.linkedContactIds, (contact) => `${contact.name} ${contact.company ? `(${contact.company})` : ""}`)}
-          ${checkboxFieldGroup("Linked case sessions", "linkedCaseSessionIds", state.caseSessions, item.linkedCaseSessionIds, (session) => session.title)}
+          ${multiSelectDropdownFieldGroup("Linked contacts", "linkedContactIds", state.contacts, item.linkedContactIds, (contact) => `${contact.name} ${contact.company ? `(${contact.company})` : ""}`, "Select contacts")}
+          ${multiSelectDropdownFieldGroup("Linked case sessions", "linkedCaseSessionIds", state.caseSessions, item.linkedCaseSessionIds, (session) => session.title, "Select case sessions")}
           ${textField("Tags", "tags", item.tags, false, "full")}
           ${textareaField("Body", "body", item.body, "full")}
           <div class="full form-actions">
@@ -1519,6 +1533,117 @@ function checkboxFieldGroup(label, name, options, selectedIds, formatter) {
       ${checkboxList(name, options, selectedIds, formatter)}
     </label>
   `;
+}
+
+function multiSelectDropdownFieldGroup(label, name, options, selectedIds, formatter, placeholder) {
+  if (!options.length) {
+    return `
+      <label class="full">
+        ${label}
+        <div class="checkbox-grid"><div class="muted">No options yet. Add records first, then link them here.</div></div>
+      </label>
+    `;
+  }
+
+  return `
+    <label class="full">
+      ${label}
+      <details class="multi-select-field token-picker" data-name="${escapeHtml(name)}" data-placeholder="${escapeHtml(placeholder)}">
+        <summary class="multi-select-summary">
+          <div class="token-picker-selected">
+            ${renderTokenPickerSelected(name, options, selectedIds, formatter, placeholder)}
+          </div>
+          <span class="multi-select-chevron" aria-hidden="true">▾</span>
+        </summary>
+        <div class="token-picker-hidden-inputs">
+          ${selectedIds.map((id) => `<input type="hidden" name="${name}" value="${escapeHtml(id)}">`).join("")}
+        </div>
+        <div class="multi-select-panel token-picker-options">
+          ${options.map((option) => `
+            <button
+              class="token-picker-option ${selectedIds.includes(option.id) ? "is-selected" : ""}"
+              type="button"
+              data-action="add-token-option"
+              data-value="${escapeHtml(option.id)}"
+              data-label="${escapeHtml(formatter(option))}"
+              ${selectedIds.includes(option.id) ? "disabled" : ""}
+            >${escapeHtml(formatter(option))}</button>
+          `).join("")}
+        </div>
+      </details>
+    </label>
+  `;
+}
+
+function renderTokenPickerSelected(name, options, selectedIds, formatter, placeholder) {
+  const selectedItems = selectedIds
+    .map((id) => options.find((option) => option.id === id))
+    .filter(Boolean);
+
+  if (!selectedItems.length) {
+    return `<span class="multi-select-summary-text" data-placeholder="${escapeHtml(placeholder)}">${escapeHtml(placeholder)}</span>`;
+  }
+
+  return selectedItems.map((item) => `
+    <span class="token-chip">
+      <span>${escapeHtml(formatter(item))}</span>
+      <button
+        class="token-chip-remove"
+        type="button"
+        data-action="remove-token-option"
+        data-value="${escapeHtml(item.id)}"
+        aria-label="Remove ${escapeHtml(formatter(item))}"
+      >×</button>
+    </span>
+  `).join("");
+}
+
+function addTokenPickerValue(field, value, label) {
+  if (!value) return;
+  const hiddenInputs = field.querySelector(".token-picker-hidden-inputs");
+  const existing = hiddenInputs.querySelector(`input[value="${cssEscape(value)}"]`);
+  if (existing) return;
+
+  hiddenInputs.insertAdjacentHTML("beforeend", `<input type="hidden" name="${escapeHtml(field.dataset.name)}" value="${escapeHtml(value)}">`);
+  const selected = field.querySelector(".token-picker-selected");
+  const placeholderNode = selected.querySelector(".multi-select-summary-text");
+  if (placeholderNode) placeholderNode.remove();
+  selected.insertAdjacentHTML("beforeend", `
+    <span class="token-chip">
+      <span>${escapeHtml(label)}</span>
+      <button class="token-chip-remove" type="button" data-action="remove-token-option" data-value="${escapeHtml(value)}" aria-label="Remove ${escapeHtml(label)}">×</button>
+    </span>
+  `);
+
+  const optionButton = field.querySelector(`.token-picker-option[data-value="${cssEscape(value)}"]`);
+  if (optionButton) {
+    optionButton.disabled = true;
+    optionButton.classList.add("is-selected");
+  }
+}
+
+function removeTokenPickerValue(field, value) {
+  const hiddenInput = field.querySelector(`.token-picker-hidden-inputs input[value="${cssEscape(value)}"]`);
+  if (hiddenInput) hiddenInput.remove();
+
+  const chip = field.querySelector(`.token-chip-remove[data-value="${cssEscape(value)}"]`)?.closest(".token-chip");
+  if (chip) chip.remove();
+
+  const optionButton = field.querySelector(`.token-picker-option[data-value="${cssEscape(value)}"]`);
+  if (optionButton) {
+    optionButton.disabled = false;
+    optionButton.classList.remove("is-selected");
+  }
+
+  const selected = field.querySelector(".token-picker-selected");
+  if (selected && !selected.querySelector(".token-chip")) {
+    const placeholder = field.dataset.placeholder || "Select options";
+    selected.innerHTML = `<span class="multi-select-summary-text" data-placeholder="${escapeHtml(placeholder)}">${escapeHtml(placeholder)}</span>`;
+  }
+}
+
+function cssEscape(value) {
+  return String(value ?? "").replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
 function textField(label, name, value = "", required = false, extraClass = "", id = "") {
