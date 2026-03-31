@@ -660,6 +660,65 @@ h1 {
   flex: 1 1 220px;
 }
 
+.filter-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.toolbar-search {
+  flex: 1 1 320px;
+  min-width: 240px;
+  min-height: 42px;
+}
+
+.toolbar-select {
+  flex: 0 0 auto;
+  min-width: 140px;
+  width: auto;
+  min-height: 42px;
+  padding-right: 34px;
+  background-color: rgba(255, 255, 255, 0.96);
+}
+
+.toolbar-select[data-filter$="-sort"] {
+  min-width: 132px;
+}
+
+.sort-order-toggle {
+  display: inline-flex;
+  align-items: stretch;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.sort-order-button {
+  border: none;
+  background: transparent;
+  color: var(--accent-deep);
+  min-width: 42px;
+  padding: 0 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.sort-order-button + .sort-order-button {
+  border-left: 1px solid var(--line);
+}
+
+.sort-order-button.active {
+  background: linear-gradient(135deg, #5f7ea8, #7f9bc0);
+  color: #fff;
+}
+
+.sort-order-button:hover:not(.active) {
+  background: rgba(227, 237, 255, 0.92);
+}
+
 .empty-state {
   text-align: center;
 }

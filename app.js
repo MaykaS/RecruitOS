@@ -99,6 +99,13 @@ document.addEventListener("click", (event) => {
   if (action === "new-contact") openContactModal();
   if (action === "new-case") openCaseModal();
   if (action === "new-tip") openTipModal();
+  if (action === "set-sort-order") {
+    const field = event.target.dataset.field;
+    const value = event.target.dataset.value;
+    const input = document.querySelector(`[data-filter="${field}"]`);
+    if (input) input.value = value;
+    render();
+  }
 });
 
 document.addEventListener("click", (event) => {
@@ -268,19 +275,50 @@ function renderDashboard() {
 }
 
 function renderApplications() {
-  const query = (document.querySelector('[data-filter="applications"]')?.value || "").toLowerCase();
-  const filtered = state.applications.filter((item) => {
-    const haystack = `${item.company} ${item.role} ${item.location} ${item.tags || ""}`.toLowerCase();
-    return haystack.includes(query);
-  }).sort(sortByUpdatedDesc);
+  const query = getControlValue("applications-search").toLowerCase();
+  const statusFilter = getControlValue("applications-status");
+  const typeFilter = getControlValue("applications-type");
+  const priorityFilter = getControlValue("applications-priority");
+  const tagFilter = getControlValue("applications-tag");
+  const sortBy = getControlValue("applications-sort") || "updated";
+  const sortOrder = getControlValue("applications-order") || "desc";
+  const tagOptions = getUniqueTags(state.applications);
+
+  const filtered = sortItems(
+    state.applications.filter((item) => {
+      const haystack = `${item.company} ${item.role} ${item.location} ${item.tags || ""}`.toLowerCase();
+      const matchesQuery = haystack.includes(query);
+      const matchesStatus = !statusFilter || item.status === statusFilter;
+      const matchesType = !typeFilter || item.type === typeFilter;
+      const matchesPriority = !priorityFilter || item.priority === priorityFilter;
+      const matchesTag = !tagFilter || parseTags(item.tags).includes(tagFilter.toLowerCase());
+      return matchesQuery && matchesStatus && matchesType && matchesPriority && matchesTag;
+    }),
+    getApplicationsSortValue,
+    sortBy,
+    sortOrder
+  );
 
   return `
     ${renderModuleHeader("Applications", "Track the full story of each role, including the next step that drives the dashboard.", `
       <button class="btn btn-primary" data-action="new-application">Add application</button>
     `)}
     <section class="list-card">
-      <div class="filter-bar">
-        <input class="search" data-filter="applications" placeholder="Search company, role, location, or tag" value="${escapeHtml(query)}">
+      <div class="filter-toolbar">
+        <input class="search toolbar-search" data-filter="applications-search" placeholder="Search companies or roles..." value="${escapeHtml(query)}">
+        ${renderToolbarSelect("applications-status", "All Status", ["", ...STATUS_ORDER], statusFilter)}
+        ${renderToolbarSelect("applications-priority", "All Priorities", ["", ...PRIORITY_OPTIONS], priorityFilter)}
+        ${renderToolbarSelect("applications-tag", "All Tags", ["", ...tagOptions], tagFilter)}
+        ${renderToolbarSelect("applications-sort", "Sort by", [
+          { value: "updated", label: "Updated" },
+          { value: "company", label: "Company" },
+          { value: "status", label: "Status" },
+          { value: "priority", label: "Priority" },
+          { value: "deadline", label: "Deadline" },
+          { value: "nextStepDate", label: "Next step date" },
+          { value: "applicationDate", label: "Application date" }
+        ], sortBy)}
+        ${renderSortOrderToggle("applications-order", sortOrder)}
       </div>
       <div class="record-list" style="margin-top: 18px;">
         ${filtered.length ? filtered.map(renderApplicationRow).join("") : renderEmptyState("No applications yet", "Add your first application and give it a dated next step so RecruitOS can coach the work.", "Add application", "new-application")}
@@ -290,19 +328,35 @@ function renderApplications() {
 }
 
 function renderNetworking() {
-  const query = (document.querySelector('[data-filter="networking"]')?.value || "").toLowerCase();
-  const filtered = state.contacts.filter((item) => {
-    const haystack = `${item.name} ${item.company} ${item.role} ${item.tags || ""}`.toLowerCase();
-    return haystack.includes(query);
-  }).sort(sortByUpdatedDesc);
+  const query = getControlValue("networking-search").toLowerCase();
+  const sortBy = getControlValue("networking-sort") || "updated";
+  const sortOrder = getControlValue("networking-order") || "desc";
+  const filtered = sortItems(
+    state.contacts.filter((item) => {
+      const haystack = `${item.name} ${item.company} ${item.role} ${item.tags || ""}`.toLowerCase();
+      return haystack.includes(query);
+    }),
+    getContactsSortValue,
+    sortBy,
+    sortOrder
+  );
 
   return `
     ${renderModuleHeader("Networking", "A lightweight relationship tracker for follow-ups, notes, and warm paths into opportunities.", `
       <button class="btn btn-secondary" data-action="new-contact">New contact</button>
     `)}
     <section class="list-card">
-      <div class="filter-bar">
-        <input class="search" data-filter="networking" placeholder="Search name, company, role, or tag" value="${escapeHtml(query)}">
+      <div class="filter-toolbar">
+        <input class="search toolbar-search" data-filter="networking-search" placeholder="Search names or companies..." value="${escapeHtml(query)}">
+        ${renderToolbarSelect("networking-sort", "Sort by", [
+          { value: "updated", label: "Updated" },
+          { value: "name", label: "Name" },
+          { value: "company", label: "Company" },
+          { value: "relationship", label: "Relationship" },
+          { value: "lastContactDate", label: "Last contact" },
+          { value: "nextFollowUpDate", label: "Next follow-up" }
+        ], sortBy)}
+        ${renderSortOrderToggle("networking-order", sortOrder)}
       </div>
       <div class="cards-grid" style="margin-top: 18px;">
         ${filtered.length ? filtered.map(renderContactCard).join("") : renderEmptyState("No contacts yet", "Add people you want to keep warm so follow-ups stop living only in your head.", "Add contact", "new-contact")}
@@ -312,11 +366,18 @@ function renderNetworking() {
 }
 
 function renderCasing() {
-  const query = (document.querySelector('[data-filter="casing"]')?.value || "").toLowerCase();
-  const filtered = state.caseSessions.filter((item) => {
-    const haystack = `${item.title} ${item.caseType} ${item.firmStyle} ${item.partnerLabel || ""} ${item.tags || ""}`.toLowerCase();
-    return haystack.includes(query);
-  }).sort(sortByUpdatedDesc);
+  const query = getControlValue("casing-search").toLowerCase();
+  const sortBy = getControlValue("casing-sort") || "date";
+  const sortOrder = getControlValue("casing-order") || "desc";
+  const filtered = sortItems(
+    state.caseSessions.filter((item) => {
+      const haystack = `${item.title} ${item.caseType} ${item.firmStyle} ${item.partnerLabel || ""} ${item.tags || ""}`.toLowerCase();
+      return haystack.includes(query);
+    }),
+    getCaseSessionsSortValue,
+    sortBy,
+    sortOrder
+  );
   const totalSessions = state.caseSessions.length;
   const totalMinutes = state.caseSessions.reduce((sum, item) => sum + (Number(item.durationMinutes) || 0), 0);
   const ratedSessions = state.caseSessions.filter((item) => item.rating !== "" && item.rating !== null && item.rating !== undefined);
@@ -334,8 +395,16 @@ function renderCasing() {
       ${renderCasingStatCard("☆", avgRating ? `${avgRating}/5` : "—", "Avg Rating")}
     </section>
     <section class="list-card">
-      <div class="filter-bar">
-        <input class="search" data-filter="casing" placeholder="Search title, case type, firm style, partner, or tag" value="${escapeHtml(query)}">
+      <div class="filter-toolbar">
+        <input class="search toolbar-search" data-filter="casing-search" placeholder="Search titles or case types..." value="${escapeHtml(query)}">
+        ${renderToolbarSelect("casing-sort", "Sort by", [
+          { value: "date", label: "Date" },
+          { value: "updated", label: "Updated" },
+          { value: "rating", label: "Rating" },
+          { value: "durationMinutes", label: "Duration" },
+          { value: "caseType", label: "Case type" }
+        ], sortBy)}
+        ${renderSortOrderToggle("casing-order", sortOrder)}
       </div>
       <div class="cards-grid" style="margin-top: 18px;">
         ${filtered.length ? filtered.map(renderCaseCard).join("") : renderEmptyState("No case sessions yet", "Log your sessions consistently so patterns show up instead of getting lost.", "Log case session", "new-case")}
@@ -345,11 +414,18 @@ function renderCasing() {
 }
 
 function renderTips() {
-  const query = (document.querySelector('[data-filter="tips"]')?.value || "").toLowerCase();
-  const filtered = state.tips.filter((item) => {
-    const haystack = `${item.title} ${item.category} ${item.body || ""} ${item.tags || ""}`.toLowerCase();
-    return haystack.includes(query);
-  }).sort((a, b) => a.category.localeCompare(b.category) || sortByUpdatedDesc(a, b));
+  const query = getControlValue("tips-search").toLowerCase();
+  const sortBy = getControlValue("tips-sort") || "category";
+  const sortOrder = getControlValue("tips-order") || "asc";
+  const filtered = sortItems(
+    state.tips.filter((item) => {
+      const haystack = `${item.title} ${item.category} ${item.body || ""} ${item.tags || ""}`.toLowerCase();
+      return haystack.includes(query);
+    }),
+    getTipsSortValue,
+    sortBy,
+    sortOrder
+  );
 
   const grouped = groupBy(filtered, (item) => item.category || "Uncategorized");
 
@@ -358,8 +434,14 @@ function renderTips() {
       <button class="btn btn-secondary" data-action="new-tip">Add tip</button>
     `)}
     <section class="list-card">
-      <div class="filter-bar">
-        <input class="search" data-filter="tips" placeholder="Search category, title, body, or tag" value="${escapeHtml(query)}">
+      <div class="filter-toolbar">
+        <input class="search toolbar-search" data-filter="tips-search" placeholder="Search titles or categories..." value="${escapeHtml(query)}">
+        ${renderToolbarSelect("tips-sort", "Sort by", [
+          { value: "category", label: "Category" },
+          { value: "title", label: "Title" },
+          { value: "updated", label: "Updated" }
+        ], sortBy)}
+        ${renderSortOrderToggle("tips-order", sortOrder)}
       </div>
       <div class="record-list" style="margin-top: 18px;">
         ${filtered.length ? Object.entries(grouped).map(([category, items]) => `
@@ -469,6 +551,44 @@ function renderCasingStatCard(icon, value, label) {
       <div class="casing-stat-value"><span class="casing-stat-icon" aria-hidden="true">${icon}</span>${escapeHtml(String(value))}</div>
       <div class="stat-label casing-stat-label">${label}</div>
     </section>
+  `;
+}
+
+function renderToolbarSelect(filterName, emptyLabel, options, selectedValue) {
+  const normalizedOptions = options.map((option) => typeof option === "string"
+    ? { value: option, label: option || emptyLabel }
+    : option);
+  return `
+    <select class="toolbar-select" data-filter="${filterName}">
+      ${normalizedOptions.map((option) => `
+        <option value="${escapeHtml(option.value)}" ${option.value === selectedValue ? "selected" : ""}>${escapeHtml(option.label)}</option>
+      `).join("")}
+    </select>
+  `;
+}
+
+function renderSortOrderToggle(filterName, selectedValue) {
+  const currentValue = selectedValue || "desc";
+  return `
+    <div class="sort-order-toggle" role="group" aria-label="Sort order">
+      <input type="hidden" data-filter="${filterName}" value="${escapeHtml(currentValue)}">
+      <button
+        class="sort-order-button ${currentValue === "asc" ? "active" : ""}"
+        type="button"
+        data-action="set-sort-order"
+        data-field="${filterName}"
+        data-value="asc"
+        aria-label="Sort ascending"
+      >↑</button>
+      <button
+        class="sort-order-button ${currentValue === "desc" ? "active" : ""}"
+        type="button"
+        data-action="set-sort-order"
+        data-field="${filterName}"
+        data-value="desc"
+        aria-label="Sort descending"
+      >↓</button>
+    </div>
   `;
 }
 
@@ -1524,6 +1644,82 @@ function differenceInDays(laterIsoDate, earlierIsoDate) {
   const earlier = new Date(`${earlierIsoDate}T00:00:00`);
   const millisecondsPerDay = 1000 * 60 * 60 * 24;
   return Math.floor((later - earlier) / millisecondsPerDay);
+}
+
+function getControlValue(filterName) {
+  return document.querySelector(`[data-filter="${filterName}"]`)?.value || "";
+}
+
+function parseTags(tagsValue) {
+  return String(tagsValue || "")
+    .split(",")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function getUniqueTags(items) {
+  return [...new Set(items.flatMap((item) => parseTags(item.tags)))].sort((a, b) => a.localeCompare(b));
+}
+
+function sortItems(items, accessorMap, sortBy, sortOrder) {
+  const direction = sortOrder === "asc" ? 1 : -1;
+  return [...items].sort((a, b) => compareSortValues(accessorMap(sortBy, a), accessorMap(sortBy, b)) * direction);
+}
+
+function compareSortValues(left, right) {
+  const a = left ?? "";
+  const b = right ?? "";
+  const aIsNumber = typeof a === "number";
+  const bIsNumber = typeof b === "number";
+  if (aIsNumber || bIsNumber) return (Number(a) || 0) - (Number(b) || 0);
+  return String(a).localeCompare(String(b), undefined, { sensitivity: "base" });
+}
+
+function getApplicationsSortValue(sortBy, item) {
+  const priorityRank = { High: 3, Medium: 2, Low: 1 };
+  const statusRank = Object.fromEntries(STATUS_ORDER.map((status, index) => [status, index + 1]));
+  const values = {
+    updated: item.updatedAt || "",
+    company: item.company || "",
+    status: statusRank[item.status] || 0,
+    priority: priorityRank[item.priority] || 0,
+    deadline: item.deadline || "9999-12-31",
+    nextStepDate: item.nextStepDate || "9999-12-31",
+    applicationDate: item.applicationDate || "9999-12-31"
+  };
+  return values[sortBy] ?? values.updated;
+}
+
+function getContactsSortValue(sortBy, item) {
+  const values = {
+    updated: item.updatedAt || "",
+    name: item.name || "",
+    company: item.company || "",
+    relationship: item.relationship || "",
+    lastContactDate: item.lastContactDate || "",
+    nextFollowUpDate: item.nextFollowUpDate || "9999-12-31"
+  };
+  return values[sortBy] ?? values.updated;
+}
+
+function getCaseSessionsSortValue(sortBy, item) {
+  const values = {
+    date: item.date || "",
+    updated: item.updatedAt || "",
+    rating: Number(item.rating) || 0,
+    durationMinutes: Number(item.durationMinutes) || 0,
+    caseType: item.caseType || ""
+  };
+  return values[sortBy] ?? values.date;
+}
+
+function getTipsSortValue(sortBy, item) {
+  const values = {
+    category: item.category || "",
+    title: item.title || "",
+    updated: item.updatedAt || ""
+  };
+  return values[sortBy] ?? values.category;
 }
 
 function computeNextDueDate(baseDate, intervalValue, intervalUnit) {

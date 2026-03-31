@@ -23,6 +23,7 @@
 - ~~Bring networking follow-up workflow more directly into the dashboard attention engine~~
 - ~~Add richer contact detail view / contact profile panel~~
 - Add dashboard quick actions for logging a case session and adding a tip
+- Fix styles and UI polish across the app
 
 ## Phase 3 - AI-Ready Capture
 - Prepare application flows for AI-generated drafts without breaking manual editing
