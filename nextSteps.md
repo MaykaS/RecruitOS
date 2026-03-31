@@ -16,8 +16,8 @@
 - Add import/export support for data safety and transition
 
 ## Phase 2 - Workflow Depth
-- Add application filters by status, priority, type, and tag
-- Add sorting controls across applications, contacts, case sessions, and tips
+- ~~Add application filters by status, priority, type, and tag~~
+- ~~Add sorting controls across applications, contacts, case sessions, and tips~~
 - Improve dashboard prioritization so attention items sort by urgency and relevance
 - ~~Add direct linking from dashboard attention items to the exact record or action that needs updating~~
 - ~~Bring networking follow-up workflow more directly into the dashboard attention engine~~

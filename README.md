@@ -23,6 +23,7 @@ RecruitOS is a personal recruiting operating system for MBA students pursuing in
 - Tracks company, role, type, priority, status, dates, compensation, notes, tags, and linked contacts
 - Treats `nextStep` and `nextStepDate` as the main operational pair for dashboard attention logic
 - Automatically clears and disables next-step fields when status is `Rejected`
+- Includes a one-row search, filter, and sort toolbar for status, type, priority, tag, and ordering
 
 ### Networking
 - CRM-lite contact tracking for recruiting relationships
@@ -34,10 +35,12 @@ RecruitOS is a personal recruiting operating system for MBA students pursuing in
 - Logs PM-style case interview practice sessions
 - Tracks case type, firm style, method, duration, partner, notes, rating, and reflection fields
 - Supports either a linked RecruitOS contact or a free-text partner label
+- Includes top-level casing summary stats for total sessions, total practice time, and average rating
 
 ### Tips
 - Personal knowledge base for reusable recruiting advice
 - Supports free-text categories, tags, rich notes, and links to applications, contacts, and case sessions
+- Includes search and sorting controls in the list view
 
 ### Settings
 - Controls recent activity feed size

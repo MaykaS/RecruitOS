@@ -23,8 +23,8 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 - AI execution can come later, after the data foundation and review flows are stable.
 
 ### Near-term strategic focus
-- The next major build phase should be real backend persistence, schema design, and migrations.
-- Workflow depth should improve after the backend foundation is in place.
+- The backend persistence foundation is now in place through a local SQLite-backed app.
+- The next major build phase should focus on workflow depth, prioritization, and UI polish.
 - AI-ready capture flows should be designed before the first AI feature is implemented.
 
 ### Explicitly later
@@ -43,7 +43,6 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 - No email, SMS, or calendar reminders
 - No authentication
 - No multi-user collaboration
-- No backend database yet
 - No in-app AI workflows yet
 - No application import pipeline or browser extension yet
 
@@ -81,9 +80,11 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 - `Snapshot` panel shows counts across the full application pipeline
 - `Recent applications` shows the latest 2-3 application records
 - `Recent activity` shows the latest `N` actions where `N` is configured in Settings
+- Networking follow-up reminders can also surface through the attention engine
 
 ### Applications
 - Full CRUD
+- Search, filter, and sort controls in the list view
 - Full data model:
   - id
   - company
@@ -110,6 +111,8 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 ### Networking
 - Full CRUD
 - Search by name, company, role, and tag
+- Sort controls in the list view
+- Expandable contact detail area with interaction history
 - Full data model:
   - id
   - name
@@ -126,10 +129,19 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
   - tags
   - createdAt
   - updatedAt
+- Interaction support:
+  - per-contact logged interactions
+  - type
+  - date
+  - summary
+  - followUpNeeded
+  - followUpDate
 
 ### Casing
 - Full CRUD
 - Track PM-style case practice sessions
+- Search and sort controls in the list view
+- Top-of-page summary stats for session count, total practice time, and average rating
 - Support partner as either:
   - linkedContactId
   - partnerLabel
@@ -155,6 +167,7 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 ### Tips
 - Full CRUD
 - Search by category, title, body, and tag
+- Sort controls in the list view
 - Free-text category so new groups can be created by typing
 - Link tips to:
   - applications
@@ -226,15 +239,14 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
   - show when deadline is near or past due
 
 ## Next Major Product Phase
-### Foundation before AI
-- Move from `localStorage` to real backend persistence.
-- Design stable schemas for applications, contacts, case sessions, tips, cadence rules, activity events, and settings.
-- Add migration/versioning strategy so the product can evolve without breaking saved user data.
-
 ### Workflow depth after persistence
 - Add filtering and sorting across major modules.
 - Improve dashboard prioritization and direct linking from attention items to the relevant record/action.
 - Pull networking follow-up workflow more directly into the operational system.
+- Continue visual polish so shared controls and layouts feel cohesive across modules.
+
+### Remaining foundation work
+- Add migration/versioning strategy so the product can evolve without breaking saved user data.
 
 ### AI-ready capture phase
 - Prepare application flows so AI-generated drafts fit naturally into the product.

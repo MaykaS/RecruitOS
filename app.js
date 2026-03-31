@@ -301,7 +301,7 @@ function renderApplications() {
 
   return `
     ${renderModuleHeader("Applications", "Track the full story of each role, including the next step that drives the dashboard.", `
-      <button class="btn btn-primary" data-action="new-application">Add application</button>
+      <button class="btn btn-secondary" data-action="new-application">Add application</button>
     `)}
     <section class="list-card">
       <div class="filter-toolbar">
@@ -515,7 +515,7 @@ function renderHero(subtitle) {
         </div>
         <div class="topbar-actions">
           <button class="btn btn-secondary" data-action="new-contact">+ Contact</button>
-          <button class="btn btn-primary" data-action="new-application">+ Application</button>
+          <button class="btn btn-secondary" data-action="new-application">+ Application</button>
         </div>
       </div>
       <div class="hero-meta">${escapeHtml(subtitle)}</div>
