@@ -13,7 +13,7 @@
 - ~~Move from localStorage to a real backend database~~
 - ~~Design backend schema for applications, contacts, case sessions, tips, cadence rules, activity events, and settings~~
 - ~~Add migration/versioning strategy so saved data stays stable over time~~
-- Add import/export support for data safety and transition
+- ~~Add import/export support for data safety and transition~~
 
 ## Phase 2 - Workflow Depth
 - ~~Add application filters by status, priority, type, and tag~~

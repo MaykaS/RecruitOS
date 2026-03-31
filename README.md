@@ -9,6 +9,7 @@ RecruitOS is a personal recruiting operating system for MBA students pursuing in
 - Compact, light blue interface tuned to fit more of the dashboard above the fold
 - Local private persistence through a Node/Express API backed by SQLite
 - Forward-only SQLite migrations with automatic pre-migration backups
+- Full-workspace JSON export/import in Settings for backup and restore
 - Contact interaction logging with per-contact history and follow-up tracking
 
 ## Core features
@@ -46,6 +47,7 @@ RecruitOS is a personal recruiting operating system for MBA students pursuing in
 ### Settings
 - Controls recent activity feed size
 - Supports full CRUD for cadence rules used by the dashboard attention engine
+- Includes backup and restore actions for full-workspace JSON export/import
 
 ## Tech stack
 - Plain `HTML`, `CSS`, and `JavaScript`
@@ -95,6 +97,8 @@ http://127.0.0.1:3000
 - RecruitOS stores personal data locally in `data/recruitos.sqlite`
 - Schema changes now run through numbered SQLite migrations on server startup
 - Before pending migrations are applied, RecruitOS creates a timestamped backup in `data/backups/`
+- Settings can export the full workspace to JSON and import it back as a replace-workspace restore
+- Imports create a local backup automatically before replacing data
 - Database and backup files are Git-ignored, so your personal data stays local
 
 ## Current constraints
@@ -105,7 +109,6 @@ http://127.0.0.1:3000
 - No background agent automation inside the app yet
 
 ## Likely next steps
-- Add import/export
 - Add authentication
 - Add reminder delivery and calendar sync
 - Add agent-assisted application capture and workflow support

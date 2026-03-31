@@ -191,6 +191,7 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 - Controls:
   - recent activity feed size
   - cadence rule CRUD
+  - full-workspace JSON export/import
 
 ## Supporting Data Contracts
 ### CadenceRule
@@ -247,7 +248,7 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 - Continue visual polish so shared controls and layouts feel cohesive across modules.
 
 ### Remaining foundation work
-- Add import/export support for data safety and transition.
+- Foundation work is in place through local persistence, migrations, backups, and workspace import/export.
 
 ### AI-ready capture phase
 - Prepare application flows so AI-generated drafts fit naturally into the product.

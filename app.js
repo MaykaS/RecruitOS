@@ -99,6 +99,8 @@ document.addEventListener("click", (event) => {
   if (action === "new-contact") openContactModal();
   if (action === "new-case") openCaseModal();
   if (action === "new-tip") openTipModal();
+  if (action === "export-workspace") void exportWorkspace();
+  if (action === "open-import-workspace") document.getElementById("importWorkspaceFile")?.click();
   if (action === "set-sort-order") {
     const field = event.target.dataset.field;
     const value = event.target.dataset.value;
@@ -148,6 +150,7 @@ document.addEventListener("input", (event) => {
 
 document.addEventListener("change", (event) => {
   if (event.target.matches("[data-filter]")) render();
+  if (event.target.matches("#importWorkspaceFile")) void handleImportFile(event.target);
 });
 
 document.addEventListener("click", (event) => {
@@ -504,6 +507,32 @@ function renderSettings() {
         </div>
         <div class="record-list">
           ${state.cadenceRules.length ? state.cadenceRules.map(renderCadenceRow).join("") : renderInlineEmpty("No cadence rules yet. Add one to define the rhythm you want RecruitOS to protect.")}
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <div class="card-header">
+          <div>
+            <h2>Backup & restore</h2>
+            <p class="card-subtitle">Export a full RecruitOS workspace snapshot or replace this workspace from a previous export.</p>
+          </div>
+        </div>
+        <input id="importWorkspaceFile" type="file" accept="application/json,.json" class="visually-hidden">
+        <div class="record-list">
+          <div class="meta-item">
+            <div class="meta-label">Export workspace</div>
+            <div class="entity-meta">Download one JSON file containing applications, contacts, interactions, case sessions, tips, cadence rules, settings, and activity history.</div>
+            <div class="form-actions" style="margin-top: 10px;">
+              <button class="btn btn-secondary" type="button" data-action="export-workspace">Export workspace</button>
+            </div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Import workspace</div>
+            <div class="entity-meta">Replace the current local workspace from a RecruitOS JSON export. A local backup is created automatically before import.</div>
+            <div class="form-actions" style="margin-top: 10px;">
+              <button class="btn btn-danger" type="button" data-action="open-import-workspace">Import workspace</button>
+            </div>
+          </div>
         </div>
       </section>
     </section>
@@ -1260,6 +1289,45 @@ async function handleSettingsSubmit(event) {
     body: JSON.stringify(payload)
   });
   render();
+}
+
+async function exportWorkspace() {
+  const payload = await apiFetch("/api/workspace-export");
+  const exportedAt = payload.exportedAt ? payload.exportedAt.slice(0, 19).replaceAll(":", "-") : todayISO();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `recruitos-workspace-${exportedAt}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function handleImportFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+
+  try {
+    const raw = await file.text();
+    const payload = JSON.parse(raw);
+    const confirmed = window.confirm("Importing will replace your current RecruitOS workspace. A local backup will be created first. Continue?");
+    if (!confirmed) return;
+    state = await apiFetch("/api/workspace-import", {
+      method: "POST",
+      body: JSON.stringify({
+        confirmReplace: true,
+        payload
+      })
+    });
+    render();
+    window.alert("Workspace imported successfully.");
+  } catch (error) {
+    console.error("Unable to import workspace.", error);
+  } finally {
+    input.value = "";
+  }
 }
 
 async function upsertEntity(collectionName, payload) {

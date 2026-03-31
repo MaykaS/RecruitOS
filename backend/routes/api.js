@@ -1,6 +1,6 @@
 const express = require("express");
 
-const { db } = require("../db");
+const { db, createBackup } = require("../db");
 const {
   normalizeApplication,
   normalizeContact,
@@ -12,6 +12,7 @@ const {
 } = require("../validation");
 
 const router = express.Router();
+const EXPORT_VERSION = 1;
 
 router.get("/bootstrap", (_request, response) => {
   response.json(getState());
@@ -82,6 +83,20 @@ router.post("/cadence-rules/:id/complete", (request, response, next) => {
 });
 
 router.get("/activity-events", (_request, response) => response.json(getState().activityEvents));
+router.get("/workspace-export", (_request, response) => {
+  response.json(createWorkspaceExport());
+});
+router.post("/workspace-import", (request, response, next) => {
+  try {
+    if (request.body?.confirmReplace !== true) {
+      throw new Error("Import confirmation is required.");
+    }
+    importWorkspace(request.body?.payload);
+    response.json(getState());
+  } catch (error) {
+    next(error);
+  }
+});
 router.get("/settings", (_request, response) => response.json(getState().settings));
 router.put("/settings", (request, response, next) => {
   try {
@@ -356,6 +371,46 @@ function getState() {
   };
 }
 
+function createWorkspaceExport() {
+  return {
+    version: EXPORT_VERSION,
+    exportedAt: new Date().toISOString(),
+    workspace: {
+      applications: getApplications(),
+      contacts: getContacts().map((contact) => ({
+        ...contact,
+        interactions: undefined
+      })).map(stripUndefinedFields),
+      contactInteractions: getContactInteractionRows().map(mapInteractionRow),
+      caseSessions: getCaseSessions(),
+      tips: getTips(),
+      cadenceRules: getCadenceRules(),
+      activityEvents: getActivityEvents(),
+      settings: getSettings()
+    }
+  };
+}
+
+function importWorkspace(payload) {
+  const workspace = normalizeWorkspaceImport(payload);
+  validateWorkspaceLinks(workspace);
+  createBackup();
+
+  const transaction = db.transaction(() => {
+    clearWorkspaceTables();
+    insertImportedContacts(workspace.contacts);
+    insertImportedApplications(workspace.applications);
+    insertImportedCaseSessions(workspace.caseSessions);
+    insertImportedTips(workspace.tips);
+    insertImportedCadenceRules(workspace.cadenceRules);
+    insertImportedSettings(workspace.settings);
+    insertImportedInteractions(workspace.contactInteractions);
+    insertImportedActivityEvents(workspace.activityEvents);
+  });
+
+  transaction();
+}
+
 function getApplications() {
   const rows = db.prepare("SELECT * FROM applications ORDER BY updated_at DESC").all();
   const links = groupLinks(db.prepare("SELECT application_id, contact_id FROM application_contacts").all(), "application_id", "contact_id");
@@ -488,6 +543,200 @@ function insertActivity(entityType, entityId, actionType, title, detail) {
   `).run(randomId(), entityType, entityId, actionType, title, detail, new Date().toISOString());
 }
 
+function normalizeWorkspaceImport(payload) {
+  if (!payload || typeof payload !== "object") throw new Error("Import payload is required.");
+  if (payload.version !== EXPORT_VERSION) throw new Error("Unsupported RecruitOS export version.");
+  const workspace = payload.workspace;
+  if (!workspace || typeof workspace !== "object") throw new Error("Workspace data is missing.");
+
+  return {
+    applications: normalizeArray(workspace.applications, normalizeApplication),
+    contacts: normalizeArray(workspace.contacts, normalizeContact),
+    contactInteractions: normalizeArray(workspace.contactInteractions, (item) => normalizeInteraction(item)),
+    caseSessions: normalizeArray(workspace.caseSessions, normalizeCaseSession),
+    tips: normalizeArray(workspace.tips, normalizeTip),
+    cadenceRules: normalizeArray(workspace.cadenceRules, normalizeCadenceRule),
+    activityEvents: normalizeActivityEvents(workspace.activityEvents),
+    settings: normalizeSettings(workspace.settings || {})
+  };
+}
+
+function normalizeArray(value, normalizer) {
+  if (!Array.isArray(value)) throw new Error("Import file is missing one or more record collections.");
+  return value.map((item) => normalizer(item));
+}
+
+function normalizeActivityEvents(value) {
+  if (!Array.isArray(value)) throw new Error("Import file is missing activity events.");
+  return value.map((item) => ({
+    id: requiredString(item.id, "Activity event id is required."),
+    entityType: requiredString(item.entityType, "Activity event entity type is required."),
+    entityId: String(item.entityId ?? "").trim(),
+    actionType: requiredString(item.actionType, "Activity event action type is required."),
+    title: requiredString(item.title, "Activity event title is required."),
+    detail: String(item.detail ?? "").trim(),
+    timestamp: requiredString(item.timestamp, "Activity event timestamp is required.")
+  }));
+}
+
+function validateWorkspaceLinks(workspace) {
+  const contactIds = new Set(workspace.contacts.map((item) => item.id));
+  const applicationIds = new Set(workspace.applications.map((item) => item.id));
+  const caseSessionIds = new Set(workspace.caseSessions.map((item) => item.id));
+  const tipIds = new Set(workspace.tips.map((item) => item.id));
+
+  for (const application of workspace.applications) {
+    for (const contactId of application.linkedContactIds) {
+      if (!contactIds.has(contactId)) throw new Error("Import contains an application linked to a missing contact.");
+    }
+  }
+
+  for (const interaction of workspace.contactInteractions) {
+    if (!contactIds.has(interaction.contactId)) throw new Error("Import contains an interaction linked to a missing contact.");
+  }
+
+  for (const caseSession of workspace.caseSessions) {
+    if (caseSession.linkedContactId && !contactIds.has(caseSession.linkedContactId)) {
+      throw new Error("Import contains a case session linked to a missing contact.");
+    }
+  }
+
+  for (const tip of workspace.tips) {
+    for (const applicationId of tip.linkedApplicationIds) {
+      if (!applicationIds.has(applicationId)) throw new Error("Import contains a tip linked to a missing application.");
+    }
+    for (const contactId of tip.linkedContactIds) {
+      if (!contactIds.has(contactId)) throw new Error("Import contains a tip linked to a missing contact.");
+    }
+    for (const caseSessionId of tip.linkedCaseSessionIds) {
+      if (!caseSessionIds.has(caseSessionId)) throw new Error("Import contains a tip linked to a missing case session.");
+    }
+  }
+
+  if (tipIds.size !== workspace.tips.length) throw new Error("Import contains duplicate tip ids.");
+}
+
+function clearWorkspaceTables() {
+  [
+    "application_contacts",
+    "tip_applications",
+    "tip_contacts",
+    "tip_case_sessions",
+    "contact_interactions",
+    "activity_events",
+    "cadence_rules",
+    "tips",
+    "case_sessions",
+    "applications",
+    "contacts",
+    "settings"
+  ].forEach((tableName) => db.prepare(`DELETE FROM ${tableName}`).run());
+}
+
+function insertImportedContacts(items) {
+  const insert = db.prepare(`
+    INSERT INTO contacts (
+      id, name, relationship, company, role, email, phone, linkedin_url,
+      how_we_met, last_contact_date, next_follow_up_date, notes, tags, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const item of items) {
+    insert.run(
+      item.id, item.name, item.relationship, item.company, item.role, item.email, item.phone, item.linkedInUrl,
+      item.howWeMet, item.lastContactDate, item.nextFollowUpDate, item.notes, item.tags, item.createdAt, item.updatedAt
+    );
+  }
+}
+
+function insertImportedApplications(items) {
+  const insert = db.prepare(`
+    INSERT INTO applications (
+      id, company, role, location, type, priority, status, salary, application_date,
+      deadline, job_url, next_step, next_step_date, notes, tags, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const insertLink = db.prepare("INSERT INTO application_contacts (application_id, contact_id) VALUES (?, ?)");
+  for (const item of items) {
+    insert.run(
+      item.id, item.company, item.role, item.location, item.type, item.priority, item.status, item.salary,
+      item.applicationDate, item.deadline, item.jobUrl, item.nextStep, item.nextStepDate, item.notes, item.tags,
+      item.createdAt, item.updatedAt
+    );
+    for (const contactId of item.linkedContactIds) insertLink.run(item.id, contactId);
+  }
+}
+
+function insertImportedCaseSessions(items) {
+  const insert = db.prepare(`
+    INSERT INTO case_sessions (
+      id, title, case_type, firm_style, method, date, duration_minutes, source, rating,
+      what_went_well, what_to_improve, notes, linked_contact_id, partner_label, tags, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const item of items) {
+    insert.run(
+      item.id, item.title, item.caseType, item.firmStyle, item.method, item.date, item.durationMinutes, item.source,
+      item.rating, item.whatWentWell, item.whatToImprove, item.notes, item.linkedContactId, item.partnerLabel,
+      item.tags, item.createdAt, item.updatedAt
+    );
+  }
+}
+
+function insertImportedTips(items) {
+  const insert = db.prepare("INSERT INTO tips (id, title, category, body, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  const insertTipApplication = db.prepare("INSERT INTO tip_applications (tip_id, application_id) VALUES (?, ?)");
+  const insertTipContact = db.prepare("INSERT INTO tip_contacts (tip_id, contact_id) VALUES (?, ?)");
+  const insertTipCase = db.prepare("INSERT INTO tip_case_sessions (tip_id, case_session_id) VALUES (?, ?)");
+  for (const item of items) {
+    insert.run(item.id, item.title, item.category, item.body, item.tags, item.createdAt, item.updatedAt);
+    for (const applicationId of item.linkedApplicationIds) insertTipApplication.run(item.id, applicationId);
+    for (const contactId of item.linkedContactIds) insertTipContact.run(item.id, contactId);
+    for (const caseSessionId of item.linkedCaseSessionIds) insertTipCase.run(item.id, caseSessionId);
+  }
+}
+
+function insertImportedCadenceRules(items) {
+  const insert = db.prepare(`
+    INSERT INTO cadence_rules (
+      id, title, cadence_type, interval_unit, interval_value, active,
+      last_completed_date, next_due_date, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const item of items) {
+    insert.run(
+      item.id, item.title, item.cadenceType, item.intervalUnit, item.intervalValue, item.active,
+      item.lastCompletedDate, item.nextDueDate, item.createdAt, item.updatedAt
+    );
+  }
+}
+
+function insertImportedSettings(item) {
+  db.prepare("INSERT INTO settings (id, recent_activity_limit) VALUES (?, ?)").run("default", item.recentActivityLimit);
+}
+
+function insertImportedInteractions(items) {
+  const insert = db.prepare(`
+    INSERT INTO contact_interactions (
+      id, contact_id, type, date, summary, follow_up_needed, follow_up_date, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const item of items) {
+    insert.run(
+      item.id, item.contactId, item.type, item.date, item.summary, item.followUpNeeded ? 1 : 0, item.followUpDate, item.createdAt, item.updatedAt
+    );
+  }
+}
+
+function insertImportedActivityEvents(items) {
+  const insert = db.prepare(`
+    INSERT INTO activity_events (id, entity_type, entity_id, action_type, title, detail, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const item of items) {
+    insert.run(item.id, item.entityType, item.entityId, item.actionType, item.title, item.detail, item.timestamp);
+  }
+}
+
 function ensureContactsExist(ids) {
   if (!ids.length) return;
   const rows = db.prepare(`SELECT id FROM contacts WHERE id IN (${ids.map(() => "?").join(",")})`).all(...ids);
@@ -564,6 +813,16 @@ function addDays(isoDate, days) {
 
 function randomId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function requiredString(value, message) {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) throw new Error(message);
+  return normalized;
+}
+
+function stripUndefinedFields(value) {
+  return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined));
 }
 
 module.exports = router;

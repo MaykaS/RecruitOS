@@ -12,7 +12,7 @@ initializeDatabase();
 
 const app = express();
 
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "5mb" }));
 app.use("/api", apiRouter);
 app.use(express.static(ROOT));
 

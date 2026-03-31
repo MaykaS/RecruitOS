@@ -145,4 +145,4 @@ function seedDefaults() {
   }
 }
 
-module.exports = { db, DB_PATH, BACKUP_DIR, initializeDatabase };
+module.exports = { db, DB_PATH, BACKUP_DIR, initializeDatabase, createBackup };
