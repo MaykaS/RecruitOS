@@ -317,11 +317,22 @@ function renderCasing() {
     const haystack = `${item.title} ${item.caseType} ${item.firmStyle} ${item.partnerLabel || ""} ${item.tags || ""}`.toLowerCase();
     return haystack.includes(query);
   }).sort(sortByUpdatedDesc);
+  const totalSessions = state.caseSessions.length;
+  const totalMinutes = state.caseSessions.reduce((sum, item) => sum + (Number(item.durationMinutes) || 0), 0);
+  const ratedSessions = state.caseSessions.filter((item) => item.rating !== "" && item.rating !== null && item.rating !== undefined);
+  const avgRating = ratedSessions.length
+    ? (ratedSessions.reduce((sum, item) => sum + (Number(item.rating) || 0), 0) / ratedSessions.length).toFixed(1)
+    : "";
 
   return `
     ${renderModuleHeader("Casing", "Log PM-style case practice, reflect quickly, and keep your prep rhythm visible.", `
       <button class="btn btn-secondary" data-action="new-case">Log case session</button>
     `)}
+    <section class="casing-stats-grid">
+      ${renderCasingStatCard("", totalSessions, "Total Sessions")}
+      ${renderCasingStatCard("◷", formatPracticeDuration(totalMinutes), "Total Practice")}
+      ${renderCasingStatCard("☆", avgRating ? `${avgRating}/5` : "—", "Avg Rating")}
+    </section>
     <section class="list-card">
       <div class="filter-bar">
         <input class="search" data-filter="casing" placeholder="Search title, case type, firm style, partner, or tag" value="${escapeHtml(query)}">
@@ -448,6 +459,15 @@ function renderStatCard(label, value) {
     <section class="stat-card">
       <div class="stat-label">${label}</div>
       <div class="stat-value">${value}</div>
+    </section>
+  `;
+}
+
+function renderCasingStatCard(icon, value, label) {
+  return `
+    <section class="stat-card casing-stat-card">
+      <div class="casing-stat-value"><span class="casing-stat-icon" aria-hidden="true">${icon}</span>${escapeHtml(String(value))}</div>
+      <div class="stat-label casing-stat-label">${label}</div>
     </section>
   `;
 }
@@ -1487,6 +1507,15 @@ function addDays(isoDate, days) {
   const date = new Date(`${isoDate}T00:00:00`);
   date.setDate(date.getDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+function formatPracticeDuration(totalMinutes) {
+  const minutes = Number(totalMinutes) || 0;
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!remainder) return `${hours}h`;
+  return `${hours}h ${remainder}m`;
 }
 
 function differenceInDays(laterIsoDate, earlierIsoDate) {
