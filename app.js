@@ -45,6 +45,10 @@ let activeTab = "dashboard";
 let state = createInitialState();
 let expandedContactId = "";
 let openContactMenuId = "";
+let viewModes = {
+  casing: "grid",
+  tips: "grid"
+};
 
 const appContent = document.getElementById("appContent");
 const modalRoot = document.getElementById("modalRoot");
@@ -101,6 +105,14 @@ document.addEventListener("click", (event) => {
   if (action === "new-tip") openTipModal();
   if (action === "export-workspace") void exportWorkspace();
   if (action === "open-import-workspace") document.getElementById("importWorkspaceFile")?.click();
+  if (action === "set-view-mode") {
+    const section = event.target.dataset.section;
+    const value = event.target.dataset.value;
+    if (section && value) {
+      viewModes[section] = value;
+      render();
+    }
+  }
   if (action === "set-sort-order") {
     const field = event.target.dataset.field;
     const value = event.target.dataset.value;
@@ -401,6 +413,7 @@ function renderCasing() {
   const avgRating = ratedSessions.length
     ? (ratedSessions.reduce((sum, item) => sum + (Number(item.rating) || 0), 0) / ratedSessions.length).toFixed(1)
     : "";
+  const viewMode = viewModes.casing || "grid";
 
   return `
     ${renderModuleHeader("Casing", "Log PM-style case practice, reflect quickly, and keep your prep rhythm visible.", `
@@ -422,9 +435,10 @@ function renderCasing() {
           { value: "caseType", label: "Case type" }
         ], sortBy)}
         ${renderSortOrderToggle("casing-order", sortOrder)}
+        ${renderViewToggle("casing", viewMode)}
       </div>
-      <div class="cards-grid" style="margin-top: 18px;">
-        ${filtered.length ? filtered.map(renderCaseCard).join("") : renderEmptyState("No case sessions yet", "Log your sessions consistently so patterns show up instead of getting lost.", "Log case session", "new-case")}
+      <div class="${viewMode === "list" ? "record-list" : "cards-grid"}" style="margin-top: 18px;">
+        ${filtered.length ? filtered.map((item) => viewMode === "list" ? renderCaseListRow(item) : renderCaseCard(item)).join("") : renderEmptyState("No case sessions yet", "Log your sessions consistently so patterns show up instead of getting lost.", "Log case session", "new-case")}
       </div>
     </section>
   `;
@@ -445,6 +459,7 @@ function renderTips() {
   );
 
   const grouped = groupBy(filtered, (item) => item.category || "Uncategorized");
+  const viewMode = viewModes.tips || "grid";
 
   return `
     ${renderModuleHeader("Tips", "Build a reusable personal knowledge base and link advice to the work it supports.", `
@@ -459,6 +474,7 @@ function renderTips() {
           { value: "updated", label: "Updated" }
         ], sortBy)}
         ${renderSortOrderToggle("tips-order", sortOrder)}
+        ${renderViewToggle("tips", viewMode)}
       </div>
       <div class="record-list" style="margin-top: 18px;">
         ${filtered.length ? Object.entries(grouped).map(([category, items]) => `
@@ -467,8 +483,8 @@ function renderTips() {
               <h3>${escapeHtml(category)}</h3>
               <span class="pill">${items.length} tip${items.length === 1 ? "" : "s"}</span>
             </div>
-            <div class="cards-grid" style="margin-top: 16px;">
-              ${items.map(renderTipCard).join("")}
+            <div class="${viewMode === "list" ? "record-list" : "cards-grid"}" style="margin-top: 16px;">
+              ${items.map((item) => viewMode === "list" ? renderTipListRow(item) : renderTipCard(item)).join("")}
             </div>
           </section>
         `).join("") : renderEmptyState("No tips yet", "Capture advice you want to reuse, from coffee chat scripts to casing heuristics.", "Add tip", "new-tip")}
@@ -594,6 +610,29 @@ function renderCasingStatCard(icon, value, label) {
       <div class="casing-stat-value"><span class="casing-stat-icon" aria-hidden="true">${icon}</span>${escapeHtml(String(value))}</div>
       <div class="stat-label casing-stat-label">${label}</div>
     </section>
+  `;
+}
+
+function renderViewToggle(section, activeValue) {
+  return `
+    <div class="view-toggle" role="group" aria-label="View mode">
+      <button
+        class="view-toggle-button ${activeValue === "grid" ? "active" : ""}"
+        type="button"
+        data-action="set-view-mode"
+        data-section="${section}"
+        data-value="grid"
+        aria-label="Grid view"
+      >▦</button>
+      <button
+        class="view-toggle-button ${activeValue === "list" ? "active" : ""}"
+        type="button"
+        data-action="set-view-mode"
+        data-section="${section}"
+        data-value="list"
+        aria-label="List view"
+      >☰</button>
+    </div>
   `;
 }
 
@@ -850,6 +889,39 @@ function renderCaseCard(item) {
   `;
 }
 
+function renderCaseListRow(item) {
+  const partner = item.linkedContactId ? getContactName(item.linkedContactId) : item.partnerLabel;
+  return `
+    <article class="table-row">
+      <div class="table-row-header">
+        <div>
+          <h3>${escapeHtml(item.title)}</h3>
+          <div class="entity-meta">${escapeHtml(item.caseType)} • ${escapeHtml(item.firmStyle)}${partner ? ` • ${escapeHtml(partner)}` : ""}</div>
+        </div>
+        <span class="status-badge" data-tone="success">${escapeHtml(`${item.rating || 0}/5`)}</span>
+      </div>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="meta-label">Date</div>
+          <div class="meta-value">${formatDate(item.date)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Duration</div>
+          <div class="meta-value">${item.durationMinutes ? `${item.durationMinutes} min` : "Not set"}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Method</div>
+          <div class="meta-value">${escapeHtml(item.method)}</div>
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-ghost small" data-action="open-case" data-id="${item.id}">Edit</button>
+        <button class="btn btn-danger small" data-action="delete-case" data-id="${item.id}">Delete</button>
+      </div>
+    </article>
+  `;
+}
+
 function renderTipCard(item) {
   const linkedCount = (item.linkedApplicationIds?.length || 0) + (item.linkedContactIds?.length || 0) + (item.linkedCaseSessionIds?.length || 0);
   return `
@@ -862,6 +934,26 @@ function renderTipCard(item) {
         <span class="pill">${linkedCount} linked</span>
       </div>
       <div class="entity-meta">${escapeHtml(truncate(item.body || "", 180) || "No tip body yet.")}</div>
+      <div class="row-actions">
+        <button class="btn btn-ghost small" data-action="open-tip" data-id="${item.id}">Edit</button>
+        <button class="btn btn-danger small" data-action="delete-tip" data-id="${item.id}">Delete</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderTipListRow(item) {
+  const linkedCount = (item.linkedApplicationIds?.length || 0) + (item.linkedContactIds?.length || 0) + (item.linkedCaseSessionIds?.length || 0);
+  return `
+    <article class="table-row">
+      <div class="table-row-header">
+        <div>
+          <h3>${escapeHtml(item.title)}</h3>
+          <div class="entity-meta">${escapeHtml(item.category)} • ${linkedCount} linked</div>
+        </div>
+        <span class="pill">${escapeHtml(item.category)}</span>
+      </div>
+      <div class="entity-meta">${escapeHtml(truncate(item.body || "No content yet.", 160))}</div>
       <div class="row-actions">
         <button class="btn btn-ghost small" data-action="open-tip" data-id="${item.id}">Edit</button>
         <button class="btn btn-danger small" data-action="delete-tip" data-id="${item.id}">Delete</button>
