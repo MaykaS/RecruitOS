@@ -84,6 +84,7 @@ document.addEventListener("click", (event) => {
   if (action === "delete-interaction") void deleteInteraction(event.target.dataset.id);
   if (action === "open-case") openCaseModal(event.target.dataset.id);
   if (action === "delete-case") void deleteEntity("caseSessions", event.target.dataset.id, "case session");
+  if (action === "preview-tip") openTipPreviewModal(event.target.dataset.id);
   if (action === "open-tip") openTipModal(event.target.dataset.id);
   if (action === "delete-tip") void deleteEntity("tips", event.target.dataset.id, "tip");
   if (action === "open-cadence") openCadenceModal(event.target.dataset.id);
@@ -860,7 +861,9 @@ function renderCaseCard(item) {
     <article class="record-card">
       <div class="table-row-header">
         <div>
-          <h3>${escapeHtml(item.title)}</h3>
+          <h3>
+            <button class="tip-title-button" type="button" data-action="preview-tip" data-id="${item.id}">${escapeHtml(item.title)}</button>
+          </h3>
           <div class="entity-meta">${escapeHtml(item.caseType)} • ${escapeHtml(item.firmStyle)}</div>
         </div>
         <span class="status-badge" data-tone="success">${escapeHtml(`${item.rating || 0}/5`)}</span>
@@ -895,7 +898,9 @@ function renderCaseListRow(item) {
     <article class="table-row">
       <div class="table-row-header">
         <div>
-          <h3>${escapeHtml(item.title)}</h3>
+          <h3>
+            <button class="tip-title-button" type="button" data-action="preview-tip" data-id="${item.id}">${escapeHtml(item.title)}</button>
+          </h3>
           <div class="entity-meta">${escapeHtml(item.caseType)} • ${escapeHtml(item.firmStyle)}${partner ? ` • ${escapeHtml(partner)}` : ""}</div>
         </div>
         <span class="status-badge" data-tone="success">${escapeHtml(`${item.rating || 0}/5`)}</span>
@@ -928,7 +933,7 @@ function renderTipCard(item) {
     <article class="record-card">
       <div class="table-row-header">
         <div>
-          <h3>${escapeHtml(item.title)}</h3>
+          <h3><button class="tip-title-button" type="button" data-action="preview-tip" data-id="${item.id}">${escapeHtml(item.title)}</button></h3>
           <div class="entity-meta">${escapeHtml(item.category)}</div>
         </div>
         <span class="pill">${linkedCount} linked</span>
@@ -948,7 +953,7 @@ function renderTipListRow(item) {
     <article class="table-row">
       <div class="table-row-header">
         <div>
-          <h3>${escapeHtml(item.title)}</h3>
+          <h3><button class="tip-title-button" type="button" data-action="preview-tip" data-id="${item.id}">${escapeHtml(item.title)}</button></h3>
           <div class="entity-meta">${escapeHtml(item.category)} • ${linkedCount} linked</div>
         </div>
         <span class="pill">${escapeHtml(item.category)}</span>
@@ -1170,6 +1175,51 @@ function openTipModal(id = "") {
             <button class="btn btn-primary" type="submit">${id ? "Save changes" : "Create tip"}</button>
           </div>
         </form>
+      </div>
+    </div>
+  `;
+}
+
+function openTipPreviewModal(id) {
+  const item = state.tips.find((entry) => entry.id === id);
+  if (!item) return;
+
+  const linkedApplications = (item.linkedApplicationIds || [])
+    .map((applicationId) => state.applications.find((application) => application.id === applicationId))
+    .filter(Boolean)
+    .map((application) => `${application.company} â€” ${application.role}`);
+  const linkedContacts = (item.linkedContactIds || [])
+    .map(getContactName)
+    .filter(Boolean);
+  const linkedCaseSessions = (item.linkedCaseSessionIds || [])
+    .map((sessionId) => state.caseSessions.find((session) => session.id === sessionId)?.title || "")
+    .filter(Boolean);
+
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-panel">
+        <div class="card-header">
+          <div>
+            <div class="tag-row" style="margin-bottom: 8px;">
+              <span class="pill">${escapeHtml(item.category || "Uncategorized")}</span>
+              ${parseTags(item.tags).map((tag) => `<span class="chip">${escapeHtml(tag)}</span>`).join("")}
+            </div>
+            <h2>${escapeHtml(item.title)}</h2>
+            <p class="card-subtitle">Full tip preview.</p>
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-ghost small" data-action="open-tip" data-id="${item.id}">Edit</button>
+            <button class="btn btn-ghost small" data-action="close-modal">Close</button>
+          </div>
+        </div>
+        <div class="record-list" style="margin-top: 16px;">
+          <div class="meta-item tip-preview-body">${formatMultilineText(item.body || "No tip body yet.")}</div>
+          <div class="tip-preview-grid">
+            ${renderTipPreviewSection("Linked applications", linkedApplications)}
+            ${renderTipPreviewSection("Linked contacts", linkedContacts)}
+            ${renderTipPreviewSection("Linked case sessions", linkedCaseSessions)}
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -1545,6 +1595,17 @@ function toggleInteractionFollowUpState(enabled) {
 
 function getContactName(id) {
   return state.contacts.find((contact) => contact.id === id)?.name || "";
+}
+
+function renderTipPreviewSection(label, values) {
+  return `
+    <div class="meta-item">
+      <div class="meta-label">${escapeHtml(label)}</div>
+      ${values.length
+        ? `<div class="tip-preview-list">${values.map((value) => `<span class="token-chip">${escapeHtml(value)}</span>`).join("")}</div>`
+        : `<div class="entity-meta">None linked.</div>`}
+    </div>
+  `;
 }
 
 function findInteraction(id) {
@@ -2061,6 +2122,10 @@ function groupBy(items, keyFn) {
 function truncate(value, maxLength) {
   if (!value || value.length <= maxLength) return value;
   return `${value.slice(0, maxLength - 1)}...`;
+}
+
+function formatMultilineText(value) {
+  return escapeHtml(value).replaceAll("\n", "<br>");
 }
 
 function escapeHtml(value) {
