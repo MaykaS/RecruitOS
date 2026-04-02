@@ -18,15 +18,23 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 
 ### Role of AI
 - AI should primarily help capture and organize messy recruiting input.
-- The first major AI workflow should focus on job links and job postings.
-- Early AI behavior should create structured drafts for user review, not silently write records without approval.
-- AI execution can come later, after the data foundation and review flows are stable.
+- The first deeply agentic domain should be `Applications`.
+- The long-term application workflow should be:
+  - user sets filters and enabled job sources
+  - agent finds matching jobs
+  - agent creates an application record
+  - agent creates a tailored application packet from one base resume
+  - RecruitOS places that packet into an in-app approval queue
+  - after approval, the agent submits the application
+- Early AI behavior should still create structured drafts for user review, not silently write records without approval.
+- Submission automation should come much later, after drafts, packet generation, and approval flows are stable.
 
 ### Near-term strategic focus
 - The backend persistence foundation is now in place through a local SQLite-backed app.
 - The app now uses forward-only migrations with automatic local backups before pending schema changes.
 - The next major build phase should focus on workflow depth, prioritization, and UI polish.
-- AI-ready capture flows should be designed before the first AI feature is implemented.
+- Applications should now be planned backward from the future agentic approval-based workflow.
+- The next AI planning step should be defining the application draft object and review flow.
 
 ### Explicitly later
 - Notifications
@@ -46,6 +54,7 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 - No multi-user collaboration
 - No in-app AI workflows yet
 - No application import pipeline or browser extension yet
+- No agentic job discovery, packet generation, or submission yet
 
 ## Product Structure
 ### Global layout
@@ -108,6 +117,10 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 - Business rule:
   - if status = `Rejected`, clear and disable `nextStep` and `nextStepDate`
 - Linked contacts come from the Networking module
+- Future direction:
+  - Applications should become the first deeply agentic workflow in RecruitOS
+  - AI-generated application drafts should still be fully reviewable and editable
+  - Approval should happen per application packet, not in bulk
 
 ### Networking
 - Full CRUD
@@ -250,15 +263,29 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 ### Remaining foundation work
 - Foundation work is in place through local persistence, migrations, backups, and workspace import/export.
 
-### AI-ready capture phase
-- Prepare application flows so AI-generated drafts fit naturally into the product.
+### Applications-first AI preparation
+- Define the application draft object and review flow before implementing AI ingestion.
+- Standardize application intake fields so job descriptions and job links can map cleanly into RecruitOS.
+- Prepare the system for a later application packet model tied to each drafted role.
 - Keep manual review first-class even when AI is introduced.
-- Shape the data model so pasted job links or descriptions can become structured application drafts cleanly.
 
 ## Future AI Direction
-- First AI workflow: ingest a pasted job link or job posting and turn it into a structured application draft.
-- The output should be reviewed and confirmed by the user before it becomes a saved record.
-- Later AI workflows may include networking note organization, next-step suggestions, and recap generation.
+- First AI workflow:
+  - ingest a pasted job link or job posting and turn it into a structured application draft
+  - require user review before save
+- Longer-term Applications direction:
+  - let the user define filters and enabled job sources
+  - let the agent discover matching jobs
+  - let the agent create both application records and application packets
+  - let the user approve each prepared packet in an in-app queue
+  - only after approval should the agent submit the application
+- Resume tailoring direction:
+  - start from one uploaded base resume
+  - create a tailored version per job
+- Later AI workflows may include:
+  - casing session summarization and takeaway extraction
+  - converting captured insights into tips
+  - networking extraction from emails, outreach, or conversations
 - AI should build on stable backend-backed records rather than local-only temporary state.
 
 ## Acceptance Criteria
@@ -274,3 +301,4 @@ RecruitOS is not meant to become a generic tracker first and figure out its valu
 - Structured enough to trust
 - Fast to review, edit, and act on
 - AI as accelerator, not replacement
+- Human approval before autonomous submission
