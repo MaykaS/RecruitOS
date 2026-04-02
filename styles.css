@@ -485,11 +485,10 @@ h1 {
 
 .contact-summary {
   width: 100%;
-  border: none;
-  background: transparent;
   padding: 14px 14px 12px;
   text-align: left;
-  cursor: pointer;
+  display: grid;
+  gap: 0;
 }
 
 .contact-title-row {
@@ -536,6 +535,23 @@ h1 {
 
 .contact-last-line-stale {
   color: #5f7ea8;
+}
+
+.contact-expand-toggle {
+  margin-top: 8px;
+  border: none;
+  background: transparent;
+  color: var(--accent-deep);
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.contact-expand-toggle:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .contact-menu-wrap {
@@ -1021,12 +1037,22 @@ textarea {
   gap: 10px;
 }
 
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.preview-grid-stack {
+  grid-template-columns: 1fr;
+}
+
 .tip-preview-list {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 6px;
- }
+}
 
 .activity-entry {
   padding: 8px 0;
@@ -1145,6 +1171,7 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .preview-grid,
   .tip-preview-grid {
     grid-template-columns: 1fr;
   }

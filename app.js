@@ -40,11 +40,30 @@ const FOCUS_TIPS = [
   "Keep notes specific enough that future-you can act in 30 seconds.",
   "A calm pipeline beats a crowded spreadsheet. Clean the oldest loose end."
 ];
+const FILTER_DEFAULTS = {
+  "applications-search": "",
+  "applications-status": "",
+  "applications-type": "",
+  "applications-priority": "",
+  "applications-tag": "",
+  "applications-sort": "updated",
+  "applications-order": "desc",
+  "networking-search": "",
+  "networking-sort": "updated",
+  "networking-order": "desc",
+  "casing-search": "",
+  "casing-sort": "date",
+  "casing-order": "desc",
+  "tips-search": "",
+  "tips-sort": "category",
+  "tips-order": "asc"
+};
 
 let activeTab = "dashboard";
 let state = createInitialState();
 let expandedContactId = "";
 let openContactMenuId = "";
+let uiState = createInitialUiState();
 let viewModes = {
   casing: "grid",
   tips: "grid"
@@ -63,35 +82,39 @@ document.querySelector(".side-nav").addEventListener("click", (event) => {
 });
 
 document.addEventListener("click", (event) => {
-  const action = event.target.dataset.action;
-  if (!action) return;
+  const actionTarget = event.target.closest("[data-action]");
+  if (!actionTarget) return;
+  const action = actionTarget.dataset.action;
   if (action === "close-modal") closeModal();
   if (action === "toggle-contact-expand") {
-    expandedContactId = expandedContactId === event.target.dataset.id ? "" : event.target.dataset.id;
+    expandedContactId = expandedContactId === actionTarget.dataset.id ? "" : actionTarget.dataset.id;
     openContactMenuId = "";
     render();
   }
   if (action === "toggle-contact-menu") {
-    openContactMenuId = openContactMenuId === event.target.dataset.id ? "" : event.target.dataset.id;
+    openContactMenuId = openContactMenuId === actionTarget.dataset.id ? "" : actionTarget.dataset.id;
     render();
   }
-  if (action === "open-app") openApplicationModal(event.target.dataset.id);
-  if (action === "delete-app") void deleteEntity("applications", event.target.dataset.id, "application");
-  if (action === "open-contact") openContactModal(event.target.dataset.id);
-  if (action === "delete-contact") void deleteEntity("contacts", event.target.dataset.id, "contact");
-  if (action === "log-interaction") openInteractionModal(event.target.dataset.contactId);
-  if (action === "edit-interaction") openInteractionModal(event.target.dataset.contactId, event.target.dataset.id);
-  if (action === "delete-interaction") void deleteInteraction(event.target.dataset.id);
-  if (action === "open-case") openCaseModal(event.target.dataset.id);
-  if (action === "delete-case") void deleteEntity("caseSessions", event.target.dataset.id, "case session");
-  if (action === "preview-tip") openTipPreviewModal(event.target.dataset.id);
-  if (action === "open-tip") openTipModal(event.target.dataset.id);
-  if (action === "delete-tip") void deleteEntity("tips", event.target.dataset.id, "tip");
-  if (action === "open-cadence") openCadenceModal(event.target.dataset.id);
-  if (action === "delete-cadence") void deleteEntity("cadenceRules", event.target.dataset.id, "cadence rule");
-  if (action === "complete-cadence") void completeCadence(event.target.dataset.id);
+  if (action === "preview-app") openApplicationPreviewModal(actionTarget.dataset.id);
+  if (action === "open-app") openApplicationModal(actionTarget.dataset.id);
+  if (action === "delete-app") void deleteEntity("applications", actionTarget.dataset.id, "application");
+  if (action === "preview-contact") openContactPreviewModal(actionTarget.dataset.id);
+  if (action === "open-contact") openContactModal(actionTarget.dataset.id);
+  if (action === "delete-contact") void deleteEntity("contacts", actionTarget.dataset.id, "contact");
+  if (action === "log-interaction") openInteractionModal(actionTarget.dataset.contactId);
+  if (action === "edit-interaction") openInteractionModal(actionTarget.dataset.contactId, actionTarget.dataset.id);
+  if (action === "delete-interaction") void deleteInteraction(actionTarget.dataset.id);
+  if (action === "preview-case") openCasePreviewModal(actionTarget.dataset.id);
+  if (action === "open-case") openCaseModal(actionTarget.dataset.id);
+  if (action === "delete-case") void deleteEntity("caseSessions", actionTarget.dataset.id, "case session");
+  if (action === "preview-tip") openTipPreviewModal(actionTarget.dataset.id);
+  if (action === "open-tip") openTipModal(actionTarget.dataset.id);
+  if (action === "delete-tip") void deleteEntity("tips", actionTarget.dataset.id, "tip");
+  if (action === "open-cadence") openCadenceModal(actionTarget.dataset.id);
+  if (action === "delete-cadence") void deleteEntity("cadenceRules", actionTarget.dataset.id, "cadence rule");
+  if (action === "complete-cadence") void completeCadence(actionTarget.dataset.id);
   if (action === "switch-tab") {
-    activeTab = event.target.dataset.tab;
+    activeTab = actionTarget.dataset.tab;
     syncTabState();
     render();
   }
@@ -107,27 +130,26 @@ document.addEventListener("click", (event) => {
   if (action === "export-workspace") void exportWorkspace();
   if (action === "open-import-workspace") document.getElementById("importWorkspaceFile")?.click();
   if (action === "set-view-mode") {
-    const section = event.target.dataset.section;
-    const value = event.target.dataset.value;
+    const section = actionTarget.dataset.section;
+    const value = actionTarget.dataset.value;
     if (section && value) {
       viewModes[section] = value;
       render();
     }
   }
   if (action === "set-sort-order") {
-    const field = event.target.dataset.field;
-    const value = event.target.dataset.value;
-    const input = document.querySelector(`[data-filter="${field}"]`);
-    if (input) input.value = value;
+    const field = actionTarget.dataset.field;
+    const value = actionTarget.dataset.value;
+    setFilterValue(field, value);
     render();
   }
   if (action === "add-token-option") {
-    const field = event.target.closest(".token-picker");
-    if (field) addTokenPickerValue(field, event.target.dataset.value, event.target.dataset.label);
+    const field = actionTarget.closest(".token-picker");
+    if (field) addTokenPickerValue(field, actionTarget.dataset.value, actionTarget.dataset.label);
   }
   if (action === "remove-token-option") {
-    const field = event.target.closest(".token-picker");
-    if (field) removeTokenPickerValue(field, event.target.dataset.value);
+    const field = actionTarget.closest(".token-picker");
+    if (field) removeTokenPickerValue(field, actionTarget.dataset.value);
   }
 });
 
@@ -158,11 +180,11 @@ document.addEventListener("submit", (event) => {
 document.addEventListener("input", (event) => {
   if (event.target.matches("#applicationStatus")) toggleApplicationNextStepState(event.target.value);
   if (event.target.matches("#interactionFollowUpNeeded")) toggleInteractionFollowUpState(event.target.checked);
-  if (event.target.matches("[data-filter]")) render();
+  if (event.target.matches("[data-filter]")) syncFilterControl(event.target);
 });
 
 document.addEventListener("change", (event) => {
-  if (event.target.matches("[data-filter]")) render();
+  if (event.target.matches("[data-filter]")) syncFilterControl(event.target);
   if (event.target.matches("#importWorkspaceFile")) void handleImportFile(event.target);
 });
 
@@ -193,6 +215,12 @@ function createInitialState() {
     cadenceRules: [],
     activityEvents: [],
     settings: { recentActivityLimit: 6 }
+  };
+}
+
+function createInitialUiState() {
+  return {
+    filters: { ...FILTER_DEFAULTS }
   };
 }
 
@@ -305,13 +333,13 @@ function renderDashboard() {
 }
 
 function renderApplications() {
-  const query = getControlValue("applications-search").toLowerCase();
-  const statusFilter = getControlValue("applications-status");
-  const typeFilter = getControlValue("applications-type");
-  const priorityFilter = getControlValue("applications-priority");
-  const tagFilter = getControlValue("applications-tag");
-  const sortBy = getControlValue("applications-sort") || "updated";
-  const sortOrder = getControlValue("applications-order") || "desc";
+  const query = getFilterValue("applications-search").toLowerCase();
+  const statusFilter = getFilterValue("applications-status");
+  const typeFilter = getFilterValue("applications-type");
+  const priorityFilter = getFilterValue("applications-priority");
+  const tagFilter = getFilterValue("applications-tag");
+  const sortBy = getFilterValue("applications-sort") || "updated";
+  const sortOrder = getFilterValue("applications-order") || "desc";
   const tagOptions = getUniqueTags(state.applications);
 
   const filtered = sortItems(
@@ -337,6 +365,7 @@ function renderApplications() {
       <div class="filter-toolbar">
         <input class="search toolbar-search" data-filter="applications-search" placeholder="Search companies or roles..." value="${escapeHtml(query)}">
         ${renderToolbarSelect("applications-status", "All Status", ["", ...STATUS_ORDER], statusFilter)}
+        ${renderToolbarSelect("applications-type", "All Types", ["", ...APPLICATION_TYPES], typeFilter)}
         ${renderToolbarSelect("applications-priority", "All Priorities", ["", ...PRIORITY_OPTIONS], priorityFilter)}
         ${renderToolbarSelect("applications-tag", "All Tags", ["", ...tagOptions], tagFilter)}
         ${renderToolbarSelect("applications-sort", "Sort by", [
@@ -358,9 +387,9 @@ function renderApplications() {
 }
 
 function renderNetworking() {
-  const query = getControlValue("networking-search").toLowerCase();
-  const sortBy = getControlValue("networking-sort") || "updated";
-  const sortOrder = getControlValue("networking-order") || "desc";
+  const query = getFilterValue("networking-search").toLowerCase();
+  const sortBy = getFilterValue("networking-sort") || "updated";
+  const sortOrder = getFilterValue("networking-order") || "desc";
   const filtered = sortItems(
     state.contacts.filter((item) => {
       const haystack = `${item.name} ${item.company} ${item.role} ${item.tags || ""}`.toLowerCase();
@@ -396,9 +425,9 @@ function renderNetworking() {
 }
 
 function renderCasing() {
-  const query = getControlValue("casing-search").toLowerCase();
-  const sortBy = getControlValue("casing-sort") || "date";
-  const sortOrder = getControlValue("casing-order") || "desc";
+  const query = getFilterValue("casing-search").toLowerCase();
+  const sortBy = getFilterValue("casing-sort") || "date";
+  const sortOrder = getFilterValue("casing-order") || "desc";
   const filtered = sortItems(
     state.caseSessions.filter((item) => {
       const haystack = `${item.title} ${item.caseType} ${item.firmStyle} ${item.partnerLabel || ""} ${item.tags || ""}`.toLowerCase();
@@ -446,9 +475,9 @@ function renderCasing() {
 }
 
 function renderTips() {
-  const query = getControlValue("tips-search").toLowerCase();
-  const sortBy = getControlValue("tips-sort") || "category";
-  const sortOrder = getControlValue("tips-order") || "asc";
+  const query = getFilterValue("tips-search").toLowerCase();
+  const sortBy = getFilterValue("tips-sort") || "category";
+  const sortOrder = getFilterValue("tips-order") || "asc";
   const filtered = sortItems(
     state.tips.filter((item) => {
       const haystack = `${item.title} ${item.category} ${item.body || ""} ${item.tags || ""}`.toLowerCase();
@@ -696,7 +725,7 @@ function renderRecentApplication(item) {
     <div class="record-card">
       <div class="table-row-header">
         <div>
-          <h3>${escapeHtml(item.company)}</h3>
+          <h3><button class="tip-title-button" type="button" data-action="preview-app" data-id="${item.id}">${escapeHtml(item.company)}</button></h3>
           <div class="entity-meta">${escapeHtml(item.role)}</div>
         </div>
         ${statusBadge(item.status)}
@@ -767,9 +796,9 @@ function renderContactCard(item) {
   return `
     <article class="record-card contact-card ${isExpanded ? "contact-card-expanded" : ""}">
       <div class="table-row-header">
-        <button class="contact-summary" data-action="toggle-contact-expand" data-id="${item.id}">
+        <div class="contact-summary">
           <div class="contact-title-row">
-            <h3>${escapeHtml(item.name)}</h3>
+            <h3><button class="tip-title-button" type="button" data-action="preview-contact" data-id="${item.id}">${escapeHtml(item.name)}</button></h3>
             <span class="status-badge" data-tone="neutral">${escapeHtml(item.relationship)}</span>
           </div>
           <div class="entity-meta contact-role-line">${escapeHtml(formatContactRole(item))}</div>
@@ -778,7 +807,8 @@ function renderContactCard(item) {
             ${item.linkedInUrl ? `<a class="contact-link-icon" href="${escapeHtml(item.linkedInUrl)}" target="_blank" rel="noreferrer" title="LinkedIn">in</a>` : `<span class="contact-link-icon muted-icon">in</span>`}
           </div>
           <div class="contact-last-line ${lastContactMessage.isStale ? "contact-last-line-stale" : ""}">${escapeHtml(lastContactMessage.text)}</div>
-        </button>
+          <button class="contact-expand-toggle" type="button" data-action="toggle-contact-expand" data-id="${item.id}">${isExpanded ? "Hide details" : "View details"}</button>
+        </div>
         <div class="contact-menu-wrap">
           <button class="contact-menu-button" data-action="toggle-contact-menu" data-id="${item.id}" aria-label="Open contact menu">⋮</button>
           ${menuOpen ? `
@@ -862,7 +892,7 @@ function renderCaseCard(item) {
       <div class="table-row-header">
         <div>
           <h3>
-            <button class="tip-title-button" type="button" data-action="preview-tip" data-id="${item.id}">${escapeHtml(item.title)}</button>
+            <button class="tip-title-button" type="button" data-action="preview-case" data-id="${item.id}">${escapeHtml(item.title)}</button>
           </h3>
           <div class="entity-meta">${escapeHtml(item.caseType)} • ${escapeHtml(item.firmStyle)}</div>
         </div>
@@ -899,7 +929,7 @@ function renderCaseListRow(item) {
       <div class="table-row-header">
         <div>
           <h3>
-            <button class="tip-title-button" type="button" data-action="preview-tip" data-id="${item.id}">${escapeHtml(item.title)}</button>
+            <button class="tip-title-button" type="button" data-action="preview-case" data-id="${item.id}">${escapeHtml(item.title)}</button>
           </h3>
           <div class="entity-meta">${escapeHtml(item.caseType)} • ${escapeHtml(item.firmStyle)}${partner ? ` • ${escapeHtml(partner)}` : ""}</div>
         </div>
@@ -1180,6 +1210,109 @@ function openTipModal(id = "") {
   `;
 }
 
+function openApplicationPreviewModal(id) {
+  const item = state.applications.find((entry) => entry.id === id);
+  if (!item) return;
+
+  const linkedContacts = item.linkedContactIds.map(getContactName).filter(Boolean);
+  openRecordPreviewModal({
+    title: item.company,
+    badgesHtml: `${statusBadge(item.status)} ${priorityBadge(item.priority)}`,
+    subtitle: item.role || "Application preview",
+    bodyHtml: `
+      <div class="preview-grid">
+        ${renderPreviewSection("Role", item.role || "Not set")}
+        ${renderPreviewSection("Location", item.location || "Not set")}
+        ${renderPreviewSection("Type", item.type || "Not set")}
+        ${renderPreviewSection("Application date", formatDate(item.applicationDate))}
+        ${renderPreviewSection("Deadline", formatDate(item.deadline))}
+        ${renderPreviewSection("Next step", item.nextStep ? `${escapeHtml(item.nextStep)}<br><span class="entity-meta">${formatDate(item.nextStepDate)}</span>` : "No next step")}
+        ${renderPreviewSection("Compensation", item.salary || "Not set")}
+        ${renderPreviewSection("Job URL", item.jobUrl ? `<a href="${escapeHtml(item.jobUrl)}" target="_blank" rel="noreferrer">${escapeHtml(item.jobUrl)}</a>` : "Not set")}
+        ${renderPreviewChipSection("Linked contacts", linkedContacts)}
+        ${renderPreviewChipSection("Tags", parseTags(item.tags))}
+      </div>
+      <div class="meta-item tip-preview-body" style="margin-top: 10px;">${formatMultilineText(item.notes || "No notes yet.")}</div>
+    `,
+    editAction: "open-app",
+    editId: item.id
+  });
+}
+
+function openContactPreviewModal(id) {
+  const item = state.contacts.find((entry) => entry.id === id);
+  if (!item) return;
+  const interactions = item.interactions || [];
+
+  openRecordPreviewModal({
+    title: item.name,
+    badgesHtml: `<span class="status-badge" data-tone="neutral">${escapeHtml(item.relationship)}</span>`,
+    subtitle: formatContactRole(item),
+    bodyHtml: `
+      <div class="preview-grid">
+        ${renderPreviewSection("Email", item.email ? `<a href="mailto:${escapeHtml(item.email)}">${escapeHtml(item.email)}</a>` : "Not set")}
+        ${renderPreviewSection("Phone", item.phone || "Not set")}
+        ${renderPreviewSection("LinkedIn", item.linkedInUrl ? `<a href="${escapeHtml(item.linkedInUrl)}" target="_blank" rel="noreferrer">${escapeHtml(item.linkedInUrl)}</a>` : "Not set")}
+        ${renderPreviewSection("How we met", item.howWeMet || "Not set")}
+        ${renderPreviewSection("Last contact", formatDate(item.lastContactDate))}
+        ${renderPreviewSection("Next follow-up", formatDate(item.nextFollowUpDate))}
+        ${renderPreviewChipSection("Tags", parseTags(item.tags))}
+      </div>
+      <div class="meta-item tip-preview-body" style="margin-top: 10px;">${formatMultilineText(item.notes || "No notes yet.")}</div>
+      <div class="record-list" style="margin-top: 10px;">
+        <div class="inline-header">
+          <h3 style="font-size:0.95rem;">Interactions</h3>
+          <button class="btn btn-secondary small" data-action="log-interaction" data-contact-id="${item.id}">Log interaction</button>
+        </div>
+        ${interactions.length
+          ? interactions.map((interaction) => `
+            <div class="meta-item">
+              <div class="table-row-header">
+                <div>
+                  <div class="meta-label">${escapeHtml(interaction.type)} - ${formatDate(interaction.date)}</div>
+                  <div class="entity-meta">${formatMultilineText(interaction.summary || "No summary")}</div>
+                </div>
+                <span class="pill">${escapeHtml(interaction.followUpNeeded ? `Follow-up ${interaction.followUpDate ? formatDate(interaction.followUpDate) : "needed"}` : "No follow-up")}</span>
+              </div>
+            </div>
+          `).join("")
+          : `<div class="entity-meta">No interactions logged yet.</div>`}
+      </div>
+    `,
+    editAction: "open-contact",
+    editId: item.id
+  });
+}
+
+function openCasePreviewModal(id) {
+  const item = state.caseSessions.find((entry) => entry.id === id);
+  if (!item) return;
+  const partner = item.linkedContactId ? getContactName(item.linkedContactId) : item.partnerLabel;
+
+  openRecordPreviewModal({
+    title: item.title,
+    badgesHtml: `<span class="status-badge" data-tone="success">${escapeHtml(`${item.rating || 0}/5`)}</span>`,
+    subtitle: `${item.caseType} - ${item.firmStyle}`,
+    bodyHtml: `
+      <div class="preview-grid">
+        ${renderPreviewSection("Date", formatDate(item.date))}
+        ${renderPreviewSection("Duration", item.durationMinutes ? `${escapeHtml(String(item.durationMinutes))} min` : "Not set")}
+        ${renderPreviewSection("Method", item.method || "Not set")}
+        ${renderPreviewSection("Partner", partner || "Solo / not listed")}
+        ${renderPreviewSection("Source", item.source || "Not set")}
+        ${renderPreviewChipSection("Tags", parseTags(item.tags))}
+      </div>
+      <div class="preview-grid preview-grid-stack" style="margin-top: 10px;">
+        ${renderPreviewSection("What went well", formatMultilineText(item.whatWentWell || "Not captured yet."))}
+        ${renderPreviewSection("What to improve", formatMultilineText(item.whatToImprove || "Not captured yet."))}
+        ${renderPreviewSection("Notes", formatMultilineText(item.notes || "No notes yet."))}
+      </div>
+    `,
+    editAction: "open-case",
+    editId: item.id
+  });
+}
+
 function openTipPreviewModal(id) {
   const item = state.tips.find((entry) => entry.id === id);
   if (!item) return;
@@ -1195,34 +1328,21 @@ function openTipPreviewModal(id) {
     .map((sessionId) => state.caseSessions.find((session) => session.id === sessionId)?.title || "")
     .filter(Boolean);
 
-  modalRoot.innerHTML = `
-    <div class="modal-backdrop">
-      <div class="modal-panel">
-        <div class="card-header">
-          <div>
-            <div class="tag-row" style="margin-bottom: 8px;">
-              <span class="pill">${escapeHtml(item.category || "Uncategorized")}</span>
-              ${parseTags(item.tags).map((tag) => `<span class="chip">${escapeHtml(tag)}</span>`).join("")}
-            </div>
-            <h2>${escapeHtml(item.title)}</h2>
-            <p class="card-subtitle">Full tip preview.</p>
-          </div>
-          <div class="row-actions">
-            <button class="btn btn-ghost small" data-action="open-tip" data-id="${item.id}">Edit</button>
-            <button class="btn btn-ghost small" data-action="close-modal">Close</button>
-          </div>
-        </div>
-        <div class="record-list" style="margin-top: 16px;">
-          <div class="meta-item tip-preview-body">${formatMultilineText(item.body || "No tip body yet.")}</div>
-          <div class="tip-preview-grid">
-            ${renderTipPreviewSection("Linked applications", linkedApplications)}
-            ${renderTipPreviewSection("Linked contacts", linkedContacts)}
-            ${renderTipPreviewSection("Linked case sessions", linkedCaseSessions)}
-          </div>
-        </div>
+  openRecordPreviewModal({
+    title: item.title,
+    badgesHtml: `<span class="pill">${escapeHtml(item.category || "Uncategorized")}</span>${parseTags(item.tags).map((tag) => `<span class="chip">${escapeHtml(tag)}</span>`).join("")}`,
+    subtitle: "Full tip preview.",
+    bodyHtml: `
+      <div class="meta-item tip-preview-body">${formatMultilineText(item.body || "No tip body yet.")}</div>
+      <div class="tip-preview-grid" style="margin-top: 10px;">
+        ${renderPreviewChipSection("Linked applications", linkedApplications)}
+        ${renderPreviewChipSection("Linked contacts", linkedContacts)}
+        ${renderPreviewChipSection("Linked case sessions", linkedCaseSessions)}
       </div>
-    </div>
-  `;
+    `,
+    editAction: "open-tip",
+    editId: item.id
+  });
 }
 
 function openCadenceModal(id = "") {
@@ -1597,13 +1717,45 @@ function getContactName(id) {
   return state.contacts.find((contact) => contact.id === id)?.name || "";
 }
 
-function renderTipPreviewSection(label, values) {
+function openRecordPreviewModal({ title, subtitle = "", badgesHtml = "", bodyHtml = "", editAction, editId }) {
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-panel">
+        <div class="card-header">
+          <div>
+            ${badgesHtml ? `<div class="tag-row" style="margin-bottom: 8px;">${badgesHtml}</div>` : ""}
+            <h2>${escapeHtml(title)}</h2>
+            ${subtitle ? `<p class="card-subtitle">${escapeHtml(subtitle)}</p>` : ""}
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-ghost small" data-action="${editAction}" data-id="${editId}">Edit</button>
+            <button class="btn btn-ghost small" data-action="close-modal">Close</button>
+          </div>
+        </div>
+        <div class="record-list" style="margin-top: 16px;">
+          ${bodyHtml}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPreviewChipSection(label, values) {
   return `
     <div class="meta-item">
       <div class="meta-label">${escapeHtml(label)}</div>
       ${values.length
         ? `<div class="tip-preview-list">${values.map((value) => `<span class="token-chip">${escapeHtml(value)}</span>`).join("")}</div>`
         : `<div class="entity-meta">None linked.</div>`}
+    </div>
+  `;
+}
+
+function renderPreviewSection(label, valueHtml) {
+  return `
+    <div class="meta-item">
+      <div class="meta-label">${escapeHtml(label)}</div>
+      <div class="meta-value">${valueHtml}</div>
     </div>
   `;
 }
@@ -1992,8 +2144,32 @@ function differenceInDays(laterIsoDate, earlierIsoDate) {
   return Math.floor((later - earlier) / millisecondsPerDay);
 }
 
-function getControlValue(filterName) {
-  return document.querySelector(`[data-filter="${filterName}"]`)?.value || "";
+function getFilterValue(filterName) {
+  return uiState.filters[filterName] ?? FILTER_DEFAULTS[filterName] ?? "";
+}
+
+function setFilterValue(filterName, value) {
+  uiState.filters[filterName] = value;
+}
+
+function syncFilterControl(control) {
+  const filterName = control.dataset.filter;
+  if (!filterName) return;
+
+  setFilterValue(filterName, control.value);
+  const shouldRestoreFocus = control.tagName === "INPUT" && typeof control.selectionStart === "number";
+  const selectionStart = shouldRestoreFocus ? control.selectionStart : null;
+  const selectionEnd = shouldRestoreFocus ? control.selectionEnd : null;
+
+  render();
+
+  if (!shouldRestoreFocus) return;
+  const nextControl = document.querySelector(`[data-filter="${filterName}"]`);
+  if (!nextControl) return;
+  nextControl.focus();
+  if (typeof nextControl.setSelectionRange === "function" && selectionStart !== null && selectionEnd !== null) {
+    nextControl.setSelectionRange(selectionStart, selectionEnd);
+  }
 }
 
 function parseTags(tagsValue) {
