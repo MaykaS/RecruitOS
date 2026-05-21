@@ -5,7 +5,6 @@ import {
   CrudModuleSlug,
   INTERVIEW_PREP_CHECKLIST,
   RecruitOSData,
-  STORAGE_KEY,
   calculateReadinessScore,
   createId,
   dateOffset,
@@ -16,6 +15,12 @@ import {
   seedData,
   toDateInput,
 } from "@/lib/recruitos";
+import {
+  PersistenceMode,
+  getPersistenceCollectionsForModule,
+  loadRecruitOSData,
+  persistRecruitOSCollections,
+} from "@/lib/recruitos-repository";
 import {
   createContext,
   useCallback,
@@ -30,6 +35,9 @@ type SaveRecordInput = Record<string, unknown> & { id?: string };
 interface RecruitOSContextValue {
   data: RecruitOSData;
   loaded: boolean;
+  persistenceMode: PersistenceMode;
+  syncMessage: string;
+  isSyncing: boolean;
   saveRecord: (module: CrudModuleSlug, record: SaveRecordInput) => void;
   saveInterviewQuestion: (record: SaveRecordInput) => void;
   deleteInterviewQuestion: (id: string) => void;
@@ -50,71 +58,102 @@ interface RecruitOSContextValue {
 
 const RecruitOSContext = createContext<RecruitOSContextValue | null>(null);
 
+function uniqueStrings(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
+}
+
 function syncDerivedState(input: RecruitOSData): RecruitOSData {
   const companies = input.companies.map((company) => ({
     ...company,
-    linked_contact_ids: input.contacts
-      .filter((contact) => contact.company_id === company.id)
-      .map((contact) => contact.id),
-    linked_application_ids: input.applications
-      .filter((application) => application.company_id === company.id)
-      .map((application) => application.id),
+    linked_contact_ids: uniqueStrings([
+      ...company.linked_contact_ids,
+      ...input.contacts
+        .filter((contact) => contact.company_id === company.id)
+        .map((contact) => contact.id),
+    ]),
+    linked_application_ids: uniqueStrings([
+      ...company.linked_application_ids,
+      ...input.applications
+        .filter((application) => application.company_id === company.id)
+        .map((application) => application.id),
+    ]),
   }));
 
   const contacts = input.contacts.map((contact) => ({
     ...contact,
     company_name: lookupCompanyName({ ...input, companies }, contact.company_id),
-    linked_application_ids: input.applications
-      .filter(
-        (application) =>
-          application.referral_person_contact_id === contact.id ||
-          application.linked_contact_ids.includes(contact.id),
-      )
-      .map((application) => application.id),
+    linked_application_ids: uniqueStrings([
+      ...contact.linked_application_ids,
+      ...input.applications
+        .filter(
+          (application) =>
+            application.referral_person_contact_id === contact.id ||
+            application.linked_contact_ids.includes(contact.id),
+        )
+        .map((application) => application.id),
+    ]),
   }));
 
   const applications = input.applications.map((application) => ({
     ...application,
     company_name: lookupCompanyName({ ...input, companies }, application.company_id),
-    linked_action_item_ids: input.actionItems
-      .filter((actionItem) => actionItem.linked_application_id === application.id)
-      .map((actionItem) => actionItem.id),
+    linked_action_item_ids: uniqueStrings([
+      ...application.linked_action_item_ids,
+      ...input.actionItems
+        .filter((actionItem) => actionItem.linked_application_id === application.id)
+        .map((actionItem) => actionItem.id),
+    ]),
   }));
 
   const resumes = input.resumes.map((resume) => ({
     ...resume,
-    linked_application_ids: applications
-      .filter((application) => application.resume_version_id === resume.id)
-      .map((application) => application.id),
+    linked_application_ids: uniqueStrings([
+      ...resume.linked_application_ids,
+      ...applications
+        .filter((application) => application.resume_version_id === resume.id)
+        .map((application) => application.id),
+    ]),
   }));
 
   const mockInterviews = input.mockInterviews.map((mock) => ({
     ...mock,
-    linked_action_item_ids: input.actionItems
-      .filter((actionItem) => actionItem.linked_mock_interview_id === mock.id)
-      .map((actionItem) => actionItem.id),
+    linked_action_item_ids: uniqueStrings([
+      ...mock.linked_action_item_ids,
+      ...input.actionItems
+        .filter((actionItem) => actionItem.linked_mock_interview_id === mock.id)
+        .map((actionItem) => actionItem.id),
+    ]),
   }));
 
   const interviewPrep = input.interviewPrep.map((prep) => ({
     ...prep,
-    linked_action_item_ids: input.actionItems
-      .filter((actionItem) => actionItem.linked_interview_prep_id === prep.id)
-      .map((actionItem) => actionItem.id),
+    linked_action_item_ids: uniqueStrings([
+      ...prep.linked_action_item_ids,
+      ...input.actionItems
+        .filter((actionItem) => actionItem.linked_interview_prep_id === prep.id)
+        .map((actionItem) => actionItem.id),
+    ]),
     readiness_score: calculateReadinessScore(input.actionItems, prep.id),
   }));
 
   const parStories = input.parStories.map((par) => ({
     ...par,
-    linked_question_ids: input.interviewQuestions
-      .filter((question) => question.linked_par_story_ids.includes(par.id))
-      .map((question) => question.id),
+    linked_question_ids: uniqueStrings([
+      ...par.linked_question_ids,
+      ...input.interviewQuestions
+        .filter((question) => question.linked_par_story_ids.includes(par.id))
+        .map((question) => question.id),
+    ]),
   }));
 
   const interviewQuestions = input.interviewQuestions.map((question) => ({
     ...question,
-    linked_par_story_ids: parStories
-      .filter((par) => par.linked_question_ids.includes(question.id))
-      .map((par) => par.id),
+    linked_par_story_ids: uniqueStrings([
+      ...question.linked_par_story_ids,
+      ...parStories
+        .filter((par) => par.linked_question_ids.includes(question.id))
+        .map((par) => par.id),
+    ]),
   }));
 
   const actionItems = input.actionItems.map((actionItem) => ({
@@ -147,7 +186,12 @@ function withTimestamps(record: SaveRecordInput, existingId?: string) {
   };
 }
 
-function createChecklistActionItems(prepId: string, interviewDate: string, companyId: string, applicationId: string) {
+function createChecklistActionItems(
+  prepId: string,
+  interviewDate: string,
+  companyId: string,
+  applicationId: string,
+) {
   return INTERVIEW_PREP_CHECKLIST.map((title, index) => ({
     id: createId("action"),
     created_at: nowIso(),
@@ -173,119 +217,150 @@ function createChecklistActionItems(prepId: string, interviewDate: string, compa
 }
 
 export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
-  const [data, setData] = useState<RecruitOSData>(() => {
-    if (typeof window === "undefined") {
-      return syncDerivedState(seedData());
-    }
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        return syncDerivedState(JSON.parse(raw) as RecruitOSData);
-      } catch {
-        return syncDerivedState(seedData());
-      }
-    }
-    return syncDerivedState(seedData());
-  });
-  const loaded = true;
+  const [data, setData] = useState<RecruitOSData>(syncDerivedState(seedData()));
+  const [loaded, setLoaded] = useState(false);
+  const [persistenceMode, setPersistenceMode] = useState<PersistenceMode>("local");
+  const [syncMessage, setSyncMessage] = useState(
+    "Loading RecruitOS data...",
+  );
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [data, loaded]);
+    let cancelled = false;
 
-  const saveRecord = useCallback((module: CrudModuleSlug, record: SaveRecordInput) => {
-    setData((current) => {
-      const collectionKey = getCollectionKey(module);
-      const existing = (
-        current[collectionKey] as unknown as Array<Record<string, unknown>>
-      ).find(
-        (item) => item.id === record.id,
-      );
-      const nextRecord = withTimestamps(record, existing?.id as string | undefined);
-      let nextState: RecruitOSData = { ...current };
-      const collection = current[collectionKey] as unknown as Array<Record<string, unknown>>;
-      const nextCollection = existing
-        ? collection.map((item) => (item.id === existing.id ? { ...item, ...nextRecord } : item))
-        : [...collection, nextRecord];
-      nextState = { ...nextState, [collectionKey]: nextCollection } as RecruitOSData;
+    async function hydrate() {
+      const result = await loadRecruitOSData();
+      if (cancelled) return;
+      setData(syncDerivedState(result.data));
+      setPersistenceMode(result.mode);
+      setSyncMessage(result.message);
+      setLoaded(true);
+    }
 
-      if (module === "interview-prep" && !existing) {
-        const prepRecord = nextRecord as {
-          id: string;
-          interview_date?: unknown;
-          company_id?: unknown;
-          application_id?: unknown;
-        };
-        const prepId = prepRecord.id;
-        const checklist = createChecklistActionItems(
-          prepId,
-          String(prepRecord.interview_date ?? ""),
-          String(prepRecord.company_id ?? ""),
-          String(prepRecord.application_id ?? ""),
-        );
-        nextState = {
-          ...nextState,
-          actionItems: [...nextState.actionItems, ...checklist],
-          interviewPrep: (nextState.interviewPrep as RecruitOSData["interviewPrep"]).map((prep) =>
-            prep.id === prepId
-              ? { ...prep, linked_action_item_ids: checklist.map((item) => item.id) }
-              : prep,
-          ),
-        };
-      }
+    void hydrate();
 
-      return syncDerivedState(nextState);
-    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const saveInterviewQuestion = useCallback((record: SaveRecordInput) => {
-    setData((current) => {
-      const existing = current.interviewQuestions.find((item) => item.id === record.id);
-      const nextRecord = withTimestamps(record, existing?.id) as RecruitOSData["interviewQuestions"][number];
-      const interviewQuestions = existing
-        ? current.interviewQuestions.map((item) =>
-            item.id === existing.id ? { ...item, ...nextRecord } : item,
-          )
-        : [...current.interviewQuestions, nextRecord];
+  const persist = useCallback(
+    async (
+      previous: RecruitOSData,
+      next: RecruitOSData,
+      collections: Parameters<typeof persistRecruitOSCollections>[2],
+    ) => {
+      setIsSyncing(true);
+      const result = await persistRecruitOSCollections(previous, next, collections);
+      setPersistenceMode(result.mode);
+      setSyncMessage(result.message);
+      setIsSyncing(false);
+    },
+    [],
+  );
 
-      return syncDerivedState({
-        ...current,
-        interviewQuestions,
+  const applyMutation = useCallback(
+    (
+      collections: Parameters<typeof persistRecruitOSCollections>[2],
+      updater: (current: RecruitOSData) => RecruitOSData,
+    ) => {
+      setData((current) => {
+        const next = syncDerivedState(updater(current));
+        void persist(current, next, collections);
+        return next;
       });
-    });
-  }, []);
+    },
+    [persist],
+  );
 
-  const deleteInterviewQuestion = useCallback((id: string) => {
-    setData((current) =>
-      syncDerivedState({
+  const saveRecord = useCallback(
+    (module: CrudModuleSlug, record: SaveRecordInput) => {
+      applyMutation(getPersistenceCollectionsForModule(module), (current) => {
+        const collectionKey = getCollectionKey(module);
+        const collection = current[collectionKey] as unknown as Array<Record<string, unknown>>;
+        const existing = collection.find((item) => item.id === record.id);
+        const nextRecord = withTimestamps(record, existing?.id as string | undefined);
+        let nextState: RecruitOSData = {
+          ...current,
+          [collectionKey]: existing
+            ? collection.map((item) =>
+                item.id === existing.id ? { ...item, ...nextRecord } : item,
+              )
+            : [...collection, nextRecord],
+        } as RecruitOSData;
+
+        if (module === "interview-prep" && !existing) {
+          const prepRecord = nextRecord as {
+            id: string;
+            interview_date?: unknown;
+            company_id?: unknown;
+            application_id?: unknown;
+          };
+          const checklist = createChecklistActionItems(
+            prepRecord.id,
+            String(prepRecord.interview_date ?? ""),
+            String(prepRecord.company_id ?? ""),
+            String(prepRecord.application_id ?? ""),
+          );
+          nextState = {
+            ...nextState,
+            actionItems: [...nextState.actionItems, ...checklist],
+          };
+        }
+
+        return nextState;
+      });
+    },
+    [applyMutation],
+  );
+
+  const saveInterviewQuestion = useCallback(
+    (record: SaveRecordInput) => {
+      applyMutation(["interviewQuestions"], (current) => {
+        const existing = current.interviewQuestions.find((item) => item.id === record.id);
+        const nextRecord = withTimestamps(record, existing?.id) as RecruitOSData["interviewQuestions"][number];
+        return {
+          ...current,
+          interviewQuestions: existing
+            ? current.interviewQuestions.map((item) =>
+                item.id === existing.id ? { ...item, ...nextRecord } : item,
+              )
+            : [...current.interviewQuestions, nextRecord],
+        };
+      });
+    },
+    [applyMutation],
+  );
+
+  const deleteInterviewQuestion = useCallback(
+    (id: string) => {
+      applyMutation(["interviewQuestions"], (current) => ({
         ...current,
         interviewQuestions: current.interviewQuestions.filter((item) => item.id !== id),
-        parStories: current.parStories.map((par) => ({
-          ...par,
-          linked_question_ids: par.linked_question_ids.filter((questionId) => questionId !== id),
-        })),
-      }),
-    );
-  }, []);
+      }));
+    },
+    [applyMutation],
+  );
 
-  const deleteRecord = useCallback((module: CrudModuleSlug, id: string) => {
-    setData((current) => {
-      const collectionKey = getCollectionKey(module);
-      const nextCollection = (
-        current[collectionKey] as unknown as Array<Record<string, unknown>>
-      ).filter(
-        (item) => item.id !== id,
-      );
-      return syncDerivedState({
-        ...current,
-        [collectionKey]: nextCollection,
-      } as RecruitOSData);
-    });
-  }, []);
+  const deleteRecord = useCallback(
+    (module: CrudModuleSlug, id: string) => {
+      applyMutation(getPersistenceCollectionsForModule(module), (current) => {
+        const collectionKey = getCollectionKey(module);
+        const nextCollection = (
+          current[collectionKey] as unknown as Array<Record<string, unknown>>
+        ).filter((item) => item.id !== id);
+        return {
+          ...current,
+          [collectionKey]: nextCollection,
+        } as RecruitOSData;
+      });
+    },
+    [applyMutation],
+  );
 
-  const toggleActionItem = useCallback((id: string) => {
-    setData((current) =>
-      syncDerivedState({
+  const toggleActionItem = useCallback(
+    (id: string) => {
+      applyMutation(["actionItems"], (current) => ({
         ...current,
         actionItems: current.actionItems.map((item) =>
           item.id === id
@@ -297,19 +372,19 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
               }
             : item,
         ),
-      }),
-    );
-  }, []);
+      }));
+    },
+    [applyMutation],
+  );
 
-  const logParPractice = useCallback((parId: string, prompt = "Daily practice prompt") => {
-    setData((current) => {
-      const logId = createId("practice");
-      return syncDerivedState({
+  const logParPractice = useCallback(
+    (parId: string, prompt = "Daily practice prompt") => {
+      applyMutation(["parStories", "parPracticeLogs"], (current) => ({
         ...current,
         parPracticeLogs: [
           ...current.parPracticeLogs,
           {
-            id: logId,
+            id: createId("practice"),
             created_at: nowIso(),
             updated_at: nowIso(),
             par_story_id: parId,
@@ -334,13 +409,14 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
               }
             : par,
         ),
-      });
-    });
-  }, []);
+      }));
+    },
+    [applyMutation],
+  );
 
-  const markCasePracticed = useCallback((caseId: string) => {
-    setData((current) =>
-      syncDerivedState({
+  const markCasePracticed = useCallback(
+    (caseId: string) => {
+      applyMutation(["cases"], (current) => ({
         ...current,
         cases: current.cases.map((item) =>
           item.id === caseId
@@ -353,13 +429,14 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
               }
             : item,
         ),
-      }),
-    );
-  }, []);
+      }));
+    },
+    [applyMutation],
+  );
 
-  const markInterviewAnswerPracticed = useCallback((answerId: string) => {
-    setData((current) =>
-      syncDerivedState({
+  const markInterviewAnswerPracticed = useCallback(
+    (answerId: string) => {
+      applyMutation(["interviewAnswers"], (current) => ({
         ...current,
         interviewAnswers: current.interviewAnswers.map((item) =>
           item.id === answerId
@@ -371,13 +448,14 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
               }
             : item,
         ),
-      }),
-    );
-  }, []);
+      }));
+    },
+    [applyMutation],
+  );
 
-  const markFollowUpDone = useCallback((contactId: string) => {
-    setData((current) =>
-      syncDerivedState({
+  const markFollowUpDone = useCallback(
+    (contactId: string) => {
+      applyMutation(["contacts"], (current) => ({
         ...current,
         contacts: current.contacts.map((contact) =>
           contact.id === contactId
@@ -389,13 +467,14 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
               }
             : contact,
         ),
-      }),
-    );
-  }, []);
+      }));
+    },
+    [applyMutation],
+  );
 
-  const markApplicationActionDone = useCallback((applicationId: string) => {
-    setData((current) =>
-      syncDerivedState({
+  const markApplicationActionDone = useCallback(
+    (applicationId: string) => {
+      applyMutation(["applications"], (current) => ({
         ...current,
         applications: current.applications.map((application) =>
           application.id === applicationId
@@ -406,9 +485,10 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
               }
             : application,
         ),
-      }),
-    );
-  }, []);
+      }));
+    },
+    [applyMutation],
+  );
 
   const createActionItemFromSource = useCallback(
     (
@@ -418,109 +498,115 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
         source_id: string;
       },
     ) => {
-      setData((current) =>
-        syncDerivedState({
-          ...current,
-          actionItems: [
-            ...current.actionItems,
-            {
-              id: createId("action"),
-              created_at: nowIso(),
-              updated_at: nowIso(),
-              title: partial.title,
-              description: partial.description ?? "",
-              status: partial.status ?? "Open",
-              priority: partial.priority ?? "Medium",
-              due_date: partial.due_date ?? toDateInput(nowIso()),
-              completed_at: "",
-              source_type: partial.source_type,
-              source_id: partial.source_id,
-              linked_contact_id: partial.linked_contact_id ?? "",
-              linked_company_id: partial.linked_company_id ?? "",
-              linked_application_id: partial.linked_application_id ?? "",
-              linked_par_id: partial.linked_par_id ?? "",
-              linked_case_id: partial.linked_case_id ?? "",
-              linked_mock_interview_id: partial.linked_mock_interview_id ?? "",
-              linked_resume_id: partial.linked_resume_id ?? "",
-              linked_interview_prep_id: partial.linked_interview_prep_id ?? "",
-              linked_interview_answer_id: partial.linked_interview_answer_id ?? "",
-            },
-          ],
-        }),
-      );
-    },
-    [],
-  );
-
-  const convertBrainDumpToActionItem = useCallback((brainDumpId: string) => {
-    setData((current) => {
-      const brainDump = current.brainDumps.find((item) => item.id === brainDumpId);
-      if (!brainDump || brainDump.converted_action_item_id) return current;
-      const actionId = createId("action");
-      return syncDerivedState({
+      applyMutation(["actionItems"], (current) => ({
         ...current,
-        brainDumps: current.brainDumps.map((item) =>
-          item.id === brainDumpId
-            ? { ...item, converted_action_item_id: actionId, updated_at: nowIso() }
-            : item,
-        ),
         actionItems: [
           ...current.actionItems,
           {
-            id: actionId,
+            id: createId("action"),
             created_at: nowIso(),
             updated_at: nowIso(),
-            title: brainDump.title,
-            description: brainDump.note,
-            status: "Open",
-            priority: "Medium",
-            due_date: toDateInput(nowIso()),
+            title: partial.title,
+            description: partial.description ?? "",
+            status: partial.status ?? "Open",
+            priority: partial.priority ?? "Medium",
+            due_date: partial.due_date ?? toDateInput(nowIso()),
             completed_at: "",
-            source_type: "Brain Dump",
-            source_id: brainDump.id,
-            linked_contact_id: brainDump.linked_contact_id,
-            linked_company_id: brainDump.linked_company_id,
-            linked_application_id: brainDump.linked_application_id,
-            linked_par_id: brainDump.linked_par_id,
-            linked_case_id: brainDump.linked_case_id,
-            linked_mock_interview_id: brainDump.linked_mock_interview_id,
-            linked_resume_id: brainDump.linked_resume_id,
-            linked_interview_prep_id: brainDump.linked_interview_prep_id,
-            linked_interview_answer_id: "",
+            source_type: partial.source_type,
+            source_id: partial.source_id,
+            linked_contact_id: partial.linked_contact_id ?? "",
+            linked_company_id: partial.linked_company_id ?? "",
+            linked_application_id: partial.linked_application_id ?? "",
+            linked_par_id: partial.linked_par_id ?? "",
+            linked_case_id: partial.linked_case_id ?? "",
+            linked_mock_interview_id: partial.linked_mock_interview_id ?? "",
+            linked_resume_id: partial.linked_resume_id ?? "",
+            linked_interview_prep_id: partial.linked_interview_prep_id ?? "",
+            linked_interview_answer_id: partial.linked_interview_answer_id ?? "",
           },
         ],
-      });
-    });
-  }, []);
+      }));
+    },
+    [applyMutation],
+  );
 
-  const saveSettings = useCallback((updates: Partial<RecruitOSData["settings"]>) => {
-    setData((current) =>
-      syncDerivedState({
+  const convertBrainDumpToActionItem = useCallback(
+    (brainDumpId: string) => {
+      applyMutation(["brainDumps", "actionItems"], (current) => {
+        const brainDump = current.brainDumps.find((item) => item.id === brainDumpId);
+        if (!brainDump || brainDump.converted_action_item_id) return current;
+        const actionId = createId("action");
+        return {
+          ...current,
+          brainDumps: current.brainDumps.map((item) =>
+            item.id === brainDumpId
+              ? { ...item, converted_action_item_id: actionId, updated_at: nowIso() }
+              : item,
+          ),
+          actionItems: [
+            ...current.actionItems,
+            {
+              id: actionId,
+              created_at: nowIso(),
+              updated_at: nowIso(),
+              title: brainDump.title,
+              description: brainDump.note,
+              status: "Open",
+              priority: "Medium",
+              due_date: toDateInput(nowIso()),
+              completed_at: "",
+              source_type: "Brain Dump",
+              source_id: brainDump.id,
+              linked_contact_id: brainDump.linked_contact_id,
+              linked_company_id: brainDump.linked_company_id,
+              linked_application_id: brainDump.linked_application_id,
+              linked_par_id: brainDump.linked_par_id,
+              linked_case_id: brainDump.linked_case_id,
+              linked_mock_interview_id: brainDump.linked_mock_interview_id,
+              linked_resume_id: brainDump.linked_resume_id,
+              linked_interview_prep_id: brainDump.linked_interview_prep_id,
+              linked_interview_answer_id: "",
+            },
+          ],
+        };
+      });
+    },
+    [applyMutation],
+  );
+
+  const saveSettings = useCallback(
+    (updates: Partial<RecruitOSData["settings"]>) => {
+      applyMutation(["settings"], (current) => ({
         ...current,
         settings: {
           ...current.settings,
           ...updates,
           updated_at: nowIso(),
         },
-      }),
-    );
-  }, []);
+      }));
+    },
+    [applyMutation],
+  );
 
-  const rescheduleActionItem = useCallback((id: string, dueDate: string) => {
-    setData((current) =>
-      syncDerivedState({
+  const rescheduleActionItem = useCallback(
+    (id: string, dueDate: string) => {
+      applyMutation(["actionItems"], (current) => ({
         ...current,
         actionItems: current.actionItems.map((item) =>
           item.id === id ? { ...item, due_date: dueDate, updated_at: nowIso() } : item,
         ),
-      }),
-    );
-  }, []);
+      }));
+    },
+    [applyMutation],
+  );
 
   const value = useMemo(
     () => ({
       data,
       loaded,
+      persistenceMode,
+      syncMessage,
+      isSyncing,
       saveRecord,
       saveInterviewQuestion,
       deleteInterviewQuestion,
@@ -537,21 +623,24 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
       rescheduleActionItem,
     }),
     [
-      convertBrainDumpToActionItem,
       createActionItemFromSource,
-      deleteInterviewQuestion,
+      convertBrainDumpToActionItem,
       data,
+      deleteInterviewQuestion,
       deleteRecord,
+      isSyncing,
       loaded,
       logParPractice,
       markApplicationActionDone,
       markCasePracticed,
       markFollowUpDone,
       markInterviewAnswerPracticed,
+      persistenceMode,
       rescheduleActionItem,
-      saveRecord,
       saveInterviewQuestion,
+      saveRecord,
       saveSettings,
+      syncMessage,
       toggleActionItem,
     ],
   );

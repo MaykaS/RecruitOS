@@ -32,6 +32,15 @@ function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
 }
 
+function sanitizeText(value: string) {
+  return value
+    .replaceAll("â€”", "-")
+    .replaceAll("Â·", " - ")
+    .replaceAll("·", " - ")
+    .replaceAll("â€™", "'")
+    .replaceAll("’", "'");
+}
+
 function StatusBadge({
   value,
 }: {
@@ -40,12 +49,12 @@ function StatusBadge({
   const label = Array.isArray(value) ? joinList(value) : String(value);
   const tone = label.toLowerCase();
   const className = tone.includes("done") || tone.includes("ready")
-    ? "bg-emerald-500/15 text-emerald-200"
+    ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
     : tone.includes("high") || tone.includes("critical") || tone.includes("overdue")
-      ? "bg-rose-500/15 text-rose-200"
+      ? "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
       : tone.includes("wait")
-        ? "bg-amber-500/15 text-amber-100"
-        : "bg-slate-500/15 text-slate-200";
+        ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+        : "bg-slate-100 text-slate-700 ring-1 ring-stone-200";
 
   return (
     <span className={cx("inline-flex rounded-full px-2.5 py-1 text-xs", className)}>
@@ -58,12 +67,12 @@ function ProgressBar({ value, label }: { value: number; label: string }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-300">{label}</span>
-        <span className="text-slate-400">{value}%</span>
+        <span className="text-slate-700">{label}</span>
+        <span className="font-medium text-slate-500">{value}%</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+      <div className="h-2 overflow-hidden rounded-full bg-stone-200">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-sky-400 to-cyan-300"
+          className="h-full rounded-full bg-gradient-to-r from-teal-500 to-sky-500"
           style={{ width: `${value}%` }}
         />
       </div>
@@ -81,9 +90,9 @@ function Card({
   actions?: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[28px] border border-white/10 bg-slate-950/55 p-5 shadow-[0_24px_80px_rgba(2,6,23,0.35)]">
+    <section className="rounded-[28px] border border-stone-200 bg-white/88 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.07)]">
       <div className="mb-4 flex items-start justify-between gap-4">
-        <h2 className="text-lg font-semibold text-white">{title}</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
         {actions}
       </div>
       {children}
@@ -93,7 +102,7 @@ function Card({
 
 function EmptyState({ label }: { label: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 px-4 py-8 text-center text-sm text-slate-400">
+    <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-4 py-8 text-center text-sm text-slate-500">
       {label}
     </div>
   );
@@ -135,7 +144,7 @@ function FieldInput({
         value={String(value ?? "")}
         onChange={(event) => onChange(event.target.value)}
         rows={4}
-        className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-300/40"
+        className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
       />
     );
   }
@@ -145,7 +154,7 @@ function FieldInput({
       <select
         value={String(value ?? "")}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-sky-300/40"
+        className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
       >
         <option value="">Select...</option>
         {options.map((option) => (
@@ -166,7 +175,7 @@ function FieldInput({
         onChange={(event) =>
           onChange(Array.from(event.currentTarget.selectedOptions).map((option) => option.value))
         }
-        className="min-h-28 w-full rounded-2xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-sky-300/40"
+        className="min-h-28 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -179,12 +188,12 @@ function FieldInput({
 
   if (field.type === "checkbox") {
     return (
-      <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+      <label className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-slate-700">
         <input
           checked={Boolean(value)}
           onChange={(event) => onChange(event.target.checked)}
           type="checkbox"
-          className="h-4 w-4 rounded border-white/10 bg-slate-900"
+          className="h-4 w-4 rounded border-stone-300 bg-white"
         />
         <span>Enabled</span>
       </label>
@@ -200,7 +209,7 @@ function FieldInput({
       type={field.type === "number" ? "number" : field.type}
       min={field.min}
       max={field.max}
-      className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-300/40"
+      className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
     />
   );
 }
@@ -230,17 +239,17 @@ function RecordModal({
       : [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[32px] border border-white/10 bg-slate-950 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[32px] border border-stone-200 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
         <div className="mb-5 flex items-center justify-between gap-4">
           <div>
-            <h3 className="text-xl font-semibold text-white">{title}</h3>
-            <p className="text-sm text-slate-400">{config.description}</p>
+            <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
+            <p className="text-sm text-slate-600">{config.description}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-300 hover:bg-white/5"
+            className="rounded-full border border-stone-200 px-3 py-2 text-sm text-slate-600 hover:bg-stone-50"
           >
             Close
           </button>
@@ -249,7 +258,7 @@ function RecordModal({
         <div className="grid gap-4 lg:grid-cols-2">
           {config.fields.map((field) => (
             <label key={field.key} className={cx("space-y-2", field.type === "textarea" || field.type === "multiselect" ? "lg:col-span-2" : "")}>
-              <span className="text-sm text-slate-300">{field.label}</span>
+              <span className="text-sm font-medium text-slate-700">{field.label}</span>
               <FieldInput
                 field={field}
                 data={data}
@@ -263,23 +272,23 @@ function RecordModal({
         </div>
 
         {linkedActions.length > 0 ? (
-          <div className="mt-6 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="text-sm font-medium text-white">Linked action items</div>
+          <div className="mt-6 space-y-3 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+            <div className="text-sm font-medium text-slate-900">Linked action items</div>
             {linkedActions.map((action) => (
               <div
                 key={action.id}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-white/5 bg-slate-900/60 px-3 py-3"
+                className="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-white px-3 py-3"
               >
                 <div>
-                  <div className="text-sm text-white">{action.title}</div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-sm font-medium text-slate-900">{action.title}</div>
+                  <div className="text-xs text-slate-500">
                     {action.priority} · {renderValue(action.due_date)}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => toggleActionItem(action.id)}
-                  className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5"
+                  className="rounded-full border border-stone-200 px-3 py-1.5 text-xs text-slate-700 hover:bg-stone-50"
                 >
                   {action.status === "Done" ? "Reopen" : "Mark Done"}
                 </button>
@@ -292,7 +301,7 @@ function RecordModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-200 hover:bg-white/5"
+            className="rounded-full border border-stone-200 px-4 py-2 text-sm text-slate-700 hover:bg-stone-50"
           >
             Cancel
           </button>
@@ -305,7 +314,7 @@ function RecordModal({
               });
               onClose();
             }}
-            className="rounded-full bg-sky-400 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-300"
+            className="rounded-full bg-teal-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-500"
           >
             Save
           </button>
@@ -398,39 +407,39 @@ function DashboardView() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)]">
         <Card title="Today’s Command Center">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-400">
+            <div className="flex h-full flex-col rounded-3xl border border-stone-200 bg-stone-50 p-5">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Assigned PAR Practice
               </div>
               {parSuggestion ? (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">{parSuggestion.title}</h3>
-                    <p className="text-sm text-slate-400">
+                <div className="mt-4 flex h-full flex-col">
+                  <div className="space-y-3">
+                    <h3 className="min-h-[3.5rem] text-xl font-semibold leading-tight text-slate-900">{parSuggestion.title}</h3>
+                    <p className="min-h-[3.5rem] text-sm leading-6 text-slate-600">
                       Prompt: Tell me about a time you influenced without authority.
                     </p>
-                    <p className="mt-2 text-sm text-slate-300">
+                    <p className="min-h-[3.5rem] text-sm leading-6 text-slate-700">
                       Focus: {parSuggestion.weakness_or_focus_area || "Sharpen structure and confidence."}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Link href="/pars" className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-200 hover:bg-white/5">
+                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-5">
+                    <Link href="/pars" className="inline-flex h-11 items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-stone-100">
                       Start Practice
                     </Link>
                     <button
                       type="button"
                       onClick={() => logParPractice(parSuggestion.id, "Daily dashboard practice")}
-                      className="rounded-full bg-sky-400 px-3 py-2 text-sm font-medium text-slate-950"
+                      className="inline-flex h-11 items-center rounded-full bg-teal-600 px-4 text-sm font-medium text-white hover:bg-teal-500"
                     >
                       Mark Complete
                     </button>
                     <button
                       type="button"
                       onClick={() => setParIndex((current) => current + 1)}
-                      className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
+                      className="inline-flex h-11 items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-stone-100"
                     >
                       Change Assigned PAR
                     </button>
@@ -441,36 +450,36 @@ function DashboardView() {
               )}
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-400">
+            <div className="flex h-full flex-col rounded-3xl border border-stone-200 bg-stone-50 p-5">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Assigned Case Practice
               </div>
               {caseSuggestion ? (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">{caseSuggestion.title}</h3>
-                    <p className="text-sm text-slate-400">
+                <div className="mt-4 flex h-full flex-col">
+                  <div className="space-y-3">
+                    <h3 className="min-h-[3.5rem] text-xl font-semibold leading-tight text-slate-900">{caseSuggestion.title}</h3>
+                    <p className="min-h-[3.5rem] text-sm leading-6 text-slate-600">
                       Focus area: {caseSuggestion.weakness_area || "Keep sharp under time pressure."}
                     </p>
-                    <p className="mt-2 text-sm text-slate-300">
+                    <p className="min-h-[3.5rem] text-sm leading-6 text-slate-700">
                       Suggested session: {caseSuggestion.case_type}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Link href="/cases" className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-200 hover:bg-white/5">
+                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-5">
+                    <Link href="/cases" className="inline-flex h-11 items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-stone-100">
                       Start Case
                     </Link>
                     <button
                       type="button"
                       onClick={() => markCasePracticed(caseSuggestion.id)}
-                      className="rounded-full bg-cyan-300 px-3 py-2 text-sm font-medium text-slate-950"
+                      className="inline-flex h-11 items-center rounded-full bg-sky-600 px-4 text-sm font-medium text-white hover:bg-sky-500"
                     >
                       Mark Complete
                     </button>
                     <button
                       type="button"
                       onClick={() => setCaseIndex((current) => current + 1)}
-                      className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
+                      className="inline-flex h-11 items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-stone-100"
                     >
                       Change Assigned Case
                     </button>
@@ -515,15 +524,15 @@ function DashboardView() {
               label={`Action items completed (${actionsCompletedThisWeek})`}
               value={progressPercentage(actionsCompletedThisWeek, 15)}
             />
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="text-sm font-medium text-white">
+            <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+              <div className="text-sm font-medium text-slate-900">
                 Applications today: {applicationsToday.length}/{data.settings.daily_application_target}
               </div>
               <div className="mt-3 grid gap-2">
                 {trackCounts.map((track) => (
                   <div
                     key={track.track}
-                    className="flex items-center justify-between text-sm text-slate-300"
+                    className="flex items-center justify-between text-sm text-slate-700"
                   >
                     <span>{track.track}</span>
                     <span>{track.count}</span>
@@ -542,17 +551,17 @@ function DashboardView() {
               followUpsDue.map((contact) => (
                 <div
                   key={contact.id}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  className="rounded-2xl border border-stone-200 bg-stone-50 p-4"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-sm font-medium text-white">
+                      <div className="text-sm font-medium text-slate-900">
                         {contact.name} · {contact.company_name || "No company"}
                       </div>
-                      <div className="text-sm text-slate-400">
+                      <div className="text-sm text-slate-500">
                         {contact.role || "No role"} · Last touch {renderValue(contact.last_contact_date)}
                       </div>
-                      <div className="mt-2 text-sm text-slate-300">
+                      <div className="mt-2 text-sm text-slate-700">
                         Next step: {contact.conversation_notes || "Follow up and keep momentum moving."}
                       </div>
                     </div>
@@ -562,7 +571,7 @@ function DashboardView() {
                     <button
                       type="button"
                       onClick={() => markFollowUpDone(contact.id)}
-                      className="rounded-full bg-sky-400 px-3 py-2 text-sm font-medium text-slate-950"
+                      className="rounded-full bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-500"
                     >
                       Mark Follow-Up Done
                     </button>
@@ -577,7 +586,7 @@ function DashboardView() {
                           linked_company_id: contact.company_id,
                         })
                       }
-                      className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
+                      className="rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-stone-100"
                     >
                       Create Action Item
                     </button>
@@ -596,17 +605,17 @@ function DashboardView() {
               applicationsNeedingAction.map((application) => (
                 <div
                   key={application.id}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  className="rounded-2xl border border-stone-200 bg-stone-50 p-4"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-sm font-medium text-white">
+                      <div className="text-sm font-medium text-slate-900">
                         {application.role_title} · {application.company_name}
                       </div>
-                      <div className="text-sm text-slate-400">
+                      <div className="text-sm text-slate-500">
                         {application.status} · Referral {application.referral_status}
                       </div>
-                      <div className="mt-2 text-sm text-slate-300">
+                      <div className="mt-2 text-sm text-slate-700">
                         Next step: {application.next_step || "Review application and move it forward."}
                       </div>
                     </div>
@@ -622,7 +631,7 @@ function DashboardView() {
                     <button
                       type="button"
                       onClick={() => markApplicationActionDone(application.id)}
-                      className="rounded-full bg-cyan-300 px-3 py-2 text-sm font-medium text-slate-950"
+                      className="rounded-full bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500"
                     >
                       Mark Action Complete
                     </button>
@@ -637,7 +646,7 @@ function DashboardView() {
                           linked_company_id: application.company_id,
                         })
                       }
-                      className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
+                      className="rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-stone-100"
                     >
                       Add Action Item
                     </button>
@@ -654,24 +663,24 @@ function DashboardView() {
       <div className="grid gap-6 xl:grid-cols-[1.15fr_1fr_1fr]">
         <Card title="Mock Interview Reminder">
           {mocksThisWeek.length ? (
-            <div className="space-y-3 text-sm text-slate-300">
+            <div className="space-y-3 text-sm text-slate-700">
               <p>You already logged {mocksThisWeek.length} mock interview(s) this week.</p>
               <Link
                 href="/mock-interviews"
-                className="inline-flex rounded-full border border-white/10 px-3 py-2 text-sm text-slate-100 hover:bg-white/5"
+                className="inline-flex rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-stone-100"
               >
                 Review Mock Notes
               </Link>
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-slate-700">
                 No mock interview has been completed this week. Keep the cadence alive before live interviews.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Link
                   href="/mock-interviews"
-                  className="rounded-full bg-sky-400 px-3 py-2 text-sm font-medium text-slate-950"
+                  className="rounded-full bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-500"
                 >
                   Log Mock Interview
                 </Link>
@@ -684,7 +693,7 @@ function DashboardView() {
                       source_id: "dashboard-weekly-mock",
                     })
                   }
-                  className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
+                  className="rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-stone-100"
                 >
                   Create Mock Prep Action Item
                 </button>
@@ -699,18 +708,18 @@ function DashboardView() {
               openActionItems.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3"
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-3"
                 >
                   <div>
-                    <div className="text-sm font-medium text-white">{item.title}</div>
-                    <div className="text-xs text-slate-400">
+                    <div className="text-sm font-medium text-slate-900">{item.title}</div>
+                    <div className="text-xs text-slate-500">
                       {item.priority} · {getSourceSummary(data, item)}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => toggleActionItem(item.id)}
-                    className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5"
+                    className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
                   >
                     Check Off
                   </button>
@@ -728,19 +737,19 @@ function DashboardView() {
               value={brainDump.title}
               onChange={(event) => setBrainDump((current) => ({ ...current, title: event.target.value }))}
               placeholder="Quick title"
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500"
+              className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400"
             />
             <textarea
               value={brainDump.note}
               onChange={(event) => setBrainDump((current) => ({ ...current, note: event.target.value }))}
               placeholder="Write anything you do not want to lose..."
               rows={4}
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500"
+              className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400"
             />
             <select
               value={brainDump.category}
               onChange={(event) => setBrainDump((current) => ({ ...current, category: event.target.value }))}
-              className="w-full rounded-2xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none"
+              className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none"
             >
               {BRAIN_DUMP_CATEGORIES.map((category) => (
                 <option key={category} value={category}>
@@ -766,21 +775,21 @@ function DashboardView() {
                 });
                 setBrainDump({ title: "", note: "", category: "General" });
               }}
-              className="rounded-full bg-cyan-300 px-3 py-2 text-sm font-medium text-slate-950"
+              className="rounded-full bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500"
             >
               Save Brain Dump
             </button>
             <div className="space-y-2">
               {data.brainDumps.slice(0, 3).map((item) => (
-                <div key={item.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-sm font-medium text-white">{item.title}</div>
-                  <div className="text-xs text-slate-400">{item.category}</div>
-                  <div className="mt-2 text-sm text-slate-300">{item.note}</div>
+                <div key={item.id} className="rounded-2xl border border-stone-200 bg-stone-50 p-3">
+                  <div className="text-sm font-medium text-slate-900">{item.title}</div>
+                  <div className="text-xs text-slate-500">{item.category}</div>
+                  <div className="mt-2 text-sm text-slate-700">{item.note}</div>
                   <button
                     type="button"
                     onClick={() => convertBrainDumpToActionItem(item.id)}
                     disabled={Boolean(item.converted_action_item_id)}
-                    className="mt-3 rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5 disabled:opacity-40"
+                    className="mt-3 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100 disabled:opacity-40"
                   >
                     {item.converted_action_item_id ? "Converted" : "Convert to Action Item"}
                   </button>
@@ -801,15 +810,15 @@ function DashboardView() {
               className={cx(
                 "rounded-2xl border px-3 py-3 text-left transition",
                 selectedWeekDate === day.key
-                  ? "border-sky-300/40 bg-sky-400/10"
-                  : "border-white/10 bg-white/5 hover:bg-white/10",
+                  ? "border-sky-200 bg-sky-50 shadow-sm"
+                  : "border-stone-200 bg-stone-50 hover:bg-white",
               )}
             >
-              <div className="text-xs uppercase tracking-[0.18em] text-slate-400">
+              <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
                 {day.label}
               </div>
-              <div className="text-sm font-medium text-white">{day.dateLabel}</div>
-              <div className="mt-3 space-y-1 text-xs text-slate-300">
+              <div className="text-sm font-medium text-slate-900">{day.dateLabel}</div>
+              <div className="mt-3 space-y-1 text-xs text-slate-600">
                 <div>PAR: {day.parLogs.length ? "Completed" : "Open"}</div>
                 <div>Case: {day.caseLogs.length ? "Completed" : "Open"}</div>
                 <div>Networking: {day.followUps.length}</div>
@@ -821,13 +830,13 @@ function DashboardView() {
           ))}
         </div>
 
-        <div className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-4">
+        <div className="mt-5 rounded-3xl border border-stone-200 bg-stone-50 p-4">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium text-white">
+              <div className="text-sm font-medium text-slate-900">
                 {selectedDay.label} · {selectedDay.dateLabel}
               </div>
-              <div className="text-sm text-slate-400">
+              <div className="text-sm text-slate-500">
                 Click a day above to inspect and reschedule what is due.
               </div>
             </div>
@@ -835,9 +844,9 @@ function DashboardView() {
           <div className="grid gap-3 lg:grid-cols-2">
             {selectedDay.actionItems.length ? (
               selectedDay.actionItems.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-white/10 bg-slate-900/60 p-3">
-                  <div className="text-sm font-medium text-white">{item.title}</div>
-                  <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
+                <div key={item.id} className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
+                  <div className="text-sm font-medium text-slate-900">{item.title}</div>
+                  <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
                     <span>{item.priority}</span>
                     <span>{getSourceSummary(data, item)}</span>
                   </div>
@@ -845,7 +854,7 @@ function DashboardView() {
                     value={item.due_date}
                     onChange={(event) => rescheduleActionItem(item.id, event.target.value)}
                     type="date"
-                    className="mt-3 w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none"
+                    className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
                   />
                 </div>
               ))
@@ -889,7 +898,7 @@ function SettingsView() {
             ["weekly_networking_target", "Weekly networking touch target"],
           ].map(([key, label]) => (
             <label key={key} className="space-y-2">
-              <span className="text-sm text-slate-300">{label}</span>
+              <span className="text-sm font-medium text-slate-700">{label}</span>
               <input
                 value={draft[key as keyof typeof draft]}
                 onChange={(event) =>
@@ -899,7 +908,7 @@ function SettingsView() {
                   }))
                 }
                 type="number"
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none"
+                className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
               />
             </label>
           ))}
@@ -912,7 +921,7 @@ function SettingsView() {
             ["recruiting_tracks", "Editable recruiting tracks (one per line)"],
           ].map(([key, label]) => (
             <label key={key} className="space-y-2 lg:col-span-2">
-              <span className="text-sm text-slate-300">{label}</span>
+              <span className="text-sm font-medium text-slate-700">{label}</span>
               <textarea
                 value={draft[key as keyof typeof draft]}
                 onChange={(event) =>
@@ -922,7 +931,7 @@ function SettingsView() {
                   }))
                 }
                 rows={key === "preferred_target_roles" ? 2 : 4}
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none"
+                className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
               />
             </label>
           ))}
@@ -962,7 +971,7 @@ function SettingsView() {
                   .filter(Boolean),
               })
             }
-            className="rounded-full bg-sky-400 px-4 py-2 text-sm font-medium text-slate-950"
+            className="rounded-full bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500"
           >
             Save Settings
           </button>
@@ -987,11 +996,11 @@ function QuestionsSection() {
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
         <div className="space-y-3">
           {data.interviewQuestions.map((question) => (
-            <div key={question.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div key={question.id} className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-sm font-medium text-white">{question.question_text}</div>
-                  <div className="text-xs text-slate-400">{question.category || "General"}</div>
+                  <div className="text-sm font-medium text-slate-900">{sanitizeText(question.question_text)}</div>
+                  <div className="text-xs text-slate-500">{sanitizeText(question.category || "General")}</div>
                 </div>
                 <button
                   type="button"
@@ -1007,14 +1016,14 @@ function QuestionsSection() {
                     return (
                       <div
                         key={parId}
-                        className="rounded-2xl border border-white/5 bg-slate-900/60 px-3 py-2 text-sm text-slate-200"
+                        className="rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-700"
                       >
-                        {par.title}
+                        {sanitizeText(par.title)}
                       </div>
                     );
                   })
                 ) : (
-                  <div className="text-sm text-slate-400">No linked PAR stories yet.</div>
+                  <div className="text-sm text-slate-500">No linked PAR stories yet.</div>
                 )}
               </div>
               <div className="mt-3 flex gap-2">
@@ -1029,7 +1038,7 @@ function QuestionsSection() {
                       linked_par_story_ids: question.linked_par_story_ids,
                     })
                   }
-                  className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5"
+                  className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
                 >
                   Edit Question
                 </button>
@@ -1040,7 +1049,7 @@ function QuestionsSection() {
                       deleteInterviewQuestion(question.id);
                     }
                   }}
-                  className="rounded-full border border-rose-400/20 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-400/10"
+                  className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
                 >
                   Delete
                 </button>
@@ -1048,8 +1057,8 @@ function QuestionsSection() {
             </div>
           ))}
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="mb-4 text-sm font-medium text-white">Add or update question</div>
+        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+          <div className="mb-4 text-sm font-medium text-slate-900">Add or update question</div>
           <div className="space-y-3">
             <input
               value={draft.question_text}
@@ -1057,7 +1066,7 @@ function QuestionsSection() {
                 setDraft((current) => ({ ...current, question_text: event.target.value }))
               }
               placeholder="Question text"
-              className="w-full rounded-2xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none"
+              className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300"
             />
             <input
               value={draft.category}
@@ -1065,7 +1074,7 @@ function QuestionsSection() {
                 setDraft((current) => ({ ...current, category: event.target.value }))
               }
               placeholder="Category"
-              className="w-full rounded-2xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none"
+              className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300"
             />
             <textarea
               value={draft.notes}
@@ -1074,7 +1083,7 @@ function QuestionsSection() {
               }
               rows={3}
               placeholder="Notes"
-              className="w-full rounded-2xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none"
+              className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300"
             />
             <select
               multiple
@@ -1087,7 +1096,7 @@ function QuestionsSection() {
                   ).map((option) => option.value),
                 }))
               }
-              className="min-h-28 w-full rounded-2xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none"
+              className="min-h-28 w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300"
             >
               {data.parStories.map((par) => (
                 <option key={par.id} value={par.id}>
@@ -1114,7 +1123,7 @@ function QuestionsSection() {
                   linked_par_story_ids: [],
                 });
               }}
-              className="rounded-full bg-sky-400 px-3 py-2 text-sm font-medium text-slate-950"
+              className="rounded-full bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500"
             >
               Save Question
             </button>
@@ -1143,8 +1152,8 @@ function ActionItemsFilters({
             className={cx(
               "rounded-full border px-3 py-1.5 text-xs transition",
               active === view
-                ? "border-sky-300/40 bg-sky-400/10 text-white"
-                : "border-white/10 text-slate-300 hover:bg-white/5",
+                ? "border-sky-200 bg-sky-50 text-sky-700"
+                : "border-stone-200 bg-white text-slate-600 hover:bg-stone-100",
             )}
           >
             {view}
@@ -1193,19 +1202,19 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
               setEditing(null);
               setModalOpen(true);
             }}
-            className="rounded-full bg-sky-400 px-4 py-2 text-sm font-medium text-slate-950"
+            className="rounded-full bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
           >
             Add {config.singular}
           </button>
         }
       >
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <p className="max-w-2xl text-sm text-slate-400">{config.description}</p>
+          <p className="max-w-2xl text-sm leading-6 text-slate-600">{config.description}</p>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={`Search ${config.title.toLowerCase()}...`}
-            className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500"
+            className="w-full max-w-md rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
           />
         </div>
         {slug === "action-items" ? (
@@ -1221,21 +1230,21 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                   {config.columns.map((column) => (
                     <th
                       key={column.key}
-                      className="px-3 py-2 text-left text-xs uppercase tracking-[0.18em] text-slate-400"
+                      className="px-3 py-2 text-left text-xs uppercase tracking-[0.18em] text-slate-500"
                     >
                       {column.label}
                     </th>
                   ))}
-                  <th className="px-3 py-2 text-right text-xs uppercase tracking-[0.18em] text-slate-400">
+                  <th className="px-3 py-2 text-right text-xs uppercase tracking-[0.18em] text-slate-500">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((record) => (
-                  <tr key={String(record.id)} className="rounded-2xl bg-white/5">
+                  <tr key={String(record.id)} className="rounded-2xl bg-stone-50 shadow-[0_1px_0_rgba(231,229,228,1)]">
                     {config.columns.map((column) => (
-                      <td key={column.key} className="px-3 py-3 text-sm text-slate-200">
+                      <td key={column.key} className="px-3 py-3.5 text-sm text-slate-700">
                         {["status", "priority", "target_category", "referral_status", "prep_status"].includes(column.key) ||
                         typeof record[column.key] === "boolean" ? (
                           <StatusBadge value={record[column.key] as string} />
@@ -1250,7 +1259,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                           <button
                             type="button"
                             onClick={() => logParPractice(String(record.id))}
-                            className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5"
+                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
                           >
                             Practice
                           </button>
@@ -1259,7 +1268,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                           <button
                             type="button"
                             onClick={() => markCasePracticed(String(record.id))}
-                            className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5"
+                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
                           >
                             Mark Practiced
                           </button>
@@ -1268,7 +1277,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                           <button
                             type="button"
                             onClick={() => markInterviewAnswerPracticed(String(record.id))}
-                            className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5"
+                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
                           >
                             Practice
                           </button>
@@ -1277,7 +1286,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                           <button
                             type="button"
                             onClick={() => markFollowUpDone(String(record.id))}
-                            className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5"
+                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
                           >
                             Follow-Up Done
                           </button>
@@ -1286,7 +1295,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                           <button
                             type="button"
                             onClick={() => toggleActionItem(String(record.id))}
-                            className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5"
+                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
                           >
                             {(record.status as string) === "Done" ? "Reopen" : "Check Off"}
                           </button>
@@ -1331,7 +1340,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                                 });
                               }
                             }}
-                            className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5"
+                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
                           >
                             Add Action
                           </button>
@@ -1342,7 +1351,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                             setEditing(record);
                             setModalOpen(true);
                           }}
-                          className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5"
+                          className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
                         >
                           Edit
                         </button>
@@ -1353,7 +1362,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                               deleteRecord(slug, String(record.id));
                             }
                           }}
-                          className="rounded-full border border-rose-400/20 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-400/10"
+                          className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
                         >
                           Delete
                         </button>

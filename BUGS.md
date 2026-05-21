@@ -28,9 +28,83 @@ Last updated: 2026-05-21
 
 ## Open Issues
 
-No active implementation bugs are currently tracked after the initial scaffold-hardening pass. Remaining work is captured in Implementation Gaps below.
+### BUG-005: Supabase schema ID types are incompatible with frontend seed and runtime records
+- Status: Fixed
+- Severity: Critical
+- Module: Data Layer
+- Fixed date: 2026-05-21
+- Description: The current schema uses `uuid` primary/foreign keys, while the app currently generates and seeds string IDs such as `company-oracle` and `application-adobe`.
+- Fix summary: Reworked the Supabase schema to use text IDs that match the seeded frontend records and added a Supabase-backed repository/provider flow that seeds empty databases and persists linked module data.
+- Files changed: `supabase/schema.sql`, `src/lib/recruitos-repository.ts`, `src/lib/recruitos-store.tsx`
+- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
+- Notes: The app now uses Supabase as the primary runtime store whenever env vars are present, with local fallback only when Supabase is unavailable.
+
+### BUG-006: Multiple UI labels render with mojibake characters instead of clean punctuation
+- Status: In Progress
+- Severity: Medium
+- Module: UI
+- Discovered: 2026-05-21
+- Description: Several labels show characters like `â€”`, `Â·`, and `â€™` instead of em dashes, middots, and apostrophes.
+- Expected behavior: All labels and summaries should render clean ASCII/Unicode punctuation consistently.
+- Actual behavior: Visible text artifacts make the UI feel broken and reduce readability.
+- Reproduction steps: Inspect dashboard cards and summary strings in the current deployed UI.
+- Suspected cause: Text encoding artifacts were introduced while patching strings.
+- Files likely involved: `src/lib/recruitos.ts`, `src/components/recruitos/module-view.tsx`
+- Fix plan: Normalize the affected strings and replace fragile punctuation with safe, consistent rendering.
+- Verification steps: Run the app and visually confirm cleaned labels in dashboard, tables, and helper text.
+- Files changed:
+- Notes:
+
+### BUG-007: Dashboard card internals and action rows are visually misaligned
+- Status: In Progress
+- Severity: Medium
+- Module: Dashboard UI
+- Discovered: 2026-05-21
+- Description: Paired dashboard cards do not align well because headings, support text, and action rows have inconsistent heights and wrapping behavior.
+- Expected behavior: Top cards should align to a shared internal structure with stable button placement.
+- Actual behavior: Cards feel disorganized and visually uneven, especially across adjacent modules.
+- Reproduction steps: Open the dashboard and compare the PAR and Case cards.
+- Suspected cause: Cards currently use freeform stacked content instead of a shared internal grid/flex structure.
+- Files likely involved: `src/components/recruitos/module-view.tsx`, `src/components/recruitos/app-shell.tsx`, `src/app/globals.css`
+- Fix plan: Introduce a cleaner light card system with consistent content regions and button sizing.
+- Verification steps: Check desktop and tablet layouts to confirm paired cards align cleanly.
+- Files changed:
+- Notes:
 
 ## Fixed Issues
+
+### BUG-005: Supabase schema ID types are incompatible with frontend seed and runtime records
+- Status: Fixed
+- Severity: Critical
+- Module: Data Layer
+- Fixed date: 2026-05-21
+- Description: The original Supabase schema used `uuid` keys while the app generates stable string IDs for seeded and runtime records.
+- Fix summary: Reworked the schema to use text IDs and added a Supabase-backed repository/provider path that seeds empty databases and persists the existing linked record model.
+- Files changed: `supabase/schema.sql`, `src/lib/recruitos-repository.ts`, `src/lib/recruitos-store.tsx`
+- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
+- Notes: Supabase is now the primary persistence mode whenever environment variables are configured.
+
+### BUG-008: Repository sync layer uses explicit `any` casts that fail lint
+- Status: Fixed
+- Severity: High
+- Module: Data Layer
+- Fixed date: 2026-05-21
+- Description: The first repository implementation used temporary `any` casts around Supabase transport methods, which violated lint rules.
+- Fix summary: Replaced the loose casts with a narrow transport interface/helper and retained typed collection normalization around the repository edges.
+- Files changed: `src/lib/recruitos-repository.ts`
+- Verification performed: `npm run lint`, `npm run typecheck`
+- Notes: The repository now passes lint without disabling rules.
+
+### BUG-009: Production build can fail because a stale `.next` artifact is locked on disk
+- Status: Fixed
+- Severity: Medium
+- Module: Build
+- Fixed date: 2026-05-21
+- Description: `next build` failed with `EPERM` while unlinking a stale file under `.next\\static`.
+- Fix summary: Cleared the stale build output and reran the production build from a clean output directory.
+- Files changed: `.next/` build output
+- Verification performed: `npm run build`
+- Notes: This was an environment/build-artifact issue, not an application code regression.
 
 ### BUG-001: Local validation scripts were not reliable after the initial scaffold move
 - Status: Fixed
@@ -80,15 +154,15 @@ No active implementation bugs are currently tracked after the initial scaffold-h
 
 ### GAP-001: Live Supabase persistence is scaffolded but not yet wired end-to-end
 - Status: Open
-- Severity: High
+- Severity: Medium
 - Module: Data Layer
 - PRD requirement: Use Supabase for the database and preserve app relationships in deployed use.
-- Current state: The app ships with a typed local-first store, seed data, `.env.example`, a lazy Supabase client helper, and `supabase/schema.sql`, but the runtime still persists to browser localStorage.
-- Desired state: CRUD and relational syncing should read/write to Supabase with environment variables configured for local and Vercel use.
-- Fix plan: Add a Supabase-backed repository layer, migrate seeded entities into tables, and switch the provider from localStorage to remote persistence with optimistic UI where useful.
-- Verification steps: Configure env vars, run CRUD flows across modules, confirm persistence after refresh and across browsers, then rerun `lint`, `typecheck`, and `build`.
+- Current state: The runtime now uses a Supabase-backed repository/provider flow and seeds empty databases, but the deployed project still needs production Supabase environment variables and a live database rollout.
+- Desired state: Production and local environments should both point at the real Supabase project so all CRUD and relationship syncing happen in the cloud by default.
+- Fix plan: Add the real Supabase env vars in Vercel and local `.env.local`, apply the schema to the target project, and verify CRUD across multiple sessions/devices.
+- Verification steps: Configure env vars, apply `supabase/schema.sql`, run CRUD flows across modules, confirm persistence after refresh and across browsers, then rerun `lint`, `typecheck`, and `build`.
 - Files changed:
-- Notes: This is the main remaining product gap before calling the stack fully Supabase-backed.
+- Notes: The remaining work is deployment/configuration rather than missing application architecture.
 
 ### GAP-002: GitHub/Vercel publishing is prepared locally but not fully completed
 - Status: Needs Clarification
