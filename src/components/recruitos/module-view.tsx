@@ -35,12 +35,12 @@ function cx(...values: Array<string | false | null | undefined>) {
 
 function buttonClassName(tone: "primary" | "secondary" | "quiet" = "secondary") {
   if (tone === "primary") {
-    return "inline-flex h-10 items-center justify-center rounded-full bg-gradient-to-r from-teal-600 to-sky-600 px-4 text-sm font-medium text-white shadow-[0_10px_24px_rgba(8,145,178,0.22)] transition hover:from-teal-500 hover:to-sky-500 disabled:cursor-not-allowed disabled:opacity-60";
+    return "inline-flex h-10 items-center justify-center rounded-full bg-[#314c46] px-4 text-sm font-medium text-white shadow-[0_10px_24px_rgba(49,76,70,0.18)] transition hover:bg-[#27403b] disabled:cursor-not-allowed disabled:opacity-60";
   }
   if (tone === "quiet") {
     return "inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-medium text-slate-600 transition hover:bg-stone-100 hover:text-slate-900";
   }
-  return "inline-flex h-10 items-center justify-center rounded-full border border-stone-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-stone-100";
+  return "inline-flex h-10 items-center justify-center rounded-full border border-stone-200 bg-[#fffaf4] px-4 text-sm font-medium text-slate-700 transition hover:bg-[#f3eadf]";
 }
 
 function sanitizeText(value: string) {
@@ -83,7 +83,7 @@ function ProgressBar({ value, label }: { value: number; label: string }) {
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-stone-200">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-teal-500 to-sky-500"
+          className="h-full rounded-full bg-gradient-to-r from-[#314c46] via-[#5f7467] to-[#b97557]"
           style={{ width: `${value}%` }}
         />
       </div>
@@ -101,14 +101,11 @@ function Card({
   actions?: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[30px] border border-stone-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(249,248,244,0.92))] p-5 shadow-[0_18px_48px_rgba(15,23,42,0.07)]">
+    <section className="rounded-[30px] border border-stone-200 bg-[linear-gradient(180deg,rgba(255,251,245,0.96),rgba(245,238,229,0.92))] p-5 shadow-[0_18px_48px_rgba(45,35,26,0.07)]">
       <div className="mb-4 flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-            Workspace
-          </p>
-          <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        </div>
+        <h2 className="text-[1.2rem] font-semibold text-slate-900 [font-family:var(--font-display)]">
+          {title}
+        </h2>
         {actions}
       </div>
       {children}
@@ -160,7 +157,7 @@ function FieldInput({
         value={String(value ?? "")}
         onChange={(event) => onChange(event.target.value)}
         rows={4}
-        className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+        className="w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557] focus:bg-white"
       />
     );
   }
@@ -170,7 +167,7 @@ function FieldInput({
       <select
         value={String(value ?? "")}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+        className="w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#b97557] focus:bg-white"
       >
         <option value="">Select...</option>
         {options.map((option) => (
@@ -191,7 +188,7 @@ function FieldInput({
         onChange={(event) =>
           onChange(Array.from(event.currentTarget.selectedOptions).map((option) => option.value))
         }
-        className="min-h-28 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+        className="min-h-28 w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#b97557] focus:bg-white"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -225,7 +222,7 @@ function FieldInput({
       type={field.type === "number" ? "number" : field.type}
       min={field.min}
       max={field.max}
-      className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+      className="w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557] focus:bg-white"
     />
   );
 }
@@ -261,7 +258,7 @@ function RecordModal({
       <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[32px] border border-stone-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,248,244,0.98))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
         <div className="mb-5 flex items-center justify-between gap-4">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#6d5a48]">
               {config.title}
             </p>
             <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
@@ -301,7 +298,7 @@ function RecordModal({
         </div>
 
         {module === "resumes" ? (
-          <div className="mt-4 rounded-[24px] border border-dashed border-sky-200 bg-sky-50/70 p-4">
+          <div className="mt-4 rounded-[24px] border border-dashed border-[#d8c7b1] bg-[#f6efe6] p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-1">
                 <div className="text-sm font-medium text-slate-900">Resume PDF Upload</div>
@@ -542,7 +539,7 @@ function DashboardView() {
                     <button
                       type="button"
                       onClick={() => logParPractice(parSuggestion.id, "Daily dashboard practice")}
-                      className="inline-flex h-11 items-center rounded-full bg-teal-600 px-4 text-sm font-medium text-white hover:bg-teal-500"
+                      className="inline-flex h-11 items-center rounded-full bg-[#314c46] px-4 text-sm font-medium text-white hover:bg-[#27403b]"
                     >
                       Mark Complete
                     </button>
@@ -582,7 +579,7 @@ function DashboardView() {
                     <button
                       type="button"
                       onClick={() => markCasePracticed(caseSuggestion.id)}
-                      className="inline-flex h-11 items-center rounded-full bg-sky-600 px-4 text-sm font-medium text-white hover:bg-sky-500"
+                      className="inline-flex h-11 items-center rounded-full bg-[#8d6b57] px-4 text-sm font-medium text-white hover:bg-[#7f5f4d]"
                     >
                       Mark Complete
                     </button>
@@ -681,7 +678,7 @@ function DashboardView() {
                     <button
                       type="button"
                       onClick={() => markFollowUpDone(contact.id)}
-                      className="rounded-full bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-500"
+                      className="rounded-full bg-[#314c46] px-3 py-2 text-sm font-medium text-white hover:bg-[#27403b]"
                     >
                       Mark Follow-Up Done
                     </button>
@@ -741,7 +738,7 @@ function DashboardView() {
                     <button
                       type="button"
                       onClick={() => markApplicationActionDone(application.id)}
-                      className="rounded-full bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500"
+                      className="rounded-full bg-[#8d6b57] px-3 py-2 text-sm font-medium text-white hover:bg-[#7f5f4d]"
                     >
                       Mark Action Complete
                     </button>
@@ -790,7 +787,7 @@ function DashboardView() {
               <div className="flex flex-wrap gap-2">
                 <Link
                   href="/mock-interviews"
-                  className="rounded-full bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-500"
+                  className="rounded-full bg-[#314c46] px-3 py-2 text-sm font-medium text-white hover:bg-[#27403b]"
                 >
                   Log Mock Interview
                 </Link>
@@ -885,7 +882,7 @@ function DashboardView() {
                 });
                 setBrainDump({ title: "", note: "", category: "General" });
               }}
-              className="rounded-full bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500"
+              className="rounded-full bg-[#8d6b57] px-3 py-2 text-sm font-medium text-white hover:bg-[#7f5f4d]"
             >
               Save Brain Dump
             </button>
@@ -920,8 +917,8 @@ function DashboardView() {
               className={cx(
                 "rounded-2xl border px-3 py-3 text-left transition",
                 selectedWeekDate === day.key
-                  ? "border-sky-200 bg-sky-50 shadow-sm"
-                  : "border-stone-200 bg-stone-50 hover:bg-white",
+                  ? "border-[#d8c7b1] bg-[#f3eadf] shadow-sm"
+                  : "border-stone-200 bg-[#fbf7f1] hover:bg-white",
               )}
             >
               <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
@@ -964,7 +961,7 @@ function DashboardView() {
                     value={item.due_date}
                     onChange={(event) => rescheduleActionItem(item.id, event.target.value)}
                     type="date"
-                    className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+                    className="mt-3 w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#b97557] focus:bg-white"
                   />
                 </div>
               ))
@@ -1018,7 +1015,7 @@ function SettingsView() {
                   }))
                 }
                 type="number"
-                className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                className="w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557] focus:bg-white"
               />
             </label>
           ))}
@@ -1041,7 +1038,7 @@ function SettingsView() {
                   }))
                 }
                 rows={key === "preferred_target_roles" ? 2 : 4}
-                className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                className="w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557] focus:bg-white"
               />
             </label>
           ))}
@@ -1081,7 +1078,7 @@ function SettingsView() {
                   .filter(Boolean),
               })
             }
-            className="rounded-full bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500"
+            className="rounded-full bg-[#314c46] px-4 py-2 text-sm font-medium text-white hover:bg-[#27403b]"
           >
             Save Settings
           </button>
@@ -1176,7 +1173,7 @@ function QuestionsSection() {
                 setDraft((current) => ({ ...current, question_text: event.target.value }))
               }
               placeholder="Question text"
-              className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300"
+              className="w-full rounded-2xl border border-stone-200 bg-[#fffaf4] px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557]"
             />
             <input
               value={draft.category}
@@ -1184,7 +1181,7 @@ function QuestionsSection() {
                 setDraft((current) => ({ ...current, category: event.target.value }))
               }
               placeholder="Category"
-              className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300"
+              className="w-full rounded-2xl border border-stone-200 bg-[#fffaf4] px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557]"
             />
             <textarea
               value={draft.notes}
@@ -1193,7 +1190,7 @@ function QuestionsSection() {
               }
               rows={3}
               placeholder="Notes"
-              className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300"
+              className="w-full rounded-2xl border border-stone-200 bg-[#fffaf4] px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557]"
             />
             <select
               multiple
@@ -1206,7 +1203,7 @@ function QuestionsSection() {
                   ).map((option) => option.value),
                 }))
               }
-              className="min-h-28 w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300"
+              className="min-h-28 w-full rounded-2xl border border-stone-200 bg-[#fffaf4] px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#b97557]"
             >
               {data.parStories.map((par) => (
                 <option key={par.id} value={par.id}>
@@ -1233,7 +1230,7 @@ function QuestionsSection() {
                   linked_par_story_ids: [],
                 });
               }}
-              className="rounded-full bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500"
+              className="rounded-full bg-[#8d6b57] px-3 py-2 text-sm font-medium text-white hover:bg-[#7f5f4d]"
             >
               Save Question
             </button>
@@ -1262,8 +1259,8 @@ function ActionItemsFilters({
             className={cx(
               "rounded-full border px-3 py-1.5 text-xs transition",
               active === view
-                ? "border-sky-200 bg-sky-50 text-sky-700"
-                : "border-stone-200 bg-white text-slate-600 hover:bg-stone-100",
+                ? "border-[#d8c7b1] bg-[#f3eadf] text-[#6d5a48]"
+                : "border-stone-200 bg-white text-slate-600 hover:bg-[#f4ecdf]",
             )}
           >
             {view}
@@ -1312,7 +1309,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
               setEditing(null);
               setModalOpen(true);
             }}
-            className="rounded-full bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+            className="rounded-full bg-[#8d6b57] px-4 py-2 text-sm font-medium text-white hover:bg-[#7f5f4d]"
           >
             Add {config.singular}
           </button>
@@ -1324,7 +1321,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={`Search ${config.title.toLowerCase()}...`}
-            className="w-full max-w-md rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+            className="w-full max-w-md rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557] focus:bg-white"
           />
         </div>
         {slug === "action-items" ? (
