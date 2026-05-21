@@ -35,12 +35,12 @@ function cx(...values: Array<string | false | null | undefined>) {
 
 function buttonClassName(tone: "primary" | "secondary" | "quiet" = "secondary") {
   if (tone === "primary") {
-    return "inline-flex h-10 items-center justify-center rounded-full bg-[#314c46] px-4 text-sm font-medium text-white shadow-[0_10px_24px_rgba(49,76,70,0.18)] transition hover:bg-[#27403b] disabled:cursor-not-allowed disabled:opacity-60";
+    return "inline-flex h-9 items-center justify-center rounded-full bg-[#314c46] px-3.5 text-sm font-medium text-white shadow-[0_8px_18px_rgba(49,76,70,0.16)] transition hover:bg-[#27403b] disabled:cursor-not-allowed disabled:opacity-60";
   }
   if (tone === "quiet") {
-    return "inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-medium text-slate-600 transition hover:bg-stone-100 hover:text-slate-900";
+    return "inline-flex h-9 items-center justify-center rounded-full px-3.5 text-sm font-medium text-slate-600 transition hover:bg-stone-100 hover:text-slate-900";
   }
-  return "inline-flex h-10 items-center justify-center rounded-full border border-stone-200 bg-[#fffaf4] px-4 text-sm font-medium text-slate-700 transition hover:bg-[#f3eadf]";
+  return "inline-flex h-9 items-center justify-center rounded-full border border-stone-200 bg-[#fffaf4] px-3.5 text-sm font-medium text-slate-700 transition hover:bg-[#f3eadf]";
 }
 
 function sanitizeText(value: string) {
@@ -517,36 +517,36 @@ function DashboardView() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)]">
         <Card title="Today’s Command Center">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex h-full flex-col rounded-3xl border border-stone-200 bg-stone-50 p-5">
+            <div className="flex h-full flex-col rounded-[28px] border border-stone-200 bg-[#fbf7f1] p-5">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Assigned PAR Practice
               </div>
               {parSuggestion ? (
-                <div className="mt-4 flex h-full flex-col">
-                  <div className="space-y-3">
-                    <h3 className="min-h-[3.5rem] text-xl font-semibold leading-tight text-slate-900">{parSuggestion.title}</h3>
-                    <p className="min-h-[3.5rem] text-sm leading-6 text-slate-600">
+                <div className="mt-3 flex h-full flex-col">
+                  <div className="space-y-2.5">
+                    <h3 className="min-h-[3rem] text-[1.65rem] leading-[1.08] font-semibold text-slate-900 [font-family:var(--font-display)]">{parSuggestion.title}</h3>
+                    <p className="min-h-[3rem] text-sm leading-5 text-slate-600">
                       Prompt: Tell me about a time you influenced without authority.
                     </p>
-                    <p className="min-h-[3.5rem] text-sm leading-6 text-slate-700">
+                    <p className="min-h-[3rem] text-sm leading-5 text-slate-700">
                       Focus: {parSuggestion.weakness_or_focus_area || "Sharpen structure and confidence."}
                     </p>
                   </div>
-                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-5">
-                    <Link href="/pars" className="inline-flex h-11 items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-stone-100">
+                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
+                    <Link href="/pars" className="inline-flex h-9 items-center rounded-full border border-stone-300 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-stone-100">
                       Start Practice
                     </Link>
                     <button
                       type="button"
                       onClick={() => logParPractice(parSuggestion.id, "Daily dashboard practice")}
-                      className="inline-flex h-11 items-center rounded-full bg-[#314c46] px-4 text-sm font-medium text-white hover:bg-[#27403b]"
+                       className="inline-flex h-9 items-center rounded-full bg-[#314c46] px-3.5 text-sm font-medium text-white hover:bg-[#27403b]"
                     >
                       Mark Complete
                     </button>
                     <button
                       type="button"
                       onClick={() => setParIndex((current) => current + 1)}
-                      className="inline-flex h-11 items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-stone-100"
+                       className="inline-flex h-9 items-center rounded-full border border-stone-300 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-stone-100"
                     >
                       Change Assigned PAR
                     </button>
@@ -557,36 +557,36 @@ function DashboardView() {
               )}
             </div>
 
-            <div className="flex h-full flex-col rounded-3xl border border-stone-200 bg-stone-50 p-5">
+            <div className="flex h-full flex-col rounded-[28px] border border-stone-200 bg-[#fbf7f1] p-5">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Assigned Case Practice
               </div>
               {caseSuggestion ? (
-                <div className="mt-4 flex h-full flex-col">
-                  <div className="space-y-3">
-                    <h3 className="min-h-[3.5rem] text-xl font-semibold leading-tight text-slate-900">{caseSuggestion.title}</h3>
-                    <p className="min-h-[3.5rem] text-sm leading-6 text-slate-600">
+                <div className="mt-3 flex h-full flex-col">
+                  <div className="space-y-2.5">
+                    <h3 className="min-h-[3rem] text-[1.65rem] leading-[1.08] font-semibold text-slate-900 [font-family:var(--font-display)]">{caseSuggestion.title}</h3>
+                    <p className="min-h-[3rem] text-sm leading-5 text-slate-600">
                       Focus area: {caseSuggestion.weakness_area || "Keep sharp under time pressure."}
                     </p>
-                    <p className="min-h-[3.5rem] text-sm leading-6 text-slate-700">
+                    <p className="min-h-[3rem] text-sm leading-5 text-slate-700">
                       Suggested session: {caseSuggestion.case_type}
                     </p>
                   </div>
-                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-5">
-                    <Link href="/cases" className="inline-flex h-11 items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-stone-100">
+                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
+                    <Link href="/cases" className="inline-flex h-9 items-center rounded-full border border-stone-300 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-stone-100">
                       Start Case
                     </Link>
                     <button
                       type="button"
                       onClick={() => markCasePracticed(caseSuggestion.id)}
-                      className="inline-flex h-11 items-center rounded-full bg-[#8d6b57] px-4 text-sm font-medium text-white hover:bg-[#7f5f4d]"
+                       className="inline-flex h-9 items-center rounded-full bg-[#8d6b57] px-3.5 text-sm font-medium text-white hover:bg-[#7f5f4d]"
                     >
                       Mark Complete
                     </button>
                     <button
                       type="button"
                       onClick={() => setCaseIndex((current) => current + 1)}
-                      className="inline-flex h-11 items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-stone-100"
+                       className="inline-flex h-9 items-center rounded-full border border-stone-300 bg-white px-3.5 text-sm font-medium text-slate-700 hover:bg-stone-100"
                     >
                       Change Assigned Case
                     </button>
