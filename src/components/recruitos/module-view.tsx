@@ -35,12 +35,12 @@ function cx(...values: Array<string | false | null | undefined>) {
 
 function buttonClassName(tone: "primary" | "secondary" | "quiet" = "secondary") {
   if (tone === "primary") {
-    return "inline-flex h-10 items-center justify-center rounded-full bg-[#314c46] px-4 text-sm font-medium text-white shadow-[0_10px_24px_rgba(49,76,70,0.18)] transition hover:bg-[#27403b] disabled:cursor-not-allowed disabled:opacity-60";
+    return "inline-flex h-10 items-center justify-center rounded-full bg-teal-600 px-4 text-sm font-medium text-white shadow-[0_10px_24px_rgba(13,148,136,0.18)] transition hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-60";
   }
   if (tone === "quiet") {
     return "inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-medium text-slate-600 transition hover:bg-stone-100 hover:text-slate-900";
   }
-  return "inline-flex h-10 items-center justify-center rounded-full border border-stone-200 bg-[#fffaf4] px-4 text-sm font-medium text-slate-700 transition hover:bg-[#f3eadf]";
+  return "inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100";
 }
 
 function sanitizeText(value: string) {
@@ -83,7 +83,7 @@ function ProgressBar({ value, label }: { value: number; label: string }) {
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-stone-200">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-[#314c46] via-[#5f7467] to-[#b97557]"
+          className="h-full rounded-full bg-gradient-to-r from-teal-500 to-sky-500"
           style={{ width: `${value}%` }}
         />
       </div>
@@ -101,7 +101,7 @@ function Card({
   actions?: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[30px] border border-stone-200 bg-[linear-gradient(180deg,rgba(255,251,245,0.96),rgba(245,238,229,0.92))] p-5 shadow-[0_18px_48px_rgba(45,35,26,0.07)]">
+    <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,251,252,0.92))] p-5 shadow-[0_18px_48px_rgba(15,23,42,0.07)]">
       <div className="mb-4 flex items-start justify-between gap-4">
         <h2 className="text-[1.2rem] font-semibold text-slate-900 [font-family:var(--font-display)]">
           {title}
@@ -157,7 +157,7 @@ function FieldInput({
         value={String(value ?? "")}
         onChange={(event) => onChange(event.target.value)}
         rows={4}
-        className="w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557] focus:bg-white"
+        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
       />
     );
   }
@@ -167,7 +167,7 @@ function FieldInput({
       <select
         value={String(value ?? "")}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#b97557] focus:bg-white"
+        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
       >
         <option value="">Select...</option>
         {options.map((option) => (
@@ -188,7 +188,7 @@ function FieldInput({
         onChange={(event) =>
           onChange(Array.from(event.currentTarget.selectedOptions).map((option) => option.value))
         }
-        className="min-h-28 w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#b97557] focus:bg-white"
+        className="min-h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -222,7 +222,7 @@ function FieldInput({
       type={field.type === "number" ? "number" : field.type}
       min={field.min}
       max={field.max}
-      className="w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557] focus:bg-white"
+      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
     />
   );
 }
@@ -255,7 +255,7 @@ function RecordModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[32px] border border-stone-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,248,244,0.98))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,252,0.98))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
         <div className="mb-5 flex items-center justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#6d5a48]">
