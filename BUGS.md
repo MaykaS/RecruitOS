@@ -73,6 +73,17 @@ Last updated: 2026-05-21
 
 ## Fixed Issues
 
+### BUG-010: Resume versions cannot upload PDF files directly into RecruitOS
+- Status: Fixed
+- Severity: Medium
+- Module: Resumes
+- Fixed date: 2026-05-21
+- Description: Resume versions only supported a manual `file_link` field, which made attaching real resume PDFs clunky.
+- Fix summary: Added a Supabase Storage upload helper, wired PDF upload into the Resume Version modal, saved the returned public link into `file_link`, and added an `Open PDF` action in the resume table.
+- Files changed: `src/lib/supabase/storage.ts`, `src/components/recruitos/module-view.tsx`, `src/lib/recruitos.ts`, `.env.example`
+- Verification performed: `npm run lint`, `npm run typecheck`, `npm run build`
+- Notes: Requires a Supabase Storage bucket named `resume-files` or a custom `NEXT_PUBLIC_SUPABASE_RESUME_BUCKET` value.
+
 ### BUG-005: Supabase schema ID types are incompatible with frontend seed and runtime records
 - Status: Fixed
 - Severity: Critical

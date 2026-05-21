@@ -1728,7 +1728,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
     fields: [
       { key: "name", label: "Name", type: "text" },
       { key: "target_role", label: "Target role", type: "select", options: ["PM", "TPM", "Product Strategy", "AI/Enterprise Software", "Consulting/Strategy", "General"] },
-      { key: "file_link", label: "File link", type: "text" },
+      { key: "file_link", label: "Resume PDF link", type: "text" },
       { key: "last_updated_date", label: "Last updated", type: "date" },
       { key: "positioning", label: "Positioning", type: "textarea" },
       { key: "notes", label: "Notes", type: "textarea" },

@@ -26,10 +26,21 @@ import {
   startOfWeek,
   toDateInput,
 } from "@/lib/recruitos";
+import { RESUME_BUCKET, uploadResumePdf } from "@/lib/supabase/storage";
 import { useRecruitOS } from "@/lib/recruitos-store";
 
 function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
+}
+
+function buttonClassName(tone: "primary" | "secondary" | "quiet" = "secondary") {
+  if (tone === "primary") {
+    return "inline-flex h-10 items-center justify-center rounded-full bg-gradient-to-r from-teal-600 to-sky-600 px-4 text-sm font-medium text-white shadow-[0_10px_24px_rgba(8,145,178,0.22)] transition hover:from-teal-500 hover:to-sky-500 disabled:cursor-not-allowed disabled:opacity-60";
+  }
+  if (tone === "quiet") {
+    return "inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-medium text-slate-600 transition hover:bg-stone-100 hover:text-slate-900";
+  }
+  return "inline-flex h-10 items-center justify-center rounded-full border border-stone-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-stone-100";
 }
 
 function sanitizeText(value: string) {
@@ -90,9 +101,14 @@ function Card({
   actions?: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[28px] border border-stone-200 bg-white/88 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.07)]">
+    <section className="rounded-[30px] border border-stone-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(249,248,244,0.92))] p-5 shadow-[0_18px_48px_rgba(15,23,42,0.07)]">
       <div className="mb-4 flex items-start justify-between gap-4">
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+            Workspace
+          </p>
+          <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+        </div>
         {actions}
       </div>
       {children}
@@ -111,18 +127,18 @@ function EmptyState({ label }: { label: string }) {
 function renderValue(value: unknown) {
   if (Array.isArray(value)) {
     if (!value.length) return "—";
-    return joinList(value.map((item) => String(item)));
+    return sanitizeText(joinList(value.map((item) => String(item))));
   }
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "number") return String(value);
   if (!value) return "—";
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
-    return formatDateTime(value);
+    return sanitizeText(formatDateTime(value));
   }
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return formatDate(value);
+    return sanitizeText(formatDate(value));
   }
-  return String(value);
+  return sanitizeText(String(value));
 }
 
 function FieldInput({
@@ -230,6 +246,8 @@ function RecordModal({
   const { data, saveRecord, toggleActionItem } = useRecruitOS();
   const config = MODULE_CONFIGS[module];
   const [form, setForm] = useState<Record<string, unknown>>(initial ?? config.defaultValues);
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   if (!open) return null;
 
@@ -240,16 +258,19 @@ function RecordModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[32px] border border-stone-200 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[32px] border border-stone-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,248,244,0.98))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
         <div className="mb-5 flex items-center justify-between gap-4">
           <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">
+              {config.title}
+            </p>
             <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
             <p className="text-sm text-slate-600">{config.description}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-stone-200 px-3 py-2 text-sm text-slate-600 hover:bg-stone-50"
+            className={buttonClassName("secondary")}
           >
             Close
           </button>
@@ -257,7 +278,15 @@ function RecordModal({
 
         <div className="grid gap-4 lg:grid-cols-2">
           {config.fields.map((field) => (
-            <label key={field.key} className={cx("space-y-2", field.type === "textarea" || field.type === "multiselect" ? "lg:col-span-2" : "")}>
+            <label
+              key={field.key}
+              className={cx(
+                "space-y-2 rounded-[24px] border border-stone-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]",
+                field.type === "textarea" || field.type === "multiselect"
+                  ? "lg:col-span-2"
+                  : "",
+              )}
+            >
               <span className="text-sm font-medium text-slate-700">{field.label}</span>
               <FieldInput
                 field={field}
@@ -270,6 +299,86 @@ function RecordModal({
             </label>
           ))}
         </div>
+
+        {module === "resumes" ? (
+          <div className="mt-4 rounded-[24px] border border-dashed border-sky-200 bg-sky-50/70 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-1">
+                <div className="text-sm font-medium text-slate-900">Resume PDF Upload</div>
+                <p className="text-sm text-slate-600">
+                  Upload the PDF to Supabase Storage bucket{" "}
+                  <span className="font-medium text-slate-900">{RESUME_BUCKET}</span>. The public
+                  link will be saved to this resume version automatically.
+                </p>
+              </div>
+              <label className={cx(buttonClassName("secondary"), "cursor-pointer")}>
+                <input
+                  accept=".pdf,application/pdf"
+                  className="hidden"
+                  disabled={isUploadingResume}
+                  type="file"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    setUploadError("");
+                    setIsUploadingResume(true);
+
+                    try {
+                      const upload = await uploadResumePdf(file);
+                      setForm((current) => ({
+                        ...current,
+                        file_link: upload.url,
+                        last_updated_date:
+                          String(current.last_updated_date || "") ||
+                          toDateInput(new Date().toISOString()),
+                        name:
+                          String(current.name || "").trim() ||
+                          file.name.replace(/\.pdf$/i, ""),
+                      }));
+                    } catch (error) {
+                      setUploadError(
+                        error instanceof Error
+                          ? error.message
+                          : "Resume upload failed. Please try again.",
+                      );
+                    } finally {
+                      setIsUploadingResume(false);
+                      event.target.value = "";
+                    }
+                  }}
+                />
+                {isUploadingResume ? "Uploading PDF..." : "Upload PDF"}
+              </label>
+            </div>
+
+            {uploadError ? (
+              <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                {uploadError}
+              </div>
+            ) : null}
+
+            {String(form.file_link || "").trim() ? (
+              <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                    Stored File
+                  </div>
+                  <div className="truncate text-sm font-medium text-slate-900">
+                    {String(form.file_link)}
+                  </div>
+                </div>
+                <a
+                  className={buttonClassName("secondary")}
+                  href={String(form.file_link)}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Open PDF
+                </a>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {linkedActions.length > 0 ? (
           <div className="mt-6 space-y-3 rounded-2xl border border-stone-200 bg-stone-50 p-4">
@@ -288,7 +397,7 @@ function RecordModal({
                 <button
                   type="button"
                   onClick={() => toggleActionItem(action.id)}
-                  className="rounded-full border border-stone-200 px-3 py-1.5 text-xs text-slate-700 hover:bg-stone-50"
+                  className={buttonClassName("secondary")}
                 >
                   {action.status === "Done" ? "Reopen" : "Mark Done"}
                 </button>
@@ -301,12 +410,13 @@ function RecordModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-stone-200 px-4 py-2 text-sm text-slate-700 hover:bg-stone-50"
+            className={buttonClassName("secondary")}
           >
             Cancel
           </button>
           <button
             type="button"
+            disabled={isUploadingResume}
             onClick={() => {
               saveRecord(module, {
                 ...form,
@@ -314,7 +424,7 @@ function RecordModal({
               });
               onClose();
             }}
-            className="rounded-full bg-teal-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-500"
+            className={buttonClassName("primary")}
           >
             Save
           </button>
@@ -1223,7 +1333,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
           </div>
         ) : null}
         {filtered.length ? (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-[24px] border border-stone-200 bg-white/80 p-2">
             <table className="min-w-full border-separate border-spacing-y-2">
               <thead>
                 <tr>
@@ -1242,7 +1352,10 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
               </thead>
               <tbody>
                 {filtered.map((record) => (
-                  <tr key={String(record.id)} className="rounded-2xl bg-stone-50 shadow-[0_1px_0_rgba(231,229,228,1)]">
+                  <tr
+                    key={String(record.id)}
+                    className="rounded-2xl bg-stone-50 shadow-[0_1px_0_rgba(231,229,228,1)]"
+                  >
                     {config.columns.map((column) => (
                       <td key={column.key} className="px-3 py-3.5 text-sm text-slate-700">
                         {["status", "priority", "target_category", "referral_status", "prep_status"].includes(column.key) ||
@@ -1345,6 +1458,16 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                             Add Action
                           </button>
                         ) : null}
+                        {slug === "resumes" && String(record.file_link || "").trim() ? (
+                          <a
+                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
+                            href={String(record.file_link)}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            Open PDF
+                          </a>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => {
@@ -1381,7 +1504,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
       {slug === "pars" ? <QuestionsSection /> : null}
 
       <RecordModal
-        key={editing?.id ? String(editing.id) : "new"}
+        key={`${editing?.id ? String(editing.id) : "new"}-${modalOpen ? "open" : "closed"}`}
         title={editing ? `Edit ${config.singular}` : `Add ${config.singular}`}
         open={modalOpen}
         onClose={() => setModalOpen(false)}

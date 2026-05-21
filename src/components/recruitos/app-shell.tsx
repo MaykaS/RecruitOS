@@ -57,17 +57,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [query, setQuery] = useState("");
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(13,148,136,0.08),_transparent_28%),linear-gradient(180deg,_#fafaf8_0%,_#f5f7f4_44%,_#eef2ef_100%)] text-slate-900">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(13,148,136,0.10),_transparent_24%),linear-gradient(180deg,_#faf8f4_0%,_#f6f4ee_44%,_#eef3ef_100%)] text-slate-900">
       <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col lg:flex-row">
-        <aside className="border-b border-stone-200/90 bg-stone-50/90 px-5 py-5 backdrop-blur lg:min-h-screen lg:w-72 lg:border-b-0 lg:border-r">
-          <div className="mb-8 space-y-3">
+        <aside className="border-b border-stone-200/90 bg-white/75 px-5 py-5 backdrop-blur lg:min-h-screen lg:w-72 lg:border-b-0 lg:border-r">
+          <div className="mb-8 rounded-[28px] border border-stone-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(247,250,249,0.92))] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-600 to-sky-600 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(8,145,178,0.28)]">
+              RO
+            </div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">
               RecruitOS
             </p>
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">
               Personal Recruiting Command Center
             </h1>
-            <p className="text-sm leading-6 text-slate-600">
+            <p className="mt-2 text-sm leading-6 text-slate-600">
               Daily prep, linked action items, and one source of truth.
             </p>
           </div>
@@ -92,11 +95,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <main className="min-w-0 flex-1 px-4 py-4 lg:px-8 lg:py-6">
-          <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-stone-200 bg-white/85 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] lg:flex-row lg:items-center lg:justify-between">
+          <div className="mb-6 flex flex-col gap-4 rounded-[30px] border border-stone-200 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(243,250,249,0.92))] p-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">One source of truth.</p>
-              <p className="text-lg font-semibold text-slate-900">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">
+                One source of truth
+              </p>
+              <p className="mt-2 text-xl font-semibold text-slate-900">
                 Every note can become an action. Every day has a clear plan.
+              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                Keep applications, prep, networking, PARs, and universal action items in one calm workspace.
               </p>
             </div>
             <div className="relative w-full max-w-xl">
