@@ -57,24 +57,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [query, setQuery] = useState("");
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.08),_transparent_18%),radial-gradient(circle_at_top_right,_rgba(20,184,166,0.08),_transparent_22%),linear-gradient(180deg,_#fbfcfd_0%,_#f4f7f8_48%,_#eef3f5_100%)] text-slate-900">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(191,232,226,0.42),_transparent_20%),radial-gradient(circle_at_top_right,_rgba(186,230,253,0.28),_transparent_18%),linear-gradient(180deg,_#fcfefe_0%,_#f5fafb_42%,_#edf5f7_100%)] text-slate-900">
       <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col lg:flex-row">
         <aside className="border-b border-slate-200/90 bg-white/75 px-4 py-4 backdrop-blur lg:min-h-screen lg:w-64 lg:border-b-0 lg:border-r">
-          <div className="mb-6 rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(247,251,252,0.92))] p-4 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-600 to-sky-600 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(8,145,178,0.24)]">
+          <div className="mb-5 flex items-center gap-3 rounded-[20px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(246,251,251,0.94))] px-3.5 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-500 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(13,148,136,0.16)]">
               RO
             </div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">
-              RecruitOS
-            </p>
-            <h1 className="mt-2 text-[1.9rem] leading-[1.02] font-semibold text-slate-900 [font-family:var(--font-display)]">
-              Recruiting
-              <br />
-              Command Center
-            </h1>
-            <p className="mt-2 text-sm leading-5 text-slate-600">
-              One system for prep and execution.
-            </p>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-teal-700">
+                RecruitOS
+              </p>
+              <p className="mt-0.5 text-sm text-slate-500">
+                Personal workspace
+              </p>
+            </div>
           </div>
           <nav className="grid gap-1.5">
             {NAV_ITEMS.map((item) => {
@@ -97,8 +94,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <main className="min-w-0 flex-1 px-4 py-4 lg:px-8 lg:py-5">
-          <div className="mb-4 grid gap-3 rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(244,249,250,0.94))] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
-            <div className="max-w-2xl">
+          <div className="mb-4 grid gap-3 rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,rgba(255,255,255,0.97),rgba(244,250,251,0.94))] p-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
+            <div className="max-w-xl">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">
                 One source of truth
               </p>
@@ -116,7 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <SearchResults data={data} query={query} />
             </div>
           </div>
-          <div className="mb-5 flex items-center justify-between gap-3 rounded-[22px] border border-slate-200 bg-white/88 px-4 py-3 text-sm shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
+          <div className="mb-5 flex items-center justify-between gap-3 rounded-[18px] border border-slate-200 bg-white/88 px-4 py-2 text-sm shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
             <div className="min-w-0">
               <div className="font-medium leading-5 text-slate-900">
                 {persistenceMode === "supabase" ? "Cloud sync enabled" : "Temporary local mode"}
@@ -126,10 +123,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             <div
-              className={`inline-flex h-8 shrink-0 items-center rounded-full px-3 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+              className={`inline-flex h-7 shrink-0 items-center rounded-full px-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${
                 persistenceMode === "supabase"
                   ? "bg-teal-50 text-teal-700"
-                  : "bg-amber-50 text-amber-700"
+                  : "bg-cyan-50 text-cyan-700"
               }`}
             >
               {isSyncing ? "Syncing" : persistenceMode}
