@@ -64,8 +64,8 @@ function StatusBadge({
     : tone.includes("high") || tone.includes("critical") || tone.includes("overdue")
       ? "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
       : tone.includes("wait")
-        ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100"
-        : "bg-slate-100 text-slate-700 ring-1 ring-stone-200";
+        ? "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100"
+        : "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
 
   return (
     <span className={cx("inline-flex rounded-full px-2.5 py-1 text-xs", className)}>
@@ -81,7 +81,7 @@ function ProgressBar({ value, label }: { value: number; label: string }) {
         <span className="text-slate-700">{label}</span>
         <span className="font-medium text-slate-500">{value}%</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-stone-200">
+      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
         <div
           className="h-full rounded-full bg-gradient-to-r from-teal-500 to-sky-500"
           style={{ width: `${value}%` }}
@@ -115,7 +115,7 @@ function Card({
 
 function EmptyState({ label }: { label: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-4 py-8 text-center text-sm text-slate-500">
+    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
       {label}
     </div>
   );
@@ -201,12 +201,12 @@ function FieldInput({
 
   if (field.type === "checkbox") {
     return (
-      <label className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-slate-700">
+      <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
         <input
           checked={Boolean(value)}
           onChange={(event) => onChange(event.target.checked)}
           type="checkbox"
-          className="h-4 w-4 rounded border-stone-300 bg-white"
+          className="h-4 w-4 rounded border-slate-300 bg-white"
         />
         <span>Enabled</span>
       </label>
@@ -258,7 +258,7 @@ function RecordModal({
       <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,252,0.98))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
         <div className="mb-5 flex items-center justify-between gap-4">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#6d5a48]">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">
               {config.title}
             </p>
             <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
@@ -278,7 +278,7 @@ function RecordModal({
             <label
               key={field.key}
               className={cx(
-                "space-y-2 rounded-[24px] border border-stone-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]",
+                "space-y-2 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]",
                 field.type === "textarea" || field.type === "multiselect"
                   ? "lg:col-span-2"
                   : "",
@@ -298,7 +298,7 @@ function RecordModal({
         </div>
 
         {module === "resumes" ? (
-          <div className="mt-4 rounded-[24px] border border-dashed border-[#d8c7b1] bg-[#f6efe6] p-4">
+          <div className="mt-4 rounded-[24px] border border-dashed border-cyan-200 bg-cyan-50/60 p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-1">
                 <div className="text-sm font-medium text-slate-900">Resume PDF Upload</div>
@@ -355,7 +355,7 @@ function RecordModal({
             ) : null}
 
             {String(form.file_link || "").trim() ? (
-              <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
+              <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
                     Stored File
@@ -378,12 +378,12 @@ function RecordModal({
         ) : null}
 
         {linkedActions.length > 0 ? (
-          <div className="mt-6 space-y-3 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+          <div className="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-sm font-medium text-slate-900">Linked action items</div>
             {linkedActions.map((action) => (
               <div
                 key={action.id}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-white px-3 py-3"
+                className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-3 py-3"
               >
                 <div>
                   <div className="text-sm font-medium text-slate-900">{action.title}</div>
@@ -631,7 +631,7 @@ function DashboardView() {
               label={`Action items completed (${actionsCompletedThisWeek})`}
               value={progressPercentage(actionsCompletedThisWeek, 15)}
             />
-            <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="text-sm font-medium text-slate-900">
                 Applications today: {applicationsToday.length}/{data.settings.daily_application_target}
               </div>
@@ -658,7 +658,7 @@ function DashboardView() {
               followUpsDue.map((contact) => (
                 <div
                   key={contact.id}
-                  className="rounded-2xl border border-stone-200 bg-stone-50 p-4"
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -678,7 +678,7 @@ function DashboardView() {
                     <button
                       type="button"
                       onClick={() => markFollowUpDone(contact.id)}
-                      className="rounded-full bg-[#314c46] px-3 py-2 text-sm font-medium text-white hover:bg-[#27403b]"
+                      className="rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-cyan-400"
                     >
                       Mark Follow-Up Done
                     </button>
@@ -693,7 +693,7 @@ function DashboardView() {
                           linked_company_id: contact.company_id,
                         })
                       }
-                      className="rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-stone-100"
+                      className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
                     >
                       Create Action Item
                     </button>
@@ -712,7 +712,7 @@ function DashboardView() {
               applicationsNeedingAction.map((application) => (
                 <div
                   key={application.id}
-                  className="rounded-2xl border border-stone-200 bg-stone-50 p-4"
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -738,7 +738,7 @@ function DashboardView() {
                     <button
                       type="button"
                       onClick={() => markApplicationActionDone(application.id)}
-                      className="rounded-full bg-[#8d6b57] px-3 py-2 text-sm font-medium text-white hover:bg-[#7f5f4d]"
+                      className="rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
                     >
                       Mark Action Complete
                     </button>
@@ -753,7 +753,7 @@ function DashboardView() {
                           linked_company_id: application.company_id,
                         })
                       }
-                      className="rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-stone-100"
+                      className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
                     >
                       Add Action Item
                     </button>
@@ -774,7 +774,7 @@ function DashboardView() {
               <p>You already logged {mocksThisWeek.length} mock interview(s) this week.</p>
               <Link
                 href="/mock-interviews"
-                className="inline-flex rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-stone-100"
+                className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               >
                 Review Mock Notes
               </Link>
@@ -787,7 +787,7 @@ function DashboardView() {
               <div className="flex flex-wrap gap-2">
                 <Link
                   href="/mock-interviews"
-                  className="rounded-full bg-[#314c46] px-3 py-2 text-sm font-medium text-white hover:bg-[#27403b]"
+                  className="rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-cyan-400"
                 >
                   Log Mock Interview
                 </Link>
@@ -800,7 +800,7 @@ function DashboardView() {
                       source_id: "dashboard-weekly-mock",
                     })
                   }
-                  className="rounded-full border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-stone-100"
+                  className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
                 >
                   Create Mock Prep Action Item
                 </button>
@@ -815,7 +815,7 @@ function DashboardView() {
               openActionItems.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-3"
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"
                 >
                   <div>
                     <div className="text-sm font-medium text-slate-900">{item.title}</div>
@@ -826,7 +826,7 @@ function DashboardView() {
                   <button
                     type="button"
                     onClick={() => toggleActionItem(item.id)}
-                    className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                   >
                     Check Off
                   </button>
@@ -844,19 +844,19 @@ function DashboardView() {
               value={brainDump.title}
               onChange={(event) => setBrainDump((current) => ({ ...current, title: event.target.value }))}
               placeholder="Quick title"
-              className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
             />
             <textarea
               value={brainDump.note}
               onChange={(event) => setBrainDump((current) => ({ ...current, note: event.target.value }))}
               placeholder="Write anything you do not want to lose..."
               rows={4}
-              className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
             />
             <select
               value={brainDump.category}
               onChange={(event) => setBrainDump((current) => ({ ...current, category: event.target.value }))}
-              className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none"
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
             >
               {BRAIN_DUMP_CATEGORIES.map((category) => (
                 <option key={category} value={category}>
@@ -882,13 +882,13 @@ function DashboardView() {
                 });
                 setBrainDump({ title: "", note: "", category: "General" });
               }}
-              className="rounded-full bg-[#8d6b57] px-3 py-2 text-sm font-medium text-white hover:bg-[#7f5f4d]"
+              className="rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
             >
               Save Brain Dump
             </button>
             <div className="space-y-2">
               {data.brainDumps.slice(0, 3).map((item) => (
-                <div key={item.id} className="rounded-2xl border border-stone-200 bg-stone-50 p-3">
+                <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                   <div className="text-sm font-medium text-slate-900">{item.title}</div>
                   <div className="text-xs text-slate-500">{item.category}</div>
                   <div className="mt-2 text-sm text-slate-700">{item.note}</div>
@@ -896,7 +896,7 @@ function DashboardView() {
                     type="button"
                     onClick={() => convertBrainDumpToActionItem(item.id)}
                     disabled={Boolean(item.converted_action_item_id)}
-                    className="mt-3 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100 disabled:opacity-40"
+                    className="mt-3 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40"
                   >
                     {item.converted_action_item_id ? "Converted" : "Convert to Action Item"}
                   </button>
@@ -917,8 +917,8 @@ function DashboardView() {
               className={cx(
                 "rounded-2xl border px-3 py-3 text-left transition",
                 selectedWeekDate === day.key
-                  ? "border-[#d8c7b1] bg-[#f3eadf] shadow-sm"
-                  : "border-stone-200 bg-[#fbf7f1] hover:bg-white",
+                  ? "border-teal-200 bg-cyan-50/70 shadow-sm"
+                  : "border-slate-200 bg-white/80 hover:bg-white",
               )}
             >
               <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
@@ -937,7 +937,7 @@ function DashboardView() {
           ))}
         </div>
 
-        <div className="mt-5 rounded-3xl border border-stone-200 bg-stone-50 p-4">
+        <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-4">
           <div className="mb-3 flex items-center justify-between">
             <div>
               <div className="text-sm font-medium text-slate-900">
@@ -951,7 +951,7 @@ function DashboardView() {
           <div className="grid gap-3 lg:grid-cols-2">
             {selectedDay.actionItems.length ? (
               selectedDay.actionItems.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
+                <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                   <div className="text-sm font-medium text-slate-900">{item.title}</div>
                   <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
                     <span>{item.priority}</span>
@@ -961,7 +961,7 @@ function DashboardView() {
                     value={item.due_date}
                     onChange={(event) => rescheduleActionItem(item.id, event.target.value)}
                     type="date"
-                    className="mt-3 w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#b97557] focus:bg-white"
+                    className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
                   />
                 </div>
               ))
@@ -1015,7 +1015,7 @@ function SettingsView() {
                   }))
                 }
                 type="number"
-                className="w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557] focus:bg-white"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
               />
             </label>
           ))}
@@ -1038,7 +1038,7 @@ function SettingsView() {
                   }))
                 }
                 rows={key === "preferred_target_roles" ? 2 : 4}
-                className="w-full rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557] focus:bg-white"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
               />
             </label>
           ))}
@@ -1078,7 +1078,7 @@ function SettingsView() {
                   .filter(Boolean),
               })
             }
-            className="rounded-full bg-[#314c46] px-4 py-2 text-sm font-medium text-white hover:bg-[#27403b]"
+            className="rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 px-4 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-cyan-400"
           >
             Save Settings
           </button>
@@ -1103,7 +1103,7 @@ function QuestionsSection() {
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
         <div className="space-y-3">
           {data.interviewQuestions.map((question) => (
-            <div key={question.id} className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+            <div key={question.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-sm font-medium text-slate-900">{sanitizeText(question.question_text)}</div>
@@ -1123,7 +1123,7 @@ function QuestionsSection() {
                     return (
                       <div
                         key={parId}
-                        className="rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm text-slate-700"
+                        className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
                       >
                         {sanitizeText(par.title)}
                       </div>
@@ -1145,7 +1145,7 @@ function QuestionsSection() {
                       linked_par_story_ids: question.linked_par_story_ids,
                     })
                   }
-                  className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                 >
                   Edit Question
                 </button>
@@ -1164,7 +1164,7 @@ function QuestionsSection() {
             </div>
           ))}
         </div>
-        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="mb-4 text-sm font-medium text-slate-900">Add or update question</div>
           <div className="space-y-3">
             <input
@@ -1173,7 +1173,7 @@ function QuestionsSection() {
                 setDraft((current) => ({ ...current, question_text: event.target.value }))
               }
               placeholder="Question text"
-              className="w-full rounded-2xl border border-stone-200 bg-[#fffaf4] px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557]"
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
             />
             <input
               value={draft.category}
@@ -1181,7 +1181,7 @@ function QuestionsSection() {
                 setDraft((current) => ({ ...current, category: event.target.value }))
               }
               placeholder="Category"
-              className="w-full rounded-2xl border border-stone-200 bg-[#fffaf4] px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557]"
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
             />
             <textarea
               value={draft.notes}
@@ -1190,7 +1190,7 @@ function QuestionsSection() {
               }
               rows={3}
               placeholder="Notes"
-              className="w-full rounded-2xl border border-stone-200 bg-[#fffaf4] px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557]"
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
             />
             <select
               multiple
@@ -1203,7 +1203,7 @@ function QuestionsSection() {
                   ).map((option) => option.value),
                 }))
               }
-              className="min-h-28 w-full rounded-2xl border border-stone-200 bg-[#fffaf4] px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#b97557]"
+              className="min-h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
             >
               {data.parStories.map((par) => (
                 <option key={par.id} value={par.id}>
@@ -1230,7 +1230,7 @@ function QuestionsSection() {
                   linked_par_story_ids: [],
                 });
               }}
-              className="rounded-full bg-[#8d6b57] px-3 py-2 text-sm font-medium text-white hover:bg-[#7f5f4d]"
+              className="rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
             >
               Save Question
             </button>
@@ -1259,8 +1259,8 @@ function ActionItemsFilters({
             className={cx(
               "rounded-full border px-3 py-1.5 text-xs transition",
               active === view
-                ? "border-[#d8c7b1] bg-[#f3eadf] text-[#6d5a48]"
-                : "border-stone-200 bg-white text-slate-600 hover:bg-[#f4ecdf]",
+                ? "border-teal-200 bg-cyan-50 text-teal-700"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
             )}
           >
             {view}
@@ -1309,7 +1309,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
               setEditing(null);
               setModalOpen(true);
             }}
-            className="rounded-full bg-[#8d6b57] px-4 py-2 text-sm font-medium text-white hover:bg-[#7f5f4d]"
+            className="rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-4 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
           >
             Add {config.singular}
           </button>
@@ -1321,7 +1321,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={`Search ${config.title.toLowerCase()}...`}
-            className="w-full max-w-md rounded-2xl border border-stone-200 bg-[#f7f0e6] px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#b97557] focus:bg-white"
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
           />
         </div>
         {slug === "action-items" ? (
@@ -1330,7 +1330,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
           </div>
         ) : null}
         {filtered.length ? (
-          <div className="overflow-x-auto rounded-[24px] border border-stone-200 bg-white/80 p-2">
+          <div className="overflow-x-auto rounded-[24px] border border-slate-200 bg-white/80 p-2">
             <table className="min-w-full border-separate border-spacing-y-2">
               <thead>
                 <tr>
@@ -1351,7 +1351,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                 {filtered.map((record) => (
                   <tr
                     key={String(record.id)}
-                    className="rounded-2xl bg-stone-50 shadow-[0_1px_0_rgba(231,229,228,1)]"
+                    className="rounded-2xl bg-slate-50 shadow-[0_1px_0_rgba(226,232,240,1)]"
                   >
                     {config.columns.map((column) => (
                       <td key={column.key} className="px-3 py-3.5 text-sm text-slate-700">
@@ -1369,7 +1369,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                           <button
                             type="button"
                             onClick={() => logParPractice(String(record.id))}
-                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             Practice
                           </button>
@@ -1378,7 +1378,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                           <button
                             type="button"
                             onClick={() => markCasePracticed(String(record.id))}
-                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             Mark Practiced
                           </button>
@@ -1387,7 +1387,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                           <button
                             type="button"
                             onClick={() => markInterviewAnswerPracticed(String(record.id))}
-                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             Practice
                           </button>
@@ -1396,7 +1396,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                           <button
                             type="button"
                             onClick={() => markFollowUpDone(String(record.id))}
-                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             Follow-Up Done
                           </button>
@@ -1405,7 +1405,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                           <button
                             type="button"
                             onClick={() => toggleActionItem(String(record.id))}
-                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             {(record.status as string) === "Done" ? "Reopen" : "Check Off"}
                           </button>
@@ -1450,14 +1450,14 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                                 });
                               }
                             }}
-                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             Add Action
                           </button>
                         ) : null}
                         {slug === "resumes" && String(record.file_link || "").trim() ? (
                           <a
-                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                             href={String(record.file_link)}
                             rel="noreferrer"
                             target="_blank"
@@ -1471,7 +1471,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                             setEditing(record);
                             setModalOpen(true);
                           }}
-                          className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100"
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                         >
                           Edit
                         </button>
