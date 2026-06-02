@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ApplicationInsight,
   BRAIN_DUMP_CATEGORIES,
@@ -13,6 +13,8 @@ import {
   ModuleSlug,
   RECRUITING_TRACKS,
   RecruitOSData,
+  SortDirection,
+  SortOption,
   buildInterviewPrepPacket,
   formatDate,
   formatDateTime,
@@ -67,6 +69,79 @@ function parseTagInput(value: string) {
         .filter(Boolean),
     ),
   );
+}
+
+function getSortValue(value: unknown, option: SortOption) {
+  if (option.type === "date") {
+    if (!value) return null;
+    const timestamp = new Date(String(value)).getTime();
+    return Number.isNaN(timestamp) ? null : timestamp;
+  }
+
+  if (option.type === "number") {
+    if (typeof value === "number") return value;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  if (option.type === "boolean") {
+    if (typeof value === "boolean") return value ? 1 : 0;
+    if (Array.isArray(value)) return value.length ? 1 : 0;
+    if (typeof value === "string") return value.trim() ? 1 : 0;
+    return value ? 1 : 0;
+  }
+
+  if (Array.isArray(value)) {
+    return sanitizeText(joinList(value.map((item) => String(item)))).toLowerCase();
+  }
+
+  if (value == null) return "";
+  return sanitizeText(String(value)).toLowerCase();
+}
+
+function compareSortValues(
+  left: unknown,
+  right: unknown,
+  option: SortOption,
+  direction: SortDirection,
+) {
+  const leftComparable = getSortValue(left, option);
+  const rightComparable = getSortValue(right, option);
+  const leftEmpty =
+    leftComparable == null ||
+    leftComparable === "" ||
+    (Array.isArray(leftComparable) && leftComparable.length === 0);
+  const rightEmpty =
+    rightComparable == null ||
+    rightComparable === "" ||
+    (Array.isArray(rightComparable) && rightComparable.length === 0);
+
+  if (leftEmpty && rightEmpty) return 0;
+  if (leftEmpty) return 1;
+  if (rightEmpty) return -1;
+
+  let comparison = 0;
+
+  if (option.order) {
+    const leftIndex = option.order.findIndex(
+      (item) => item.toLowerCase() === String(leftComparable).toLowerCase(),
+    );
+    const rightIndex = option.order.findIndex(
+      (item) => item.toLowerCase() === String(rightComparable).toLowerCase(),
+    );
+    const normalizedLeftIndex = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex;
+    const normalizedRightIndex = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex;
+    comparison = normalizedLeftIndex - normalizedRightIndex;
+    if (comparison === 0) {
+      comparison = String(leftComparable).localeCompare(String(rightComparable));
+    }
+  } else if (typeof leftComparable === "number" && typeof rightComparable === "number") {
+    comparison = leftComparable - rightComparable;
+  } else {
+    comparison = String(leftComparable).localeCompare(String(rightComparable));
+  }
+
+  return direction === "asc" ? comparison : comparison * -1;
 }
 
 function downloadJsonFile(filename: string, payload: unknown) {
@@ -711,13 +786,11 @@ function PipelineTriageSection({
 function NetworkingWorkflowSection({
   insights,
   markFollowUpDone,
-  createActionItemFromSource,
-  saveRecord,
+  openContactEditor,
 }: {
   insights: ContactWorkflowInsight[];
   markFollowUpDone: ReturnType<typeof useRecruitOS>["markFollowUpDone"];
-  createActionItemFromSource: ReturnType<typeof useRecruitOS>["createActionItemFromSource"];
-  saveRecord: ReturnType<typeof useRecruitOS>["saveRecord"];
+  openContactEditor: (contact: RecruitOSData["contacts"][number], mode?: "takeaway") => void;
 }) {
   return (
     <Card title="Networking Execution">
@@ -745,7 +818,6 @@ function NetworkingWorkflowSection({
                           {sanitizeText(insight.contact.role || "Contact")} - strength {insight.contact.relationship_strength}/5
                         </div>
                       </div>
-                      <StatusBadge value={insight.contactFollowUpUrgency} />
                     </div>
                     <p className="mt-3 text-sm text-slate-700">{sanitizeText(insight.primaryReason)}</p>
                     <div className="mt-3 space-y-2 text-sm text-slate-600">
@@ -763,27 +835,11 @@ function NetworkingWorkflowSection({
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          saveRecord("networking", {
-                            ...insight.contact,
-                            conversation_notes:
-                              `${insight.contact.conversation_notes}\nPost-call takeaway: `.trim(),
-                          });
-                          createActionItemFromSource({
-                            title: `Send follow-up after talking with ${insight.contact.name}`,
-                            source_type: "Networking",
-                            source_id: insight.contact.id,
-                            linked_contact_id: insight.contact.id,
-                            linked_company_id: insight.contact.company_id,
-                          });
-                        }}
+                        onClick={() => openContactEditor(insight.contact, "takeaway")}
                         className={buttonClassName("secondary")}
                       >
                         Log Takeaways
                       </button>
-                      <Link href="/networking" className={buttonClassName("quiet")}>
-                        Open CRM
-                      </Link>
                     </div>
                   </div>
                 ))}
@@ -891,11 +947,27 @@ function DashboardView() {
   const [parIndex, setParIndex] = useState(0);
   const [caseIndex, setCaseIndex] = useState(0);
   const [selectedWeekDate, setSelectedWeekDate] = useState(toDateInput(new Date().toISOString()));
+  const [networkingModalOpen, setNetworkingModalOpen] = useState(false);
+  const [networkingEditing, setNetworkingEditing] = useState<Record<string, unknown> | null>(null);
   const [brainDump, setBrainDump] = useState({
     title: "",
     note: "",
     category: "General",
   });
+  const openNetworkingContactEditor = useCallback(
+    (contact: RecruitOSData["contacts"][number], mode?: "takeaway") => {
+      const existingNotes = String(contact.conversation_notes ?? "").trim();
+      const takeawayStub = existingNotes
+        ? `${existingNotes}\nPost-call takeaway: `
+        : "Post-call takeaway: ";
+      setNetworkingEditing({
+        ...contact,
+        conversation_notes: mode === "takeaway" ? takeawayStub : contact.conversation_notes,
+      });
+      setNetworkingModalOpen(true);
+    },
+    [],
+  );
 
   const parCandidates = sortParSuggestions(data.parStories);
   const caseCandidates = sortCaseSuggestions(data.cases);
@@ -1172,8 +1244,7 @@ function DashboardView() {
         <NetworkingWorkflowSection
           insights={networkingInsights.slice(0, 10)}
           markFollowUpDone={markFollowUpDone}
-          createActionItemFromSource={createActionItemFromSource}
-          saveRecord={saveRecord}
+          openContactEditor={openNetworkingContactEditor}
         />
         <InterviewPrepPacketsSection
           packets={prepPackets}
@@ -1417,6 +1488,19 @@ function DashboardView() {
           </div>
         </div>
       </Card>
+
+      <RecordModal
+        key={`${networkingEditing?.id ? String(networkingEditing.id) : "new"}-${networkingModalOpen ? "open" : "closed"}`}
+        title={
+          networkingEditing?.id
+            ? `Edit ${String(networkingEditing.name ?? "networking contact")}`
+            : "Edit Networking Contact"
+        }
+        open={networkingModalOpen}
+        onClose={() => setNetworkingModalOpen(false)}
+        module="networking"
+        initial={networkingEditing}
+      />
     </div>
   );
 }
@@ -1471,11 +1555,7 @@ function QuestionsSection() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (window.confirm("Delete this interview question?")) {
-                      deleteInterviewQuestion(question.id);
-                    }
-                  }}
+                  onClick={() => deleteInterviewQuestion(question.id)}
                   className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
                 >
                   Delete
@@ -1662,13 +1742,15 @@ function ActionItemsFilters({
 }
 
 function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
-  const { data, deleteRecord, logParPractice, markCasePracticed, markFollowUpDone, markInterviewAnswerPracticed, toggleActionItem, createActionItemFromSource, saveRecord } = useRecruitOS();
+  const { data, deleteRecord, logParPractice, markCasePracticed, markFollowUpDone, markInterviewAnswerPracticed, toggleActionItem, createActionItemFromSource } = useRecruitOS();
   const config = MODULE_CONFIGS[slug];
   const records = data[config.collection] as unknown as Array<Record<string, unknown>>;
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const [actionView, setActionView] = useState("Today");
+  const [sortKey, setSortKey] = useState(config.defaultSort.key);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(config.defaultSort.direction);
   const applicationInsights = useMemo(() => getApplicationInsights(data), [data]);
   const networkingInsights = useMemo(() => getNetworkingWorkflowInsights(data), [data]);
   const prepPackets = useMemo(
@@ -1683,8 +1765,12 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
         ),
     [data],
   );
+  const activeSortOption = useMemo(
+    () => config.sortOptions.find((option) => option.key === sortKey) ?? config.sortOptions[0],
+    [config.sortOptions, sortKey],
+  );
 
-  const filtered = useMemo(() => {
+  const filteredRecords = useMemo(() => {
     const base = records.filter((record) =>
       config.searchKeys.some((key) =>
         renderValue(record[key]).toLowerCase().includes(query.toLowerCase()),
@@ -1702,6 +1788,29 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
     });
   }, [actionView, config.searchKeys, query, records, slug]);
 
+  const sortedRecords = useMemo(() => {
+    return [...filteredRecords].sort((left, right) =>
+      compareSortValues(left[activeSortOption.key], right[activeSortOption.key], activeSortOption, sortDirection),
+    );
+  }, [activeSortOption, filteredRecords, sortDirection]);
+
+  const openContactEditor = useCallback(
+    (contact: RecruitOSData["contacts"][number], mode: "takeaway" | "edit" = "edit") => {
+      setEditing(
+        (mode === "takeaway"
+          ? {
+              ...contact,
+              conversation_notes: contact.conversation_notes
+                ? `${contact.conversation_notes}\nPost-call takeaway: `
+                : "Post-call takeaway: ",
+            }
+          : contact) as unknown as Record<string, unknown>,
+      );
+      setModalOpen(true);
+    },
+    [],
+  );
+
   return (
     <div className="space-y-6">
       {slug === "applications" ? (
@@ -1715,8 +1824,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
         <NetworkingWorkflowSection
           insights={networkingInsights}
           markFollowUpDone={markFollowUpDone}
-          createActionItemFromSource={createActionItemFromSource}
-          saveRecord={saveRecord}
+          openContactEditor={openContactEditor}
         />
       ) : null}
 
@@ -1745,19 +1853,41 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
       >
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <p className="max-w-2xl text-sm leading-6 text-slate-600">{config.description}</p>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={`Search ${config.title.toLowerCase()}...`}
-            className="w-full max-w-md rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
-          />
+          <div className="flex w-full max-w-3xl flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={`Search ${config.title.toLowerCase()}...`}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white lg:min-w-[260px]"
+            />
+            <div className="flex gap-2">
+              <select
+                value={sortKey}
+                onChange={(event) => setSortKey(event.target.value)}
+                className="min-w-[160px] rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+              >
+                {config.sortOptions.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    Sort by {option.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+                className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                {sortDirection === "asc" ? "Ascending" : "Descending"}
+              </button>
+            </div>
+          </div>
         </div>
         {slug === "action-items" ? (
           <div className="mb-4">
             <ActionItemsFilters active={actionView} setActive={setActionView} />
           </div>
         ) : null}
-        {filtered.length ? (
+        {sortedRecords.length ? (
           <div className="overflow-x-auto rounded-[24px] border border-slate-200 bg-white/80 p-2">
             <table className="min-w-full border-separate border-spacing-y-2">
               <thead>
@@ -1776,7 +1906,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((record) => (
+                {sortedRecords.map((record) => (
                   <tr
                     key={String(record.id)}
                     className="rounded-2xl bg-slate-50 shadow-[0_1px_0_rgba(226,232,240,1)]"
@@ -1896,6 +2026,10 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                         <button
                           type="button"
                           onClick={() => {
+                            if (slug === "networking") {
+                              openContactEditor(record as unknown as RecruitOSData["contacts"][number]);
+                              return;
+                            }
                             setEditing(record);
                             setModalOpen(true);
                           }}
@@ -1905,11 +2039,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            if (window.confirm(`Delete this ${config.singular.toLowerCase()}?`)) {
-                              deleteRecord(slug, String(record.id));
-                            }
-                          }}
+                          onClick={() => deleteRecord(slug, String(record.id))}
                           className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
                         >
                           Delete

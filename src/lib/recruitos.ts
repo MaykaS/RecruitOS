@@ -46,6 +46,15 @@ export interface ColumnConfig {
   label: string;
 }
 
+export type SortDirection = "asc" | "desc";
+
+export interface SortOption {
+  key: string;
+  label: string;
+  type?: "text" | "number" | "date" | "boolean" | "array";
+  order?: string[];
+}
+
 export interface BaseRecord {
   id: string;
   created_at: string;
@@ -416,6 +425,11 @@ export interface ModuleConfig {
   titleKey: string;
   searchKeys: string[];
   columns: ColumnConfig[];
+  sortOptions: SortOption[];
+  defaultSort: {
+    key: string;
+    direction: SortDirection;
+  };
   fields: FieldConfig[];
   defaultValues: Record<string, Primitive | string[]>;
 }
@@ -1304,6 +1318,15 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "due_date", label: "Due" },
       { key: "source_type", label: "Source" },
     ],
+    sortOptions: [
+      { key: "title", label: "Title", type: "text" },
+      { key: "status", label: "Status", type: "text", order: ACTION_ITEM_STATUSES },
+      { key: "priority", label: "Priority", type: "text", order: ACTION_ITEM_PRIORITIES },
+      { key: "due_date", label: "Due date", type: "date" },
+      { key: "source_type", label: "Source type", type: "text" },
+      { key: "created_at", label: "Created", type: "date" },
+    ],
+    defaultSort: { key: "due_date", direction: "asc" },
     fields: [
       { key: "title", label: "Title", type: "text" },
       { key: "description", label: "Description", type: "textarea" },
@@ -1357,6 +1380,18 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "recruiting_track", label: "Track" },
       { key: "follow_up_date", label: "Follow up" },
     ],
+    sortOptions: [
+      { key: "company_name", label: "Company", type: "text" },
+      { key: "role_title", label: "Role title", type: "text" },
+      { key: "status", label: "Status", type: "text", order: APPLICATION_STATUSES },
+      { key: "priority", label: "Priority", type: "text", order: ACTION_ITEM_PRIORITIES },
+      { key: "recruiting_track", label: "Recruiting track", type: "text", order: RECRUITING_TRACKS },
+      { key: "deadline", label: "Deadline", type: "date" },
+      { key: "date_applied", label: "Date applied", type: "date" },
+      { key: "follow_up_date", label: "Follow up date", type: "date" },
+      { key: "created_at", label: "Created", type: "date" },
+    ],
+    defaultSort: { key: "follow_up_date", direction: "asc" },
     fields: [
       { key: "company_id", label: "Company", type: "select", options: getCompanyOptions },
       { key: "role_title", label: "Role title", type: "text" },
@@ -1439,6 +1474,16 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "date", label: "Last practice" },
       { key: "redo_needed", label: "Redo" },
     ],
+    sortOptions: [
+      { key: "title", label: "Title", type: "text" },
+      { key: "case_type", label: "Case type", type: "text" },
+      { key: "score", label: "Score", type: "number" },
+      { key: "date", label: "Last practice", type: "date" },
+      { key: "redo_needed", label: "Redo needed", type: "boolean" },
+      { key: "difficulty", label: "Difficulty", type: "text", order: ["Easy", "Medium", "Hard"] },
+      { key: "created_at", label: "Created", type: "date" },
+    ],
+    defaultSort: { key: "date", direction: "desc" },
     fields: [
       { key: "title", label: "Title", type: "text" },
       { key: "case_type", label: "Case type", type: "select", options: (data) => toOptions(data.settings.case_types) },
@@ -1481,6 +1526,16 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "priority", label: "Priority" },
       { key: "visa_friendliness", label: "Visa" },
     ],
+    sortOptions: [
+      { key: "name", label: "Company", type: "text" },
+      { key: "target_category", label: "Category", type: "text", order: ["Dream", "Strong", "Backup", "Exploratory"] },
+      { key: "role_fit", label: "Role fit", type: "text" },
+      { key: "priority", label: "Priority", type: "text", order: ACTION_ITEM_PRIORITIES },
+      { key: "visa_friendliness", label: "Visa friendliness", type: "text", order: ["Strong", "Medium", "Weak", "Unknown"] },
+      { key: "recruiting_timeline", label: "Recruiting timeline", type: "text", order: ["Early", "Regular", "Just-in-Time", "Unknown"] },
+      { key: "created_at", label: "Created", type: "date" },
+    ],
+    defaultSort: { key: "priority", direction: "desc" },
     fields: [
       { key: "name", label: "Name", type: "text" },
       { key: "industry", label: "Industry", type: "text" },
@@ -1537,6 +1592,16 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "confidence_score", label: "Confidence" },
       { key: "last_practiced_date", label: "Last practiced" },
     ],
+    sortOptions: [
+      { key: "question", label: "Question", type: "text" },
+      { key: "answer_type", label: "Answer type", type: "text" },
+      { key: "target_role", label: "Target role", type: "text" },
+      { key: "confidence_score", label: "Confidence score", type: "number" },
+      { key: "last_practiced_date", label: "Last practiced", type: "date" },
+      { key: "status", label: "Status", type: "text", order: ["Draft", "Good", "Interview-Ready"] },
+      { key: "created_at", label: "Created", type: "date" },
+    ],
+    defaultSort: { key: "last_practiced_date", direction: "asc" },
     fields: [
       { key: "question", label: "Question", type: "text" },
       { key: "answer_type", label: "Answer type", type: "select", options: ["General", "PM", "TPM", "Product Strategy", "Company-Specific", "Role-Specific"] },
@@ -1585,6 +1650,16 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "prep_status", label: "Prep status" },
       { key: "readiness_score", label: "Readiness" },
     ],
+    sortOptions: [
+      { key: "interview_date", label: "Interview date", type: "date" },
+      { key: "interview_round", label: "Interview round", type: "text" },
+      { key: "interview_type", label: "Interview type", type: "text" },
+      { key: "prep_status", label: "Prep status", type: "text", order: ["Not Started", "In Progress", "Ready", "Completed"] },
+      { key: "readiness_score", label: "Readiness score", type: "number" },
+      { key: "interviewer_name", label: "Interviewer name", type: "text" },
+      { key: "created_at", label: "Created", type: "date" },
+    ],
+    defaultSort: { key: "interview_date", direction: "asc" },
     fields: [
       { key: "company_id", label: "Company", type: "select", options: getCompanyOptions },
       { key: "application_id", label: "Application", type: "select", options: getApplicationOptions },
@@ -1641,6 +1716,16 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "overall_score", label: "Score" },
       { key: "follow_up_needed", label: "Follow up" },
     ],
+    sortOptions: [
+      { key: "date", label: "Date", type: "date" },
+      { key: "interview_type", label: "Interview type", type: "text" },
+      { key: "mocked_with", label: "Mocked with", type: "text" },
+      { key: "overall_score", label: "Overall score", type: "number" },
+      { key: "target_role", label: "Target role", type: "text" },
+      { key: "follow_up_needed", label: "Follow up needed", type: "boolean" },
+      { key: "created_at", label: "Created", type: "date" },
+    ],
+    defaultSort: { key: "date", direction: "desc" },
     fields: [
       { key: "date", label: "Date", type: "date" },
       { key: "mocked_with", label: "Mocked with", type: "text" },
@@ -1690,6 +1775,18 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "next_follow_up_date", label: "Next follow-up" },
       { key: "referral_status", label: "Referral" },
     ],
+    sortOptions: [
+      { key: "name", label: "Name", type: "text" },
+      { key: "company_name", label: "Company", type: "text" },
+      { key: "role", label: "Role", type: "text" },
+      { key: "relationship_strength", label: "Relationship strength", type: "number" },
+      { key: "last_contact_date", label: "Last contact", type: "date" },
+      { key: "next_follow_up_date", label: "Next follow-up", type: "date" },
+      { key: "referral_status", label: "Referral status", type: "text", order: ["Not Asked", "Asked", "Agreed", "Submitted", "Declined"] },
+      { key: "priority", label: "Priority", type: "text", order: ["Low", "Medium", "High"] },
+      { key: "created_at", label: "Created", type: "date" },
+    ],
+    defaultSort: { key: "next_follow_up_date", direction: "asc" },
     fields: [
       { key: "name", label: "Name", type: "text" },
       { key: "company_id", label: "Company", type: "select", options: getCompanyOptions },
@@ -1745,6 +1842,16 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "confidence_score", label: "Confidence" },
       { key: "last_practiced_date", label: "Last practiced" },
     ],
+    sortOptions: [
+      { key: "title", label: "Title", type: "text" },
+      { key: "category", label: "Category", type: "text" },
+      { key: "status", label: "Status", type: "text", order: ["Draft", "Good", "Strong", "Interview-Ready"] },
+      { key: "confidence_score", label: "Confidence score", type: "number" },
+      { key: "number_of_reps", label: "Number of reps", type: "number" },
+      { key: "last_practiced_date", label: "Last practiced", type: "date" },
+      { key: "created_at", label: "Created", type: "date" },
+    ],
+    defaultSort: { key: "last_practiced_date", direction: "asc" },
     fields: [
       { key: "title", label: "Title", type: "text" },
       { key: "category", label: "Category", type: "text" },
@@ -1800,6 +1907,14 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "last_updated_date", label: "Updated" },
       { key: "linked_application_ids", label: "Used in" },
     ],
+    sortOptions: [
+      { key: "name", label: "Name", type: "text" },
+      { key: "target_role", label: "Target role", type: "text" },
+      { key: "last_updated_date", label: "Last updated", type: "date" },
+      { key: "linked_application_ids", label: "Used in applications", type: "array" },
+      { key: "created_at", label: "Created", type: "date" },
+    ],
+    defaultSort: { key: "last_updated_date", direction: "desc" },
     fields: [
       { key: "name", label: "Name", type: "text" },
       { key: "target_role", label: "Target role", type: "select", options: ["PM", "TPM", "Product Strategy", "AI/Enterprise Software", "Consulting/Strategy", "General"] },
@@ -1833,6 +1948,14 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "target_audience", label: "Audience" },
       { key: "last_used_date", label: "Last used" },
     ],
+    sortOptions: [
+      { key: "name", label: "Name", type: "text" },
+      { key: "use_case", label: "Use case", type: "text" },
+      { key: "target_audience", label: "Target audience", type: "text" },
+      { key: "last_used_date", label: "Last used", type: "date" },
+      { key: "created_at", label: "Created", type: "date" },
+    ],
+    defaultSort: { key: "last_used_date", direction: "desc" },
     fields: [
       { key: "name", label: "Name", type: "text" },
       { key: "use_case", label: "Use case", type: "select", options: ["Cold LinkedIn message", "Cornell alum message", "Israeli connection message", "Referral ask", "Follow-up after call", "Rejection-to-networking message", "Recruiter email", "Hiring manager email", "Thank-you note", "Interview thank-you note"] },
@@ -1863,6 +1986,14 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "category", label: "Category" },
       { key: "converted_action_item_id", label: "Converted" },
     ],
+    sortOptions: [
+      { key: "title", label: "Title", type: "text" },
+      { key: "category", label: "Category", type: "text" },
+      { key: "converted_action_item_id", label: "Converted", type: "boolean" },
+      { key: "created_at", label: "Created", type: "date" },
+      { key: "updated_at", label: "Updated", type: "date" },
+    ],
+    defaultSort: { key: "created_at", direction: "desc" },
     fields: [
       { key: "title", label: "Title", type: "text" },
       { key: "note", label: "Note", type: "textarea" },

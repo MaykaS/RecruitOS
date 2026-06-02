@@ -315,3 +315,46 @@ create index if not exists idx_contacts_company_id on contacts(company_id);
 create index if not exists idx_applications_company_id on applications(company_id);
 create index if not exists idx_action_items_due_date on action_items(due_date);
 create index if not exists idx_action_items_status on action_items(status);
+
+insert into storage.buckets (id, name, public)
+select 'resume-files', 'resume-files', true
+where not exists (
+  select 1
+  from storage.buckets
+  where id = 'resume-files'
+);
+
+update storage.buckets
+set public = true
+where id = 'resume-files';
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'Public can view resume files'
+  ) then
+    create policy "Public can view resume files"
+      on storage.objects
+      for select
+      to public
+      using (bucket_id = 'resume-files');
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'Public can upload resume files'
+  ) then
+    create policy "Public can upload resume files"
+      on storage.objects
+      for insert
+      to public
+      with check (bucket_id = 'resume-files');
+  end if;
+end $$;
