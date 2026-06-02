@@ -332,6 +332,81 @@ export interface RecruitOSData {
   settings: AppSettings;
 }
 
+export type ApplicationStrategyLabel =
+  | "Double Down"
+  | "Apply This Week"
+  | "Network First"
+  | "At Risk"
+  | "Waiting Too Long"
+  | "Drop";
+
+export interface ApplicationInsight {
+  application: Application;
+  company: Company | null;
+  linkedContacts: Contact[];
+  openActionItems: ActionItem[];
+  applicationPriorityScore: number;
+  applicationStrategyLabel: ApplicationStrategyLabel;
+  applicationRiskFlags: string[];
+  primaryReason: string;
+  dueLabel: string;
+  hasWarmContact: boolean;
+  hasInterviewSignal: boolean;
+}
+
+export type ContactNextActionLabel =
+  | "Send Outreach"
+  | "Follow Up Now"
+  | "Prep For Conversation"
+  | "Ask For Referral"
+  | "Convert To Application"
+  | "Log Takeaways";
+
+export interface ContactWorkflowInsight {
+  contact: Contact;
+  company: Company | null;
+  linkedApplications: Application[];
+  contactFollowUpUrgency: number;
+  contactNextBestAction: ContactNextActionLabel;
+  primaryReason: string;
+  whyThisPersonMatters: string;
+  askPrompt: string;
+  sendPrompt: string;
+}
+
+export type InterviewPrepGap =
+  | "No linked PARs"
+  | "No linked answers"
+  | "No company notes"
+  | "No interviewer questions"
+  | "Readiness below threshold";
+
+export interface InterviewPrepPacket {
+  prep: InterviewPrep;
+  company: Company | null;
+  application: Application | null;
+  recommendedPars: PARStory[];
+  recommendedAnswers: InterviewAnswer[];
+  linkedCases: CasePractice[];
+  openPrepActionItems: ActionItem[];
+  likelyQuestions: string[];
+  questionsToAsk: string[];
+  gaps: InterviewPrepGap[];
+  completenessScore: number;
+}
+
+export interface PriorityQueueItem {
+  id: string;
+  kind: "application" | "contact" | "interview-prep";
+  title: string;
+  subtitle: string;
+  recommendation: string;
+  reason: string;
+  urgencyScore: number;
+  badge: string;
+  linkedId: string;
+}
+
 export interface ModuleConfig {
   slug: CrudModuleSlug;
   title: string;
@@ -1957,4 +2032,411 @@ export function getSourceSummary(data: RecruitOSData, actionItem: ActionItem) {
     }
   }
   return actionItem.source_type;
+}
+
+function clampScore(value: number, min = 0, max = 100) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function uniqueInsightStrings(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function dateDiffFromToday(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  return Math.round((date.getTime() - today.getTime()) / 86_400_000);
+}
+
+function formatRelativeDateLabel(value?: string | null) {
+  const diff = dateDiffFromToday(value);
+  if (diff == null) return "No due date";
+  if (diff < 0) return `${Math.abs(diff)}d overdue`;
+  if (diff === 0) return "Due today";
+  if (diff <= 7) return `Due in ${diff}d`;
+  return formatDate(value);
+}
+
+function applicationHasInterviewSignal(data: RecruitOSData, applicationId: string) {
+  return data.interviewPrep.some((prep) => prep.application_id === applicationId);
+}
+
+function getApplicationCompany(data: RecruitOSData, application: Application) {
+  return data.companies.find((company) => company.id === application.company_id) ?? null;
+}
+
+function getApplicationContacts(data: RecruitOSData, application: Application) {
+  return data.contacts.filter(
+    (contact) =>
+      contact.id === application.referral_person_contact_id ||
+      application.linked_contact_ids.includes(contact.id) ||
+      contact.linked_application_ids.includes(application.id),
+  );
+}
+
+function splitMultilineText(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+export function getApplicationInsights(data: RecruitOSData): ApplicationInsight[] {
+  return [...data.applications]
+    .map((application) => {
+      const company = getApplicationCompany(data, application);
+      const linkedContacts = getApplicationContacts(data, application);
+      const openActionItems = getLinkedActionItems(data, "applications", application.id).filter(
+        (item) => !isActionDone(item),
+      );
+      const hasWarmContact = linkedContacts.some(
+        (contact) =>
+          contact.relationship_strength >= 4 ||
+          ["Asked", "Agreed", "Submitted"].includes(contact.referral_status),
+      );
+      const hasInterviewSignal = applicationHasInterviewSignal(data, application.id);
+      const deadlineDiff = dateDiffFromToday(application.deadline);
+      const followUpDiff = dateDiffFromToday(application.follow_up_date);
+      const appliedAge = dateDiffFromToday(application.date_applied);
+      const referralAge = dateDiffFromToday(application.referral_date);
+      const riskFlags: string[] = [];
+      let score = 0;
+
+      if (company?.priority === "High" || application.priority === "High") score += 18;
+      if (company?.role_fit && TARGET_ROLES.includes(company.role_fit)) score += 8;
+      if (hasWarmContact) score += 14;
+      if (hasInterviewSignal) score += 16;
+      if (application.status === "Ready to Apply") score += 18;
+      if (application.status === "Interviewing") score += 20;
+      if (application.status === "Assessment") score += 15;
+      if (application.status === "Final Round") score += 24;
+      if (deadlineDiff != null && deadlineDiff <= 7) {
+        score += 20;
+        riskFlags.push("deadline soon");
+      }
+      if (deadlineDiff != null && deadlineDiff < 0) riskFlags.push("deadline passed");
+      if (application.referral_needed && application.referral_status !== "Submitted") {
+        score += 10;
+        riskFlags.push("no referral despite referral needed");
+      }
+      if (company?.visa_friendliness === "Unknown") score -= 2;
+      if (company?.visa_friendliness === "Medium") score -= 5;
+      if (company?.visa_friendliness === "Low" || company?.visa_friendliness === "Weak") {
+        score -= 10;
+        riskFlags.push("visa fit weak");
+      }
+      if (company?.recruiting_timeline === "Just-in-Time") {
+        score += 6;
+        riskFlags.push("just-in-time timeline");
+      }
+      if (followUpDiff != null && followUpDiff < 0) {
+        score += 16;
+        riskFlags.push("stale follow-up");
+      }
+      if (openActionItems.some((item) => isDueTodayOrOverdue(item.due_date))) {
+        score += 12;
+        riskFlags.push("urgent linked action");
+      }
+      if (hasWarmContact) riskFlags.push("strong contact exists");
+      if (company?.priority === "High" || application.priority === "High") {
+        riskFlags.push("company marked high priority");
+      }
+      if (hasInterviewSignal) riskFlags.push("interview activity already exists");
+
+      let label: ApplicationStrategyLabel = "Apply This Week";
+      if (
+        (company?.priority === "Low" || application.priority === "Low") &&
+        !hasWarmContact &&
+        !hasInterviewSignal &&
+        (company?.visa_friendliness === "Low" || company?.visa_friendliness === "Weak" || application.start_date_compatibility === "Weak")
+      ) {
+        label = "Drop";
+      } else if (
+        application.status === "Applied" &&
+        ((appliedAge != null && appliedAge <= -10) ||
+          (referralAge != null && referralAge <= -10 && application.referral_status !== "Submitted"))
+      ) {
+        label = "Waiting Too Long";
+      } else if (
+        ["Applied", "Interviewing", "Assessment", "Final Round"].includes(application.status) &&
+        ((!application.next_step && !application.follow_up_date) ||
+          (followUpDiff != null && followUpDiff < 0))
+      ) {
+        label = "At Risk";
+      } else if (
+        (application.status === "Target" && hasWarmContact && !application.date_applied) ||
+        (application.referral_needed && application.referral_status !== "Submitted")
+      ) {
+        label = "Network First";
+      } else if (
+        (company?.priority === "High" || application.priority === "High") &&
+        (hasWarmContact || hasInterviewSignal)
+      ) {
+        label = "Double Down";
+      } else if (
+        application.status === "Ready to Apply" ||
+        (deadlineDiff != null && deadlineDiff >= 0 && deadlineDiff <= 7)
+      ) {
+        label = "Apply This Week";
+      }
+
+      const primaryReasonByLabel: Record<ApplicationStrategyLabel, string> = {
+        "Double Down": hasInterviewSignal
+          ? "You already have momentum here. Push the highest-leverage next step."
+          : "This is a high-priority target with warm access. Invest more energy here now.",
+        "Apply This Week":
+          deadlineDiff != null && deadlineDiff >= 0 && deadlineDiff <= 7
+            ? "The deadline is close enough that this should move now."
+            : "This role is close to ready and should leave the dashboard soon.",
+        "Network First":
+          "A warm path or unresolved referral can improve the odds before applying.",
+        "At Risk":
+          "This process has momentum, but it can stall without a concrete next step.",
+        "Waiting Too Long":
+          "Too much time has passed since the last meaningful recruiting touchpoint.",
+        Drop: "The fit and traction look weak relative to other places you could spend effort.",
+      };
+
+      return {
+        application,
+        company,
+        linkedContacts,
+        openActionItems,
+        applicationPriorityScore: clampScore(score),
+        applicationStrategyLabel: label,
+        applicationRiskFlags: uniqueInsightStrings(riskFlags),
+        primaryReason: primaryReasonByLabel[label],
+        dueLabel: formatRelativeDateLabel(application.follow_up_date || application.deadline),
+        hasWarmContact,
+        hasInterviewSignal,
+      };
+    })
+    .sort((left, right) => right.applicationPriorityScore - left.applicationPriorityScore);
+}
+
+export function getNetworkingWorkflowInsights(data: RecruitOSData): ContactWorkflowInsight[] {
+  return [...data.contacts]
+    .map((contact) => {
+      const company = data.companies.find((item) => item.id === contact.company_id) ?? null;
+      const linkedApplications = data.applications.filter(
+        (application) =>
+          application.referral_person_contact_id === contact.id ||
+          application.linked_contact_ids.includes(contact.id) ||
+          contact.linked_application_ids.includes(application.id),
+      );
+      const nextFollowUpDiff = dateDiffFromToday(contact.next_follow_up_date);
+      const lastTouchDiff = dateDiffFromToday(contact.last_contact_date);
+      let urgency = contact.relationship_strength * 8;
+      let nextAction: ContactNextActionLabel = "Send Outreach";
+      let primaryReason = "Open a relationship with a targeted outreach note.";
+
+      if (nextFollowUpDiff != null && nextFollowUpDiff < 0) {
+        urgency += 35;
+        nextAction = "Follow Up Now";
+        primaryReason = "This relationship is due for a follow-up now.";
+      } else if (
+        linkedApplications.some((application) => application.referral_needed) &&
+        contact.can_refer === "Yes" &&
+        !["Agreed", "Submitted"].includes(contact.referral_status)
+      ) {
+        urgency += 32;
+        nextAction = "Ask For Referral";
+        primaryReason = "This person can help unlock a live application.";
+      } else if (
+        nextFollowUpDiff != null &&
+        nextFollowUpDiff >= 0 &&
+        nextFollowUpDiff <= 2
+      ) {
+        urgency += 24;
+        nextAction = "Prep For Conversation";
+        primaryReason = "There is an upcoming touchpoint worth preparing for.";
+      } else if (
+        linkedApplications.length === 0 &&
+        (company?.priority === "High" || contact.priority === "High")
+      ) {
+        urgency += 20;
+        nextAction = "Convert To Application";
+        primaryReason = "This relationship is warm enough to turn into an application path.";
+      } else if (lastTouchDiff != null && lastTouchDiff <= -1 && !contact.conversation_notes) {
+        urgency += 14;
+        nextAction = "Log Takeaways";
+        primaryReason = "Capture the last conversation before the details fade.";
+      }
+
+      const companyLabel = company?.name || contact.company_name || "this company";
+      return {
+        contact,
+        company,
+        linkedApplications,
+        contactFollowUpUrgency: clampScore(urgency),
+        contactNextBestAction: nextAction,
+        primaryReason,
+        whyThisPersonMatters:
+          contact.how_i_know_them || `${contact.name} can help you navigate ${companyLabel}.`,
+        askPrompt:
+          nextAction === "Ask For Referral"
+            ? `Ask ${contact.name} what would make a referral easy for them to support.`
+            : `Ask ${contact.name} about the role, team, and how candidates stand out at ${companyLabel}.`,
+        sendPrompt:
+          nextAction === "Follow Up Now"
+            ? `Send a short update, gratitude, and one clear next ask to ${contact.name}.`
+            : `Send a light, specific message that gives ${contact.name} an easy reply path.`,
+      };
+    })
+    .sort((left, right) => right.contactFollowUpUrgency - left.contactFollowUpUrgency);
+}
+
+function getSuggestedParsForPrep(
+  data: RecruitOSData,
+  prep: InterviewPrep,
+  application: Application | null,
+) {
+  const explicit = prep.linked_par_story_ids
+    .map((id) => data.parStories.find((par) => par.id === id))
+    .filter((item): item is PARStory => Boolean(item));
+  if (explicit.length) return explicit;
+
+  const targetRole = application?.function || application?.role_title || "";
+  return [...data.parStories]
+    .filter(
+      (par) =>
+        !targetRole ||
+        par.target_roles.some((role) =>
+          normalizeText(role).includes(normalizeText(targetRole)) ||
+          normalizeText(targetRole).includes(normalizeText(role)),
+        ),
+    )
+    .sort((left, right) => {
+      const leftScore = left.confidence_score * 10 + left.number_of_reps;
+      const rightScore = right.confidence_score * 10 + right.number_of_reps;
+      return rightScore - leftScore;
+    })
+    .slice(0, 4);
+}
+
+function getSuggestedAnswersForPrep(
+  data: RecruitOSData,
+  prep: InterviewPrep,
+  application: Application | null,
+) {
+  const explicit = prep.linked_interview_answer_ids
+    .map((id) => data.interviewAnswers.find((answer) => answer.id === id))
+    .filter((item): item is InterviewAnswer => Boolean(item));
+  if (explicit.length) return explicit;
+
+  return [...data.interviewAnswers]
+    .filter((answer) => {
+      if (answer.linked_interview_prep_ids.includes(prep.id)) return true;
+      if (application && answer.linked_application_ids.includes(application.id)) return true;
+      if (!application?.function) return true;
+      return normalizeText(answer.target_role).includes(normalizeText(application.function));
+    })
+    .sort((left, right) => right.confidence_score - left.confidence_score)
+    .slice(0, 4);
+}
+
+export function buildInterviewPrepPacket(
+  data: RecruitOSData,
+  prepId: string,
+): InterviewPrepPacket | null {
+  const prep = data.interviewPrep.find((item) => item.id === prepId);
+  if (!prep) return null;
+  const company = data.companies.find((item) => item.id === prep.company_id) ?? null;
+  const application = data.applications.find((item) => item.id === prep.application_id) ?? null;
+  const recommendedPars = getSuggestedParsForPrep(data, prep, application);
+  const recommendedAnswers = getSuggestedAnswersForPrep(data, prep, application);
+  const linkedCases = prep.linked_case_ids
+    .map((id) => data.cases.find((item) => item.id === id))
+    .filter((item): item is CasePractice => Boolean(item));
+  const openPrepActionItems = getLinkedActionItems(data, "interview-prep", prep.id).filter(
+    (item) => !isActionDone(item),
+  );
+  const likelyQuestions = splitMultilineText(prep.likely_questions);
+  const questionsToAsk = splitMultilineText(prep.questions_to_ask_interviewer);
+  const gaps: InterviewPrepGap[] = [];
+
+  if (!recommendedPars.length) gaps.push("No linked PARs");
+  if (!recommendedAnswers.length) gaps.push("No linked answers");
+  if (!(prep.company_notes || company?.company_research_notes || company?.why_this_company)) {
+    gaps.push("No company notes");
+  }
+  if (!questionsToAsk.length) gaps.push("No interviewer questions");
+  if (prep.readiness_score < 70) gaps.push("Readiness below threshold");
+
+  let completenessScore = 100;
+  completenessScore -= gaps.length * 12;
+  if (!linkedCases.length && prep.interview_type.toLowerCase().includes("case")) {
+    completenessScore -= 10;
+  }
+
+  return {
+    prep,
+    company,
+    application,
+    recommendedPars,
+    recommendedAnswers,
+    linkedCases,
+    openPrepActionItems,
+    likelyQuestions,
+    questionsToAsk,
+    gaps,
+    completenessScore: clampScore(completenessScore),
+  };
+}
+
+export function getTopPriorityQueue(data: RecruitOSData): PriorityQueueItem[] {
+  const applicationItems: PriorityQueueItem[] = getApplicationInsights(data).slice(0, 6).map(
+    (insight) => ({
+      id: `application-${insight.application.id}`,
+      kind: "application",
+      title: `${insight.application.company_name} - ${insight.application.role_title}`,
+      subtitle: insight.application.status,
+      recommendation: insight.applicationStrategyLabel,
+      reason: insight.primaryReason,
+      urgencyScore: insight.applicationPriorityScore,
+      badge: insight.dueLabel,
+      linkedId: insight.application.id,
+    }),
+  );
+  const contactItems: PriorityQueueItem[] = getNetworkingWorkflowInsights(data).slice(0, 4).map(
+    (insight) => ({
+      id: `contact-${insight.contact.id}`,
+      kind: "contact",
+      title: `${insight.contact.name} - ${insight.company?.name || insight.contact.company_name || "Networking"}`,
+      subtitle: insight.contact.role || "Contact",
+      recommendation: insight.contactNextBestAction,
+      reason: insight.primaryReason,
+      urgencyScore: insight.contactFollowUpUrgency,
+      badge: formatRelativeDateLabel(insight.contact.next_follow_up_date),
+      linkedId: insight.contact.id,
+    }),
+  );
+  const prepItems: PriorityQueueItem[] = data.interviewPrep
+    .map((prep) => buildInterviewPrepPacket(data, prep.id))
+    .filter((packet): packet is InterviewPrepPacket => Boolean(packet))
+    .filter((packet) => {
+      const diff = dateDiffFromToday(packet.prep.interview_date);
+      return diff != null && diff >= 0 && diff <= 7;
+    })
+    .map((packet) => ({
+      id: `prep-${packet.prep.id}`,
+      kind: "interview-prep" as const,
+      title: `${packet.company?.name || "Interview"} - ${packet.prep.interview_round || packet.prep.interview_type}`,
+      subtitle: packet.prep.interview_type || "Interview Prep",
+      recommendation: packet.gaps.length ? "Close Prep Gaps" : "Interview Ready",
+      reason: packet.gaps.length
+        ? `Focus on ${packet.gaps[0].toLowerCase()} before the interview.`
+        : "Your prep packet is in good shape. Use today to rehearse.",
+      urgencyScore: clampScore(90 - (dateDiffFromToday(packet.prep.interview_date) ?? 0) * 8),
+      badge: formatRelativeDateLabel(packet.prep.interview_date),
+      linkedId: packet.prep.id,
+    }));
+
+  return [...applicationItems, ...contactItems, ...prepItems]
+    .sort((left, right) => right.urgencyScore - left.urgencyScore)
+    .slice(0, 8);
 }
