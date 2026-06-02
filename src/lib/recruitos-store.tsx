@@ -4,6 +4,7 @@ import {
   ActionItem,
   CrudModuleSlug,
   INTERVIEW_PREP_CHECKLIST,
+  MODULE_CONFIGS,
   RecruitOSData,
   calculateReadinessScore,
   createId,
@@ -279,9 +280,48 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
         const collectionKey = getCollectionKey(module);
         const collection = current[collectionKey] as unknown as Array<Record<string, unknown>>;
         const existing = collection.find((item) => item.id === record.id);
-        const nextRecord = withTimestamps(record, existing?.id as string | undefined);
+        let preparedRecord = { ...record };
+        let nextCompanies = current.companies;
+
+        if (module === "networking") {
+          const rawCompanyName = String(preparedRecord.company_name ?? "").trim();
+          let companyId = String(preparedRecord.company_id ?? "").trim();
+          const normalizedTags = Array.isArray(preparedRecord.tags)
+            ? uniqueStrings(preparedRecord.tags.map((tag) => String(tag).trim()))
+            : [];
+
+          if (rawCompanyName) {
+            const existingCompany = current.companies.find(
+              (company) => company.name.trim().toLowerCase() === rawCompanyName.toLowerCase(),
+            );
+
+            if (existingCompany) {
+              companyId = existingCompany.id;
+            } else {
+              const newCompany = withTimestamps(
+                {
+                  ...MODULE_CONFIGS.companies.defaultValues,
+                  name: rawCompanyName,
+                },
+              ) as RecruitOSData["companies"][number];
+              nextCompanies = [...current.companies, newCompany];
+              companyId = newCompany.id;
+            }
+          }
+
+          preparedRecord = {
+            ...preparedRecord,
+            company_id: companyId,
+            company_name:
+              rawCompanyName || lookupCompanyName({ ...current, companies: nextCompanies }, companyId),
+            tags: normalizedTags,
+          };
+        }
+
+        const nextRecord = withTimestamps(preparedRecord, existing?.id as string | undefined);
         let nextState: RecruitOSData = {
           ...current,
+          companies: nextCompanies,
           [collectionKey]: existing
             ? collection.map((item) =>
                 item.id === existing.id ? { ...item, ...nextRecord } : item,

@@ -365,5 +365,9 @@ export function getPersistenceCollectionsForModule(
     return ["interviewPrep", "actionItems"];
   }
 
+  if (module === "networking") {
+    return ["contacts", "companies"];
+  }
+
   return [moduleMap[module]];
 }

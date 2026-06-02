@@ -3,21 +3,27 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
+  ApplicationInsight,
   BRAIN_DUMP_CATEGORIES,
+  ContactWorkflowInsight,
   CrudModuleSlug,
   FieldConfig,
+  InterviewPrepPacket,
   MODULE_CONFIGS,
   ModuleSlug,
   RECRUITING_TRACKS,
   RecruitOSData,
+  buildInterviewPrepPacket,
   formatDate,
   formatDateTime,
+  getApplicationInsights,
   getLinkedActionItems,
+  getNetworkingWorkflowInsights,
   getSourceSummary,
+  getTopPriorityQueue,
   isActionDone,
   isDueTodayOrOverdue,
   isInCurrentWeek,
-  isWithinNextDays,
   joinList,
   progressPercentage,
   resolveOptions,
@@ -50,6 +56,31 @@ function sanitizeText(value: string) {
     .replaceAll("·", " - ")
     .replaceAll("â€™", "'")
     .replaceAll("’", "'");
+}
+
+function parseTagInput(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(",")
+        .map((item) => sanitizeText(item).trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function downloadJsonFile(filename: string, payload: unknown) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json",
+  });
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.URL.revokeObjectURL(url);
 }
 
 function StatusBadge({
@@ -117,6 +148,45 @@ function EmptyState({ label }: { label: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
       {label}
+    </div>
+  );
+}
+
+function InsightBadge({ label }: { label: string }) {
+  const tone = label.toLowerCase();
+  const className = tone.includes("double") || tone.includes("ready")
+    ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+    : tone.includes("apply") || tone.includes("prep")
+      ? "bg-amber-50 text-amber-700 ring-1 ring-amber-100"
+      : tone.includes("risk") || tone.includes("drop") || tone.includes("waiting")
+        ? "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
+        : "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100";
+  return <span className={cx("inline-flex rounded-full px-2.5 py-1 text-xs font-medium", className)}>{label}</span>;
+}
+
+function MiniList({
+  title,
+  items,
+}: {
+  title: string;
+  items: string[];
+}) {
+  if (!items.length) return null;
+  return (
+    <div className="space-y-1">
+      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {title}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((item) => (
+          <span
+            key={item}
+            className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600"
+          >
+            {sanitizeText(item)}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -245,6 +315,19 @@ function RecordModal({
   const [form, setForm] = useState<Record<string, unknown>>(initial ?? config.defaultValues);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const networkingTagOptions =
+    module === "networking"
+      ? resolveOptions(
+          MODULE_CONFIGS.networking.fields.find((field) => field.key === "tags")?.options ?? [],
+          data,
+        )
+      : [];
+  const companyNameValue =
+    module === "networking" ? String(form.company_name ?? initial?.company_name ?? "") : "";
+  const tagInputValue =
+    module === "networking" && Array.isArray(form.tags)
+      ? form.tags.map((tag) => sanitizeText(String(tag))).join(", ")
+      : "";
 
   if (!open) return null;
 
@@ -274,27 +357,122 @@ function RecordModal({
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          {config.fields.map((field) => (
-            <label
-              key={field.key}
-              className={cx(
-                "space-y-2 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]",
-                field.type === "textarea" || field.type === "multiselect"
-                  ? "lg:col-span-2"
-                  : "",
-              )}
-            >
-              <span className="text-sm font-medium text-slate-700">{field.label}</span>
-              <FieldInput
-                field={field}
-                data={data}
-                value={form[field.key]}
-                onChange={(nextValue) =>
-                  setForm((current) => ({ ...current, [field.key]: nextValue }))
-                }
-              />
-            </label>
-          ))}
+          {config.fields.map((field) => {
+            if (module === "networking" && field.key === "company_id") {
+              return (
+                <label
+                  key={field.key}
+                  className="space-y-2 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]"
+                >
+                  <span className="text-sm font-medium text-slate-700">{field.label}</span>
+                  <input
+                    list="networking-company-options"
+                    value={companyNameValue}
+                    onChange={(event) => {
+                      const nextCompanyName = event.target.value;
+                      const matchingCompany = data.companies.find(
+                        (company) =>
+                          company.name.trim().toLowerCase() === nextCompanyName.trim().toLowerCase(),
+                      );
+
+                      setForm((current) => ({
+                        ...current,
+                        company_name: nextCompanyName,
+                        company_id: matchingCompany?.id ?? "",
+                      }));
+                    }}
+                    placeholder="Type a company or pick an existing one"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                  />
+                  <datalist id="networking-company-options">
+                    {data.companies.map((company) => (
+                      <option key={company.id} value={company.name} />
+                    ))}
+                  </datalist>
+                  <p className="text-xs leading-5 text-slate-500">
+                    Enter a new company inline or choose one that already exists.
+                  </p>
+                </label>
+              );
+            }
+
+            if (module === "networking" && field.key === "tags") {
+              return (
+                <label
+                  key={field.key}
+                  className="space-y-3 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] lg:col-span-2"
+                >
+                  <span className="text-sm font-medium text-slate-700">{field.label}</span>
+                  <input
+                    value={tagInputValue}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        tags: parseTagInput(event.target.value),
+                      }))
+                    }
+                    placeholder="Cornell, Alum, PM"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {networkingTagOptions.map((option) => {
+                      const selected = Array.isArray(form.tags) && form.tags.includes(option.value);
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() =>
+                            setForm((current) => {
+                              const currentTags = Array.isArray(current.tags)
+                                ? current.tags.map(String)
+                                : [];
+                              const nextTags = currentTags.includes(option.value)
+                                ? currentTags.filter((tag) => tag !== option.value)
+                                : [...currentTags, option.value];
+                              return { ...current, tags: nextTags };
+                            })
+                          }
+                          className={cx(
+                            "rounded-full border px-2.5 py-1 text-xs transition",
+                            selected
+                              ? "border-teal-200 bg-cyan-50 text-teal-700"
+                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs leading-5 text-slate-500">
+                    Type your own tags or tap suggestions to add them quickly.
+                  </p>
+                </label>
+              );
+            }
+
+            return (
+              <label
+                key={field.key}
+                className={cx(
+                  "space-y-2 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]",
+                  field.type === "textarea" || field.type === "multiselect"
+                    ? "lg:col-span-2"
+                    : "",
+                )}
+              >
+                <span className="text-sm font-medium text-slate-700">{field.label}</span>
+                <FieldInput
+                  field={field}
+                  data={data}
+                  value={form[field.key]}
+                  onChange={(nextValue) =>
+                    setForm((current) => ({ ...current, [field.key]: nextValue }))
+                  }
+                />
+              </label>
+            );
+          })}
         </div>
 
         {module === "resumes" ? (
@@ -431,18 +609,284 @@ function RecordModal({
   );
 }
 
+const APPLICATION_BUCKET_ORDER: ApplicationInsight["applicationStrategyLabel"][] = [
+  "Double Down",
+  "Apply This Week",
+  "Network First",
+  "At Risk",
+  "Waiting Too Long",
+  "Drop",
+];
+
+const CONTACT_BUCKET_ORDER: ContactWorkflowInsight["contactNextBestAction"][] = [
+  "Follow Up Now",
+  "Prep For Conversation",
+  "Ask For Referral",
+  "Convert To Application",
+  "Log Takeaways",
+  "Send Outreach",
+];
+
+function PipelineTriageSection({
+  insights,
+  createActionItemFromSource,
+}: {
+  insights: ApplicationInsight[];
+  createActionItemFromSource: ReturnType<typeof useRecruitOS>["createActionItemFromSource"];
+}) {
+  return (
+    <Card title="Pipeline Triage">
+      <div className="space-y-4">
+        {APPLICATION_BUCKET_ORDER.map((label) => {
+          const items = insights.filter((insight) => insight.applicationStrategyLabel === label).slice(0, 3);
+          if (!items.length) return null;
+          return (
+            <div key={label} className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <InsightBadge label={label} />
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                  {items.length} in focus
+                </div>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-3">
+                {items.map((insight) => (
+                  <div key={insight.application.id} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-medium text-slate-900">
+                          {sanitizeText(insight.application.company_name)} - {sanitizeText(insight.application.role_title)}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {sanitizeText(insight.application.status)} - {sanitizeText(insight.dueLabel)}
+                        </div>
+                      </div>
+                      <StatusBadge value={insight.applicationPriorityScore} />
+                    </div>
+                    <p className="mt-3 text-sm text-slate-700">{sanitizeText(insight.primaryReason)}</p>
+                    <MiniList title="Drivers" items={insight.applicationRiskFlags.slice(0, 4)} />
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          createActionItemFromSource({
+                            title:
+                              label === "Network First"
+                                ? `Referral ask for ${insight.application.company_name}`
+                                : label === "Apply This Week"
+                                  ? `Submit ${insight.application.company_name} application`
+                                  : label === "Waiting Too Long"
+                                    ? `Re-engage ${insight.application.company_name}`
+                                    : `${insight.application.company_name}: ${insight.application.next_step || "Recruiter follow-up"}`,
+                            source_type: "Application",
+                            source_id: insight.application.id,
+                            linked_application_id: insight.application.id,
+                            linked_company_id: insight.application.company_id,
+                          })
+                        }
+                        className={buttonClassName("secondary")}
+                      >
+                        {label === "Network First"
+                          ? "Referral Ask"
+                          : label === "Apply This Week"
+                            ? "Submit Application"
+                            : label === "Waiting Too Long"
+                              ? "Re-Engage"
+                              : "Recruiter Follow-Up"}
+                      </button>
+                      <Link href="/applications" className={buttonClassName("quiet")}>
+                        Open Pipeline
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function NetworkingWorkflowSection({
+  insights,
+  markFollowUpDone,
+  createActionItemFromSource,
+  saveRecord,
+}: {
+  insights: ContactWorkflowInsight[];
+  markFollowUpDone: ReturnType<typeof useRecruitOS>["markFollowUpDone"];
+  createActionItemFromSource: ReturnType<typeof useRecruitOS>["createActionItemFromSource"];
+  saveRecord: ReturnType<typeof useRecruitOS>["saveRecord"];
+}) {
+  return (
+    <Card title="Networking Execution">
+      <div className="space-y-4">
+        {CONTACT_BUCKET_ORDER.map((label) => {
+          const items = insights.filter((insight) => insight.contactNextBestAction === label).slice(0, 2);
+          if (!items.length) return null;
+          return (
+            <div key={label} className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <InsightBadge label={label} />
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                  {items.length} contact{items.length === 1 ? "" : "s"}
+                </div>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {items.map((insight) => (
+                  <div key={insight.contact.id} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-medium text-slate-900">
+                          {sanitizeText(insight.contact.name)} - {sanitizeText(insight.company?.name || insight.contact.company_name || "Networking")}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {sanitizeText(insight.contact.role || "Contact")} - strength {insight.contact.relationship_strength}/5
+                        </div>
+                      </div>
+                      <StatusBadge value={insight.contactFollowUpUrgency} />
+                    </div>
+                    <p className="mt-3 text-sm text-slate-700">{sanitizeText(insight.primaryReason)}</p>
+                    <div className="mt-3 space-y-2 text-sm text-slate-600">
+                      <div><span className="font-medium text-slate-800">Why this person matters:</span> {sanitizeText(insight.whyThisPersonMatters)}</div>
+                      <div><span className="font-medium text-slate-800">What to ask:</span> {sanitizeText(insight.askPrompt)}</div>
+                      <div><span className="font-medium text-slate-800">What to send:</span> {sanitizeText(insight.sendPrompt)}</div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => markFollowUpDone(insight.contact.id)}
+                        className={buttonClassName("secondary")}
+                      >
+                        Mark Touch Complete
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          saveRecord("networking", {
+                            ...insight.contact,
+                            conversation_notes:
+                              `${insight.contact.conversation_notes}\nPost-call takeaway: `.trim(),
+                          });
+                          createActionItemFromSource({
+                            title: `Send follow-up after talking with ${insight.contact.name}`,
+                            source_type: "Networking",
+                            source_id: insight.contact.id,
+                            linked_contact_id: insight.contact.id,
+                            linked_company_id: insight.contact.company_id,
+                          });
+                        }}
+                        className={buttonClassName("secondary")}
+                      >
+                        Log Takeaways
+                      </button>
+                      <Link href="/networking" className={buttonClassName("quiet")}>
+                        Open CRM
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function InterviewPrepPacketsSection({
+  packets,
+  toggleActionItem,
+  createActionItemFromSource,
+}: {
+  packets: InterviewPrepPacket[];
+  toggleActionItem: ReturnType<typeof useRecruitOS>["toggleActionItem"];
+  createActionItemFromSource: ReturnType<typeof useRecruitOS>["createActionItemFromSource"];
+}) {
+  return (
+    <Card title="Interview Prep Packets">
+      <div className="space-y-4">
+        {packets.length ? packets.map((packet) => (
+          <div key={packet.prep.id} className="rounded-[28px] border border-slate-200 bg-slate-50 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="text-lg font-semibold text-slate-900">
+                  {sanitizeText(packet.company?.name || "Interview")} - {sanitizeText(packet.prep.interview_round || packet.prep.interview_type)}
+                </div>
+                <div className="text-sm text-slate-500">
+                  {sanitizeText(formatDateTime(packet.prep.interview_date))} - readiness {packet.prep.readiness_score}%
+                </div>
+              </div>
+              <InsightBadge label={packet.gaps.length ? "Close Prep Gaps" : "Interview Ready"} />
+            </div>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div className="space-y-3">
+                <div className="text-sm text-slate-700">
+                  <span className="font-medium text-slate-900">Company snapshot:</span> {sanitizeText(packet.prep.company_notes || packet.company?.company_research_notes || packet.company?.why_this_company || "Add notes on the business, product, and angle for this role.")}
+                </div>
+                <MiniList title="Likely questions" items={packet.likelyQuestions.slice(0, 4)} />
+                <MiniList title="Ask-back questions" items={packet.questionsToAsk.slice(0, 4)} />
+                <MiniList title="Prep gaps" items={packet.gaps} />
+              </div>
+              <div className="space-y-3">
+                <MiniList title="Recommended PARs" items={packet.recommendedPars.map((par) => par.title)} />
+                <MiniList title="Recommended answers" items={packet.recommendedAnswers.map((answer) => answer.question)} />
+                <MiniList title="Linked cases" items={packet.linkedCases.map((item) => item.title)} />
+              </div>
+            </div>
+            <div className="mt-4 space-y-2">
+              {packet.openPrepActionItems.slice(0, 3).map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                  <div>
+                    <div className="text-sm font-medium text-slate-900">{sanitizeText(item.title)}</div>
+                    <div className="text-xs text-slate-500">{sanitizeText(item.priority)} - {sanitizeText(renderValue(item.due_date))}</div>
+                  </div>
+                  <button type="button" onClick={() => toggleActionItem(item.id)} className={buttonClassName("secondary")}>
+                    Check Off
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  createActionItemFromSource({
+                    title: `Close missing prep gap for ${packet.company?.name || "interview"}`,
+                    source_type: "Interview Prep",
+                    source_id: packet.prep.id,
+                    linked_interview_prep_id: packet.prep.id,
+                    linked_company_id: packet.prep.company_id,
+                    linked_application_id: packet.prep.application_id,
+                  })
+                }
+                className={buttonClassName("secondary")}
+              >
+                Create Missing Prep Action
+              </button>
+              <Link href="/interview-prep" className={buttonClassName("quiet")}>
+                Open Packet
+              </Link>
+            </div>
+          </div>
+        )) : <EmptyState label="No upcoming interviews need a packet yet." />}
+      </div>
+    </Card>
+  );
+}
+
 function DashboardView() {
   const {
     data,
     logParPractice,
     markCasePracticed,
     markFollowUpDone,
-    markApplicationActionDone,
     toggleActionItem,
     createActionItemFromSource,
     convertBrainDumpToActionItem,
     saveRecord,
-    rescheduleActionItem,
   } = useRecruitOS();
   const [parIndex, setParIndex] = useState(0);
   const [caseIndex, setCaseIndex] = useState(0);
@@ -457,16 +901,21 @@ function DashboardView() {
   const caseCandidates = sortCaseSuggestions(data.cases);
   const parSuggestion = parCandidates[parIndex % Math.max(parCandidates.length, 1)];
   const caseSuggestion = caseCandidates[caseIndex % Math.max(caseCandidates.length, 1)];
-  const followUpsDue = data.contacts.filter((contact) =>
-    isDueTodayOrOverdue(contact.next_follow_up_date),
-  );
-  const applicationsNeedingAction = data.applications.filter(
-    (application) =>
-      isDueTodayOrOverdue(application.follow_up_date) ||
-      isWithinNextDays(application.deadline, 5) ||
-      ["Ready to Apply", "Referral Requested", "Interviewing", "Assessment"].includes(
-        application.status,
-      ),
+  const queue = useMemo(() => getTopPriorityQueue(data), [data]);
+  const applicationInsights = useMemo(() => getApplicationInsights(data), [data]);
+  const networkingInsights = useMemo(() => getNetworkingWorkflowInsights(data), [data]);
+  const prepPackets = useMemo(
+    () =>
+      data.interviewPrep
+        .map((prep) => buildInterviewPrepPacket(data, prep.id))
+        .filter((packet): packet is InterviewPrepPacket => Boolean(packet))
+        .sort(
+          (left, right) =>
+            new Date(left.prep.interview_date || "9999-12-31").getTime() -
+            new Date(right.prep.interview_date || "9999-12-31").getTime(),
+        )
+        .slice(0, 3),
+    [data],
   );
   const openActionItems = data.actionItems.filter(
     (action) => !isActionDone(action) && isDueTodayOrOverdue(action.due_date),
@@ -502,7 +951,9 @@ function DashboardView() {
         (application) => application.follow_up_date === key || application.deadline === key,
       ),
       mocks: data.mockInterviews.filter((mock) => mock.date === key),
-      actionItems: data.actionItems.filter((action) => action.due_date === key && !isActionDone(action)),
+      actionItems: data.actionItems.filter(
+        (action) => action.due_date === key && !isActionDone(action),
+      ),
     };
   });
   const selectedDay = weekDays.find((day) => day.key === selectedWeekDate) ?? weekDays[0];
@@ -515,7 +966,7 @@ function DashboardView() {
   return (
     <div className="space-y-6">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)]">
-        <Card title="Today’s Command Center">
+        <Card title="Today's Command Center">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="flex h-full flex-col rounded-[28px] border border-slate-200 bg-[rgba(255,255,255,0.82)] p-5">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -524,7 +975,9 @@ function DashboardView() {
               {parSuggestion ? (
                 <div className="mt-3 flex h-full flex-col">
                   <div className="space-y-2.5">
-                    <h3 className="min-h-[3rem] text-[1.6rem] leading-[1.08] font-semibold text-slate-900 [font-family:var(--font-display)]">{parSuggestion.title}</h3>
+                    <h3 className="min-h-[3rem] text-[1.6rem] leading-[1.08] font-semibold text-slate-900 [font-family:var(--font-display)]">
+                      {parSuggestion.title}
+                    </h3>
                     <p className="min-h-[3rem] text-sm leading-5 text-slate-600">
                       Prompt: Tell me about a time you influenced without authority.
                     </p>
@@ -533,20 +986,20 @@ function DashboardView() {
                     </p>
                   </div>
                   <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-4 sm:flex-nowrap">
-                    <Link href="/pars" className="inline-flex h-8 items-center rounded-full border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100">
+                    <Link href="/pars" className={buttonClassName("secondary")}>
                       Start Practice
                     </Link>
                     <button
                       type="button"
                       onClick={() => logParPractice(parSuggestion.id, "Daily dashboard practice")}
-                      className="inline-flex h-8 items-center rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 px-2.5 text-xs font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.16)] hover:from-teal-400 hover:to-cyan-400"
+                      className={buttonClassName("primary")}
                     >
                       Mark Complete
                     </button>
                     <button
                       type="button"
                       onClick={() => setParIndex((current) => current + 1)}
-                      className="inline-flex h-8 items-center rounded-full border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                      className={buttonClassName("secondary")}
                     >
                       Swap
                     </button>
@@ -564,7 +1017,9 @@ function DashboardView() {
               {caseSuggestion ? (
                 <div className="mt-3 flex h-full flex-col">
                   <div className="space-y-2.5">
-                    <h3 className="min-h-[3rem] text-[1.6rem] leading-[1.08] font-semibold text-slate-900 [font-family:var(--font-display)]">{caseSuggestion.title}</h3>
+                    <h3 className="min-h-[3rem] text-[1.6rem] leading-[1.08] font-semibold text-slate-900 [font-family:var(--font-display)]">
+                      {caseSuggestion.title}
+                    </h3>
                     <p className="min-h-[3rem] text-sm leading-5 text-slate-600">
                       Focus area: {caseSuggestion.weakness_area || "Keep sharp under time pressure."}
                     </p>
@@ -573,20 +1028,20 @@ function DashboardView() {
                     </p>
                   </div>
                   <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-4 sm:flex-nowrap">
-                    <Link href="/cases" className="inline-flex h-8 items-center rounded-full border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100">
+                    <Link href="/cases" className={buttonClassName("secondary")}>
                       Start Case
                     </Link>
                     <button
                       type="button"
                       onClick={() => markCasePracticed(caseSuggestion.id)}
-                      className="inline-flex h-8 items-center rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-2.5 text-xs font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.16)] hover:from-teal-400 hover:to-sky-400"
+                      className={buttonClassName("primary")}
                     >
                       Mark Complete
                     </button>
                     <button
                       type="button"
                       onClick={() => setCaseIndex((current) => current + 1)}
-                      className="inline-flex h-8 items-center rounded-full border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                      className={buttonClassName("secondary")}
                     >
                       Swap
                     </button>
@@ -651,120 +1106,80 @@ function DashboardView() {
         </Card>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Card title="Networking Follow-Ups Due">
-          <div className="space-y-3">
-            {followUpsDue.length ? (
-              followUpsDue.map((contact) => (
-                <div
-                  key={contact.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-sm font-medium text-slate-900">
-                        {contact.name} · {contact.company_name || "No company"}
-                      </div>
-                      <div className="text-sm text-slate-500">
-                        {contact.role || "No role"} · Last touch {renderValue(contact.last_contact_date)}
-                      </div>
-                      <div className="mt-2 text-sm text-slate-700">
-                        Next step: {contact.conversation_notes || "Follow up and keep momentum moving."}
-                      </div>
+      <Card title="What To Do Now">
+        <div className="space-y-3">
+          {queue.length ? (
+            queue.map((item) => (
+              <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <InsightBadge label={item.recommendation} />
+                      <StatusBadge value={item.badge} />
                     </div>
-                    <StatusBadge value="Due" />
+                    <div className="text-sm font-medium text-slate-900">{sanitizeText(item.title)}</div>
+                    <div className="text-xs uppercase tracking-[0.16em] text-slate-500">{sanitizeText(item.subtitle)}</div>
+                    <div className="text-sm text-slate-700">{sanitizeText(item.reason)}</div>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => markFollowUpDone(contact.id)}
-                      className="rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-cyan-400"
-                    >
-                      Mark Follow-Up Done
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        createActionItemFromSource({
-                          title: `Follow up with ${contact.name}`,
-                          source_type: "Networking",
-                          source_id: contact.id,
-                          linked_contact_id: contact.id,
-                          linked_company_id: contact.company_id,
-                        })
-                      }
-                      className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                    >
-                      Create Action Item
-                    </button>
+                  <div className="flex flex-wrap gap-2 lg:justify-end">
+                    {item.kind === "contact" ? (
+                      <button
+                        type="button"
+                        onClick={() => markFollowUpDone(item.linkedId)}
+                        className={buttonClassName("secondary")}
+                      >
+                        Mark Touch Complete
+                      </button>
+                    ) : null}
+                    {item.kind === "application" ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          createActionItemFromSource({
+                            title: item.title,
+                            source_type: "Application",
+                            source_id: item.linkedId,
+                            linked_application_id: item.linkedId,
+                            linked_company_id:
+                              data.applications.find((application) => application.id === item.linkedId)?.company_id ?? "",
+                          })
+                        }
+                        className={buttonClassName("secondary")}
+                      >
+                        Add Action
+                      </button>
+                    ) : null}
+                    {item.kind === "interview-prep" ? (
+                      <Link href="/interview-prep" className={buttonClassName("secondary")}>
+                        Open Packet
+                      </Link>
+                    ) : null}
                   </div>
                 </div>
-              ))
-            ) : (
-              <EmptyState label="No networking follow-ups due today." />
-            )}
-          </div>
-        </Card>
+              </div>
+            ))
+          ) : (
+            <EmptyState label="No urgent recruiting moves are surfaced right now." />
+          )}
+        </div>
+      </Card>
 
-        <Card title="Applications Requiring Action">
-          <div className="space-y-3">
-            {applicationsNeedingAction.length ? (
-              applicationsNeedingAction.map((application) => (
-                <div
-                  key={application.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-sm font-medium text-slate-900">
-                        {application.role_title} · {application.company_name}
-                      </div>
-                      <div className="text-sm text-slate-500">
-                        {application.status} · Referral {application.referral_status}
-                      </div>
-                      <div className="mt-2 text-sm text-slate-700">
-                        Next step: {application.next_step || "Review application and move it forward."}
-                      </div>
-                    </div>
-                    <StatusBadge
-                      value={
-                        isDueTodayOrOverdue(application.follow_up_date)
-                          ? "Overdue"
-                          : "Approaching"
-                      }
-                    />
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => markApplicationActionDone(application.id)}
-                      className="rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
-                    >
-                      Mark Action Complete
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        createActionItemFromSource({
-                          title: `${application.company_name}: ${application.next_step || "Follow up on application"}`,
-                          source_type: "Application",
-                          source_id: application.id,
-                          linked_application_id: application.id,
-                          linked_company_id: application.company_id,
-                        })
-                      }
-                      className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                    >
-                      Add Action Item
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <EmptyState label="No application actions are due right now." />
-            )}
-          </div>
-        </Card>
+      <div className="grid gap-6">
+        <PipelineTriageSection
+          insights={applicationInsights.slice(0, 12)}
+          createActionItemFromSource={createActionItemFromSource}
+        />
+        <NetworkingWorkflowSection
+          insights={networkingInsights.slice(0, 10)}
+          markFollowUpDone={markFollowUpDone}
+          createActionItemFromSource={createActionItemFromSource}
+          saveRecord={saveRecord}
+        />
+        <InterviewPrepPacketsSection
+          packets={prepPackets}
+          toggleActionItem={toggleActionItem}
+          createActionItemFromSource={createActionItemFromSource}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_1fr_1fr]">
@@ -772,10 +1187,7 @@ function DashboardView() {
           {mocksThisWeek.length ? (
             <div className="space-y-3 text-sm text-slate-700">
               <p>You already logged {mocksThisWeek.length} mock interview(s) this week.</p>
-              <Link
-                href="/mock-interviews"
-                className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-              >
+              <Link href="/mock-interviews" className={buttonClassName("secondary")}>
                 Review Mock Notes
               </Link>
             </div>
@@ -785,22 +1197,19 @@ function DashboardView() {
                 No mock interview has been completed this week. Keep the cadence alive before live interviews.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Link
-                  href="/mock-interviews"
-                  className="rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-cyan-400"
-                >
+                <Link href="/mock-interviews" className={buttonClassName("primary")}>
                   Log Mock Interview
                 </Link>
                 <button
                   type="button"
                   onClick={() =>
                     createActionItemFromSource({
-                      title: "Schedule this week’s mock interview",
+                      title: "Schedule this week's mock interview",
                       source_type: "Mock Interview",
                       source_id: "dashboard-weekly-mock",
                     })
                   }
-                  className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  className={buttonClassName("secondary")}
                 >
                   Create Mock Prep Action Item
                 </button>
@@ -820,13 +1229,13 @@ function DashboardView() {
                   <div>
                     <div className="text-sm font-medium text-slate-900">{item.title}</div>
                     <div className="text-xs text-slate-500">
-                      {item.priority} · {getSourceSummary(data, item)}
+                      {item.priority} - {getSourceSummary(data, item)}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => toggleActionItem(item.id)}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                    className={buttonClassName("secondary")}
                   >
                     Check Off
                   </button>
@@ -882,7 +1291,7 @@ function DashboardView() {
                 });
                 setBrainDump({ title: "", note: "", category: "General" });
               }}
-              className="rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
+              className={buttonClassName("primary")}
             >
               Save Brain Dump
             </button>
@@ -896,7 +1305,7 @@ function DashboardView() {
                     type="button"
                     onClick={() => convertBrainDumpToActionItem(item.id)}
                     disabled={Boolean(item.converted_action_item_id)}
-                    className="mt-3 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                    className={buttonClassName("secondary")}
                   >
                     {item.converted_action_item_id ? "Converted" : "Convert to Action Item"}
                   </button>
@@ -941,147 +1350,71 @@ function DashboardView() {
           <div className="mb-3 flex items-center justify-between">
             <div>
               <div className="text-sm font-medium text-slate-900">
-                {selectedDay.label} · {selectedDay.dateLabel}
+                {selectedDay.label} - {selectedDay.dateLabel}
               </div>
               <div className="text-sm text-slate-500">
-                Click a day above to inspect and reschedule what is due.
+                Click a day above to inspect what is due.
               </div>
             </div>
           </div>
-          <div className="grid gap-3 lg:grid-cols-2">
-            {selectedDay.actionItems.length ? (
-              selectedDay.actionItems.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-3">
+              {selectedDay.actionItems.length ? selectedDay.actionItems.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-3">
                   <div className="text-sm font-medium text-slate-900">{item.title}</div>
-                  <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
-                    <span>{item.priority}</span>
-                    <span>{getSourceSummary(data, item)}</span>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {item.priority} - {getSourceSummary(data, item)}
                   </div>
-                  <input
-                    value={item.due_date}
-                    onChange={(event) => rescheduleActionItem(item.id, event.target.value)}
-                    type="date"
-                    className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
-                  />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleActionItem(item.id)}
+                      className={buttonClassName("secondary")}
+                    >
+                      Check Off
+                    </button>
+                  </div>
                 </div>
-              ))
-            ) : (
-              <EmptyState label="No open action items on this day." />
-            )}
+              )) : <EmptyState label="No action items on this day." />}
+            </div>
+
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                <div className="text-sm font-medium text-slate-900">
+                  Networking follow-ups
+                </div>
+                <div className="mt-2 text-sm text-slate-700">
+                  {selectedDay.followUps.length
+                    ? selectedDay.followUps.map((contact) => `${contact.name} (${contact.company_name || "No company"})`).join(", ")
+                    : "No networking follow-ups on this day."}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                <div className="text-sm font-medium text-slate-900">
+                  Application actions
+                </div>
+                <div className="mt-2 text-sm text-slate-700">
+                  {selectedDay.applicationActions.length
+                    ? selectedDay.applicationActions.map((application) => `${application.company_name} - ${application.role_title}`).join(", ")
+                    : "No application deadlines or follow-ups on this day."}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                <div className="text-sm font-medium text-slate-900">
+                  Practice and mocks
+                </div>
+                <div className="mt-2 text-sm text-slate-700">
+                  {selectedDay.parLogs.length || selectedDay.caseLogs.length || selectedDay.mocks.length
+                    ? [
+                        selectedDay.parLogs.length ? `${selectedDay.parLogs.length} PAR practice log(s)` : "",
+                        selectedDay.caseLogs.length ? `${selectedDay.caseLogs.length} case practice log(s)` : "",
+                        selectedDay.mocks.length ? `${selectedDay.mocks.length} mock interview(s)` : "",
+                      ].filter(Boolean).join(" - ")
+                    : "No practice activity logged on this day."}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function SettingsView() {
-  const { data, saveSettings } = useRecruitOS();
-  const [draft, setDraft] = useState({
-    daily_application_target: data.settings.daily_application_target,
-    weekly_application_target: data.settings.weekly_application_target,
-    weekly_par_target: data.settings.weekly_par_target,
-    weekly_case_target: data.settings.weekly_case_target,
-    weekly_mock_target: data.settings.weekly_mock_target,
-    weekly_networking_target: data.settings.weekly_networking_target,
-    preferred_target_roles: data.settings.preferred_target_roles.join(", "),
-    case_types: data.settings.case_types.join("\n"),
-    application_statuses: data.settings.application_statuses.join("\n"),
-    action_item_statuses: data.settings.action_item_statuses.join("\n"),
-    action_item_priorities: data.settings.action_item_priorities.join("\n"),
-    recruiting_tracks: data.settings.recruiting_tracks.join("\n"),
-  });
-
-  return (
-    <div className="space-y-6">
-      <Card title="Settings">
-        <div className="grid gap-4 lg:grid-cols-2">
-          {[
-            ["daily_application_target", "Daily application target"],
-            ["weekly_application_target", "Weekly application target"],
-            ["weekly_par_target", "Weekly PAR target"],
-            ["weekly_case_target", "Weekly case target"],
-            ["weekly_mock_target", "Weekly mock target"],
-            ["weekly_networking_target", "Weekly networking touch target"],
-          ].map(([key, label]) => (
-            <label key={key} className="space-y-2">
-              <span className="text-sm font-medium text-slate-700">{label}</span>
-              <input
-                value={draft[key as keyof typeof draft]}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    [key]: Number(event.target.value),
-                  }))
-                }
-                type="number"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
-              />
-            </label>
-          ))}
-          {[
-            ["preferred_target_roles", "Preferred target roles (comma separated)"],
-            ["case_types", "Editable case types (one per line)"],
-            ["application_statuses", "Editable application statuses (one per line)"],
-            ["action_item_statuses", "Editable action item statuses (one per line)"],
-            ["action_item_priorities", "Editable action item priorities (one per line)"],
-            ["recruiting_tracks", "Editable recruiting tracks (one per line)"],
-          ].map(([key, label]) => (
-            <label key={key} className="space-y-2 lg:col-span-2">
-              <span className="text-sm font-medium text-slate-700">{label}</span>
-              <textarea
-                value={draft[key as keyof typeof draft]}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    [key]: event.target.value,
-                  }))
-                }
-                rows={key === "preferred_target_roles" ? 2 : 4}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
-              />
-            </label>
-          ))}
-        </div>
-
-        <div className="mt-6 flex justify-end">
-          <button
-            type="button"
-            onClick={() =>
-              saveSettings({
-                daily_application_target: Number(draft.daily_application_target),
-                weekly_application_target: Number(draft.weekly_application_target),
-                weekly_par_target: Number(draft.weekly_par_target),
-                weekly_case_target: Number(draft.weekly_case_target),
-                weekly_mock_target: Number(draft.weekly_mock_target),
-                weekly_networking_target: Number(draft.weekly_networking_target),
-                preferred_target_roles: draft.preferred_target_roles
-                  .split(",")
-                  .map((item) => item.trim())
-                  .filter(Boolean),
-                case_types: draft.case_types.split("\n").map((item) => item.trim()).filter(Boolean),
-                application_statuses: draft.application_statuses
-                  .split("\n")
-                  .map((item) => item.trim())
-                  .filter(Boolean),
-                action_item_statuses: draft.action_item_statuses
-                  .split("\n")
-                  .map((item) => item.trim())
-                  .filter(Boolean),
-                action_item_priorities: draft.action_item_priorities
-                  .split("\n")
-                  .map((item) => item.trim())
-                  .filter(Boolean),
-                recruiting_tracks: draft.recruiting_tracks
-                  .split("\n")
-                  .map((item) => item.trim())
-                  .filter(Boolean),
-              })
-            }
-            className="rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 px-4 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-cyan-400"
-          >
-            Save Settings
-          </button>
         </div>
       </Card>
     </div>
@@ -1104,30 +1437,17 @@ function QuestionsSection() {
         <div className="space-y-3">
           {data.interviewQuestions.map((question) => (
             <div key={question.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm font-medium text-slate-900">{sanitizeText(question.question_text)}</div>
-                  <div className="text-xs text-slate-500">{sanitizeText(question.category || "General")}</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => undefined}
-                  className="hidden"
-                />
-              </div>
+              <div className="text-sm font-medium text-slate-900">{sanitizeText(question.question_text)}</div>
+              <div className="mt-1 text-xs text-slate-500">{sanitizeText(question.category || "General")}</div>
               <div className="mt-3 space-y-2">
                 {question.linked_par_story_ids.length ? (
                   question.linked_par_story_ids.map((parId) => {
                     const par = data.parStories.find((item) => item.id === parId);
-                    if (!par) return null;
-                    return (
-                      <div
-                        key={parId}
-                        className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                      >
+                    return par ? (
+                      <div key={parId} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
                         {sanitizeText(par.title)}
                       </div>
-                    );
+                    ) : null;
                   })
                 ) : (
                   <div className="text-sm text-slate-500">No linked PAR stories yet.</div>
@@ -1145,7 +1465,7 @@ function QuestionsSection() {
                       linked_par_story_ids: question.linked_par_story_ids,
                     })
                   }
-                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  className={buttonClassName("secondary")}
                 >
                   Edit Question
                 </button>
@@ -1169,25 +1489,19 @@ function QuestionsSection() {
           <div className="space-y-3">
             <input
               value={draft.question_text}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, question_text: event.target.value }))
-              }
+              onChange={(event) => setDraft((current) => ({ ...current, question_text: event.target.value }))}
               placeholder="Question text"
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
             />
             <input
               value={draft.category}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, category: event.target.value }))
-              }
+              onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))}
               placeholder="Category"
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
             />
             <textarea
               value={draft.notes}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, notes: event.target.value }))
-              }
+              onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
               rows={3}
               placeholder="Notes"
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
@@ -1198,9 +1512,7 @@ function QuestionsSection() {
               onChange={(event) =>
                 setDraft((current) => ({
                   ...current,
-                  linked_par_story_ids: Array.from(
-                    event.currentTarget.selectedOptions,
-                  ).map((option) => option.value),
+                  linked_par_story_ids: Array.from(event.currentTarget.selectedOptions).map((option) => option.value),
                 }))
               }
               className="min-h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
@@ -1230,12 +1542,90 @@ function QuestionsSection() {
                   linked_par_story_ids: [],
                 });
               }}
-              className="rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
+              className={buttonClassName("primary")}
             >
               Save Question
             </button>
           </div>
         </div>
+      </div>
+    </Card>
+  );
+}
+
+function SettingsView() {
+  const { data, saveSettings, persistenceMode } = useRecruitOS();
+  const [draft, setDraft] = useState({
+    daily_application_target: data.settings.daily_application_target,
+    weekly_application_target: data.settings.weekly_application_target,
+    weekly_par_target: data.settings.weekly_par_target,
+    weekly_case_target: data.settings.weekly_case_target,
+    weekly_mock_target: data.settings.weekly_mock_target,
+    weekly_networking_target: data.settings.weekly_networking_target,
+  });
+
+  return (
+    <Card title="Settings">
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
+          <div className="text-sm font-medium text-slate-900">Backup Your RecruitOS Data</div>
+          <p className="mt-1 text-sm text-slate-600">
+            Download a full JSON backup of your recruiting workspace. This includes your records,
+            relationships, settings, export timestamp, and current storage mode.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const timestamp = new Date().toISOString();
+                const safeTimestamp = timestamp.replaceAll(":", "-");
+                downloadJsonFile(`recruitos-backup-${safeTimestamp}.json`, {
+                  exported_at: timestamp,
+                  persistence_mode: persistenceMode,
+                  app: "RecruitOS",
+                  data,
+                });
+              }}
+              className={buttonClassName("primary")}
+            >
+              Export Backup JSON
+            </button>
+            <div className="text-xs uppercase tracking-[0.16em] text-slate-500">
+              Current mode: {persistenceMode}
+            </div>
+          </div>
+        </div>
+
+        {[
+          ["daily_application_target", "Daily application target"],
+          ["weekly_application_target", "Weekly application target"],
+          ["weekly_par_target", "Weekly PAR target"],
+          ["weekly_case_target", "Weekly case target"],
+          ["weekly_mock_target", "Weekly mock target"],
+          ["weekly_networking_target", "Weekly networking touch target"],
+        ].map(([key, label]) => (
+          <label key={key} className="block space-y-2">
+            <span className="text-sm font-medium text-slate-700">{label}</span>
+            <input
+              type="number"
+              value={draft[key as keyof typeof draft]}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  [key]: Number(event.target.value),
+                }))
+              }
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+            />
+          </label>
+        ))}
+        <button
+          type="button"
+          onClick={() => saveSettings(draft)}
+          className={buttonClassName("primary")}
+        >
+          Save Settings
+        </button>
       </div>
     </Card>
   );
@@ -1272,13 +1662,27 @@ function ActionItemsFilters({
 }
 
 function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
-  const { data, deleteRecord, logParPractice, markCasePracticed, markFollowUpDone, markInterviewAnswerPracticed, toggleActionItem, createActionItemFromSource } = useRecruitOS();
+  const { data, deleteRecord, logParPractice, markCasePracticed, markFollowUpDone, markInterviewAnswerPracticed, toggleActionItem, createActionItemFromSource, saveRecord } = useRecruitOS();
   const config = MODULE_CONFIGS[slug];
   const records = data[config.collection] as unknown as Array<Record<string, unknown>>;
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const [actionView, setActionView] = useState("Today");
+  const applicationInsights = useMemo(() => getApplicationInsights(data), [data]);
+  const networkingInsights = useMemo(() => getNetworkingWorkflowInsights(data), [data]);
+  const prepPackets = useMemo(
+    () =>
+      data.interviewPrep
+        .map((prep) => buildInterviewPrepPacket(data, prep.id))
+        .filter((packet): packet is InterviewPrepPacket => Boolean(packet))
+        .sort(
+          (left, right) =>
+            new Date(left.prep.interview_date || "9999-12-31").getTime() -
+            new Date(right.prep.interview_date || "9999-12-31").getTime(),
+        ),
+    [data],
+  );
 
   const filtered = useMemo(() => {
     const base = records.filter((record) =>
@@ -1300,6 +1704,30 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
 
   return (
     <div className="space-y-6">
+      {slug === "applications" ? (
+        <PipelineTriageSection
+          insights={applicationInsights}
+          createActionItemFromSource={createActionItemFromSource}
+        />
+      ) : null}
+
+      {slug === "networking" ? (
+        <NetworkingWorkflowSection
+          insights={networkingInsights}
+          markFollowUpDone={markFollowUpDone}
+          createActionItemFromSource={createActionItemFromSource}
+          saveRecord={saveRecord}
+        />
+      ) : null}
+
+      {slug === "interview-prep" ? (
+        <InterviewPrepPacketsSection
+          packets={prepPackets}
+          toggleActionItem={toggleActionItem}
+          createActionItemFromSource={createActionItemFromSource}
+        />
+      ) : null}
+
       <Card
         title={config.title}
         actions={
@@ -1517,3 +1945,4 @@ export function ModuleView({ slug }: { slug: ModuleSlug }) {
   if (slug === "settings") return <SettingsView />;
   return <GenericModuleView slug={slug as CrudModuleSlug} />;
 }
+
