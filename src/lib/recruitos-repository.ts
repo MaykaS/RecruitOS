@@ -366,7 +366,11 @@ export function getPersistenceCollectionsForModule(
   }
 
   if (module === "networking") {
-    return ["contacts", "companies"];
+    return ["contacts"];
+  }
+
+  if (module === "applications") {
+    return ["applications", "companies"];
   }
 
   return [moduleMap[module]];

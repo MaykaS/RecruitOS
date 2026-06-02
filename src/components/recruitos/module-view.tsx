@@ -398,7 +398,9 @@ function RecordModal({
         )
       : [];
   const companyNameValue =
-    module === "networking" ? String(form.company_name ?? initial?.company_name ?? "") : "";
+    module === "networking" || module === "applications"
+      ? String(form.company_name ?? initial?.company_name ?? "")
+      : "";
   const tagInputValue =
     module === "networking" && Array.isArray(form.tags)
       ? form.tags.map((tag) => sanitizeText(String(tag))).join(", ")
@@ -433,7 +435,7 @@ function RecordModal({
 
         <div className="grid gap-4 lg:grid-cols-2">
           {config.fields.map((field) => {
-            if (module === "networking" && field.key === "company_id") {
+            if ((module === "networking" || module === "applications") && field.key === "company_id") {
               return (
                 <label
                   key={field.key}
@@ -456,7 +458,11 @@ function RecordModal({
                         company_id: matchingCompany?.id ?? "",
                       }));
                     }}
-                    placeholder="Type a company or pick an existing one"
+                    placeholder={
+                      module === "applications"
+                        ? "Type the company you applied to or pick an existing one"
+                        : "Type a company or pick an existing one"
+                    }
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
                   />
                   <datalist id="networking-company-options">
@@ -465,7 +471,9 @@ function RecordModal({
                     ))}
                   </datalist>
                   <p className="text-xs leading-5 text-slate-500">
-                    Enter a new company inline or choose one that already exists.
+                    {module === "applications"
+                      ? "Applications create target company records from this field automatically."
+                      : "Typing a company here keeps it on the contact unless you intentionally link an existing target company."}
                   </p>
                 </label>
               );

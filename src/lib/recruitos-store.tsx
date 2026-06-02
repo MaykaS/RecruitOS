@@ -82,7 +82,8 @@ function syncDerivedState(input: RecruitOSData): RecruitOSData {
 
   const contacts = input.contacts.map((contact) => ({
     ...contact,
-    company_name: lookupCompanyName({ ...input, companies }, contact.company_id),
+    company_name:
+      lookupCompanyName({ ...input, companies }, contact.company_id) || contact.company_name,
     linked_application_ids: uniqueStrings([
       ...contact.linked_application_ids,
       ...input.applications
@@ -97,7 +98,8 @@ function syncDerivedState(input: RecruitOSData): RecruitOSData {
 
   const applications = input.applications.map((application) => ({
     ...application,
-    company_name: lookupCompanyName({ ...input, companies }, application.company_id),
+    company_name:
+      lookupCompanyName({ ...input, companies }, application.company_id) || application.company_name,
     linked_action_item_ids: uniqueStrings([
       ...application.linked_action_item_ids,
       ...input.actionItems
@@ -283,30 +285,31 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
         let preparedRecord = { ...record };
         let nextCompanies = current.companies;
 
-        if (module === "networking") {
+        if (module === "networking" || module === "applications") {
           const rawCompanyName = String(preparedRecord.company_name ?? "").trim();
           let companyId = String(preparedRecord.company_id ?? "").trim();
-          const normalizedTags = Array.isArray(preparedRecord.tags)
-            ? uniqueStrings(preparedRecord.tags.map((tag) => String(tag).trim()))
-            : [];
+          const normalizedTags =
+            module === "networking" && Array.isArray(preparedRecord.tags)
+              ? uniqueStrings(preparedRecord.tags.map((tag) => String(tag).trim()))
+              : [];
 
-          if (rawCompanyName) {
-            const existingCompany = current.companies.find(
-              (company) => company.name.trim().toLowerCase() === rawCompanyName.toLowerCase(),
-            );
+          const existingCompany = rawCompanyName
+            ? current.companies.find(
+                (company) => company.name.trim().toLowerCase() === rawCompanyName.toLowerCase(),
+              )
+            : null;
 
-            if (existingCompany) {
-              companyId = existingCompany.id;
-            } else {
-              const newCompany = withTimestamps(
-                {
-                  ...MODULE_CONFIGS.companies.defaultValues,
-                  name: rawCompanyName,
-                },
-              ) as RecruitOSData["companies"][number];
-              nextCompanies = [...current.companies, newCompany];
-              companyId = newCompany.id;
-            }
+          if (existingCompany) {
+            companyId = existingCompany.id;
+          } else if (module === "applications" && rawCompanyName) {
+            const newCompany = withTimestamps({
+              ...MODULE_CONFIGS.companies.defaultValues,
+              name: rawCompanyName,
+            }) as RecruitOSData["companies"][number];
+            nextCompanies = [...current.companies, newCompany];
+            companyId = newCompany.id;
+          } else if (module === "networking" && !existingCompany) {
+            companyId = "";
           }
 
           preparedRecord = {
@@ -314,7 +317,7 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
             company_id: companyId,
             company_name:
               rawCompanyName || lookupCompanyName({ ...current, companies: nextCompanies }, companyId),
-            tags: normalizedTags,
+            ...(module === "networking" ? { tags: normalizedTags } : {}),
           };
         }
 
