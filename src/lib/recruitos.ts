@@ -1865,6 +1865,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
     defaultSort: { key: "last_practiced_date", direction: "asc" },
     fields: [
       { key: "title", label: "Title", type: "text" },
+      { key: "linked_question_ids", label: "Questions this story can answer", type: "multiselect", options: (data) => data.interviewQuestions.map((question) => ({ label: question.question_text, value: question.id })) },
       { key: "situation", label: "Situation", type: "textarea" },
       { key: "problem", label: "Problem", type: "textarea" },
       { key: "action", label: "Action", type: "textarea" },
@@ -1876,14 +1877,12 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "last_practiced_date", label: "Last practiced", type: "date" },
       { key: "number_of_reps", label: "Number of reps", type: "number", min: 0, max: 999 },
       { key: "status", label: "Status", type: "select", options: ["Draft", "Good", "Strong", "Interview-Ready"] },
-      { key: "linked_question_ids", label: "Questions this story can answer", type: "multiselect", options: (data) => data.interviewQuestions.map((question) => ({ label: question.question_text, value: question.id })) },
       { key: "weakness_or_focus_area", label: "Weakness or focus", type: "textarea" },
       { key: "notes", label: "Notes", type: "textarea" },
       { key: "follow_up_questions", label: "Follow-up questions", type: "textarea" },
     ],
     defaultValues: {
       title: "",
-      category: "",
       situation: "",
       problem: "",
       action: "",

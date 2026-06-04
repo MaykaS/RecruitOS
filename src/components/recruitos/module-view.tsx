@@ -11,6 +11,7 @@ import {
   InterviewPrepPacket,
   MODULE_CONFIGS,
   ModuleSlug,
+  Option,
   RECRUITING_TRACKS,
   RecruitOSData,
   SortDirection,
@@ -58,17 +59,6 @@ function sanitizeText(value: string) {
     .replaceAll("·", " - ")
     .replaceAll("â€™", "'")
     .replaceAll("’", "'");
-}
-
-function parseTagInput(value: string) {
-  return Array.from(
-    new Set(
-      value
-        .split(",")
-        .map((item) => sanitizeText(item).trim())
-        .filter(Boolean),
-    ),
-  );
 }
 
 function getSortValue(value: unknown, option: SortOption) {
@@ -312,10 +302,228 @@ function collectExistingOptionValues(
       if (typeof value === "string" && value.trim()) {
         values.add(value.trim());
       }
+      if (Array.isArray(value)) {
+        value.forEach((entry) => {
+          if (typeof entry === "string" && entry.trim()) {
+            values.add(entry.trim());
+          }
+        });
+      }
     });
   }
 
   return [...values];
+}
+
+function EditableSelectInput({
+  value,
+  options,
+  onChange,
+  placeholder,
+  allowCustom,
+}: {
+  value: string;
+  options: Option[];
+  onChange: (value: string) => void;
+  placeholder: string;
+  allowCustom: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? value ?? "";
+
+  const filteredOptions = useMemo(() => {
+    if (!query.trim()) return options;
+    const normalized = query.trim().toLowerCase();
+    return options.filter((option) => option.label.toLowerCase().includes(normalized));
+  }, [options, query]);
+
+  const exactMatch = options.some((option) => option.label.toLowerCase() === query.trim().toLowerCase());
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <input
+          value={open ? query : selectedLabel}
+          onFocus={() => {
+            setQuery(selectedLabel);
+            setOpen(true);
+          }}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+          }}
+          placeholder={placeholder}
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-10 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+        />
+        <button
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => setOpen((current) => !current)}
+          className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+        >
+          ▾
+        </button>
+      </div>
+      {open ? (
+        <div className="absolute z-30 mt-2 w-full rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
+          <div className="max-h-56 space-y-1 overflow-y-auto">
+            {allowCustom && query.trim() && !exactMatch ? (
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  const nextValue = query.trim();
+                  onChange(nextValue);
+                  setQuery("");
+                  setOpen(false);
+                }}
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+              >
+                <span>Add {`"${query.trim()}"`}</span>
+                <span className="text-xs uppercase tracking-[0.16em] text-teal-600">New</span>
+              </button>
+            ) : null}
+            {filteredOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onChange(option.value);
+                  setQuery("");
+                  setOpen(false);
+                }}
+                className={cx(
+                  "w-full rounded-xl px-3 py-2 text-left text-sm",
+                  option.value === value
+                    ? "bg-cyan-50 text-teal-700"
+                    : "text-slate-700 hover:bg-slate-50",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+            {!filteredOptions.length && !(allowCustom && query.trim() && !exactMatch) ? (
+              <div className="px-3 py-2 text-sm text-slate-500">No matches yet.</div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SearchableMultiSelectInput({
+  value,
+  options,
+  onChange,
+  placeholder,
+  allowCustom,
+}: {
+  value: string[];
+  options: Option[];
+  onChange: (value: string[]) => void;
+  placeholder: string;
+  allowCustom: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const filteredOptions = useMemo(() => {
+    if (!query.trim()) return options;
+    const normalized = query.trim().toLowerCase();
+    return options.filter((option) => option.label.toLowerCase().includes(normalized));
+  }, [options, query]);
+
+  const exactMatch = options.some((option) => option.label.toLowerCase() === query.trim().toLowerCase());
+  const selectedLabels = options
+    .filter((option) => value.includes(option.value))
+    .map((option) => option.label);
+
+  return (
+    <div className="relative space-y-2">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-sm text-slate-900"
+      >
+        <span className="truncate">
+          {selectedLabels.length ? `${selectedLabels.length} selected` : placeholder}
+        </span>
+        <span className="text-slate-500">▾</span>
+      </button>
+      {selectedLabels.length ? (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedLabels.slice(0, 6).map((label) => (
+            <span key={label} className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600">
+              {label}
+            </span>
+          ))}
+          {selectedLabels.length > 6 ? (
+            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600">
+              +{selectedLabels.length - 6}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {open ? (
+        <div className="absolute z-30 mt-1 w-full rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search..."
+            className="mb-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+          />
+          <div className="max-h-56 space-y-1 overflow-y-auto">
+            {allowCustom && query.trim() && !exactMatch ? (
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  const nextValue = query.trim();
+                  onChange(Array.from(new Set([...value, nextValue])));
+                  setQuery("");
+                }}
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+              >
+                <span>Add {`"${query.trim()}"`}</span>
+                <span className="text-xs uppercase tracking-[0.16em] text-teal-600">New</span>
+              </button>
+            ) : null}
+            {filteredOptions.map((option) => {
+              const checked = value.includes(option.value);
+              return (
+                <label
+                  key={option.value}
+                  className={cx(
+                    "flex cursor-pointer items-start gap-2 rounded-xl px-3 py-2 text-sm",
+                    checked ? "bg-cyan-50 text-teal-700" : "text-slate-700 hover:bg-slate-50",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(event) => {
+                      const nextValues = event.target.checked
+                        ? [...value, option.value]
+                        : value.filter((item) => item !== option.value);
+                      onChange(Array.from(new Set(nextValues)));
+                    }}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-400"
+                  />
+                  <span>{option.label}</span>
+                </label>
+              );
+            })}
+            {!filteredOptions.length && !(allowCustom && query.trim() && !exactMatch) ? (
+              <div className="px-3 py-2 text-sm text-slate-500">No matches yet.</div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function FieldInput({
@@ -352,88 +560,36 @@ function FieldInput({
   }
 
   if (field.type === "select") {
-    if (!isReferenceField(field)) {
-      const listId = `options-${field.key}`;
-      return (
-        <div className="space-y-2">
-          <input
-            list={listId}
-            value={String(value ?? "")}
-            onChange={(event) => onChange(event.target.value)}
-            placeholder={field.placeholder ?? "Type or choose a saved option"}
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
-          />
-          <datalist id={listId}>
-            {options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </datalist>
-          <p className="text-xs leading-5 text-slate-500">
-            Type a new value if you need one. Once saved, it will show up as a reusable option.
-          </p>
-        </div>
-      );
-    }
-
     return (
-      <select
+      <EditableSelectInput
         value={String(value ?? "")}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
-      >
-        <option value="">Select...</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+        options={options}
+        onChange={onChange}
+        placeholder={field.placeholder ?? "Type or choose a saved option"}
+        allowCustom={!isReferenceField(field)}
+      />
     );
   }
 
   if (field.type === "multiselect") {
     const selected = Array.isArray(value) ? value.map(String) : [];
-    const selectedLabels = options
-      .filter((option) => selected.includes(option.value))
-      .map((option) => option.label);
     const pickerLabel =
       field.key === "linked_question_ids"
         ? "Choose interview questions"
         : field.key === "linked_contact_ids"
           ? "Choose linked contacts"
+          : field.key === "tags"
+            ? "Choose or add tags"
           : `Choose ${field.label.toLowerCase()}`;
 
     return (
-      <details className="rounded-2xl border border-slate-200 bg-slate-50">
-        <summary className="cursor-pointer list-none px-3 py-2.5 text-sm text-slate-900">
-          {selectedLabels.length
-            ? `${selectedLabels.length} selected`
-            : pickerLabel}
-        </summary>
-        <div className="max-h-56 space-y-2 overflow-y-auto border-t border-slate-200 px-3 py-3">
-          {options.map((option) => {
-            const checked = selected.includes(option.value);
-            return (
-              <label key={option.value} className="flex items-start gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(event) => {
-                    const nextValues = event.target.checked
-                      ? [...selected, option.value]
-                      : selected.filter((item) => item !== option.value);
-                    onChange(Array.from(new Set(nextValues)));
-                  }}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-400"
-                />
-                <span>{option.label}</span>
-              </label>
-            );
-          })}
-        </div>
-      </details>
+      <SearchableMultiSelectInput
+        value={selected}
+        options={options}
+        onChange={onChange as (value: string[]) => void}
+        placeholder={pickerLabel}
+        allowCustom={field.key === "tags"}
+      />
     );
   }
 
@@ -483,20 +639,9 @@ function RecordModal({
   const [form, setForm] = useState<Record<string, unknown>>(initial ?? config.defaultValues);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [uploadError, setUploadError] = useState("");
-  const networkingTagOptions =
-    module === "networking"
-      ? resolveOptions(
-          MODULE_CONFIGS.networking.fields.find((field) => field.key === "tags")?.options ?? [],
-          data,
-        )
-      : [];
   const companyNameValue =
     module === "networking" || module === "applications"
       ? String(form.company_name ?? initial?.company_name ?? "")
-      : "";
-  const tagInputValue =
-    module === "networking" && Array.isArray(form.tags)
-      ? form.tags.map((tag) => sanitizeText(String(tag))).join(", ")
       : "";
 
   if (!open) return null;
@@ -509,7 +654,7 @@ function RecordModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,252,0.98))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
-        <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="sticky top-0 z-20 -mx-6 -mt-6 mb-5 flex items-start justify-between gap-4 border-b border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,252,0.98))] px-6 py-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">
               {config.title}
@@ -519,9 +664,10 @@ function RecordModal({
           <button
             type="button"
             onClick={onClose}
-            className={buttonClassName("secondary")}
+            className="sticky top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-lg text-slate-500 shadow-sm hover:bg-slate-50"
+            aria-label="Close form"
           >
-            Close
+            ×
           </button>
         </div>
 
@@ -571,67 +717,14 @@ function RecordModal({
               );
             }
 
-            if (module === "networking" && field.key === "tags") {
-              return (
-                <label
-                  key={field.key}
-                  className="space-y-3 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] lg:col-span-2"
-                >
-                  <span className="text-sm font-medium text-slate-700">{field.label}</span>
-                  <input
-                    value={tagInputValue}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        tags: parseTagInput(event.target.value),
-                      }))
-                    }
-                    placeholder="Cornell, Alum, PM"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    {networkingTagOptions.map((option) => {
-                      const selected = Array.isArray(form.tags) && form.tags.includes(option.value);
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() =>
-                            setForm((current) => {
-                              const currentTags = Array.isArray(current.tags)
-                                ? current.tags.map(String)
-                                : [];
-                              const nextTags = currentTags.includes(option.value)
-                                ? currentTags.filter((tag) => tag !== option.value)
-                                : [...currentTags, option.value];
-                              return { ...current, tags: nextTags };
-                            })
-                          }
-                          className={cx(
-                            "rounded-full border px-2.5 py-1 text-xs transition",
-                            selected
-                              ? "border-teal-200 bg-cyan-50 text-teal-700"
-                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="text-xs leading-5 text-slate-500">
-                    Type your own tags or tap suggestions to add them quickly.
-                  </p>
-                </label>
-              );
-            }
-
             return (
               <label
                 key={field.key}
                 className={cx(
                   "space-y-2 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]",
-                  field.type === "textarea" || field.type === "multiselect"
+                  field.type === "textarea" ||
+                    (field.type === "multiselect" &&
+                      !(module === "pars" && field.key === "linked_question_ids"))
                     ? "lg:col-span-2"
                     : "",
                 )}
