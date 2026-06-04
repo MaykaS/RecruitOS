@@ -515,7 +515,6 @@ function RecordModal({
               {config.title}
             </p>
             <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
-            <p className="text-sm text-slate-600">{config.description}</p>
           </div>
           <button
             type="button"
@@ -1623,10 +1622,7 @@ function QuestionsSection({
     <div className="space-y-3">
       <div className="rounded-[26px] border border-slate-200 bg-slate-50 p-4">
         <div className="mb-1 text-sm font-semibold text-slate-900">Question Bank</div>
-        <p className="mb-3 text-xs leading-5 text-slate-500">
-          Keep a simple list of interview questions, then pick as many of them as you want inside each STAR story.
-        </p>
-        <div className="space-y-2">
+        <div className="mt-3 space-y-2">
           {data.interviewQuestions.length ? (
             data.interviewQuestions.map((question) => (
               <div key={question.id} className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
@@ -1805,7 +1801,7 @@ function StarsWorkspaceSection({
   const { data } = useRecruitOS();
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,4fr)_minmax(280px,1fr)]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,2.8fr)_minmax(360px,1.15fr)]">
       <Card
         title="STAR Story Library"
         actions={
@@ -1819,10 +1815,7 @@ function StarsWorkspaceSection({
         }
       >
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <p className="max-w-2xl text-sm leading-6 text-slate-600">
-            Add your STAR stories, link each one to as many interview questions as it answers, and open any story title to review the full note.
-          </p>
-          <div className="flex w-full max-w-3xl flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
+          <div className="flex w-full max-w-3xl flex-col gap-2 lg:w-auto lg:flex-row lg:items-center lg:ml-auto">
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -1852,15 +1845,15 @@ function StarsWorkspaceSection({
           </div>
         </div>
         {stories.length ? (
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="space-y-3">
             {stories.map((story) => {
               const linkedQuestions = story.linked_question_ids
                 .map((questionId) => data.interviewQuestions.find((question) => question.id === questionId)?.question_text)
                 .filter((value): value is string => Boolean(value));
               return (
-                <article key={story.id} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
+                <article key={story.id} className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0 flex-1 space-y-2">
                       <button
                         type="button"
                         onClick={() => openStory(story)}
@@ -1875,9 +1868,9 @@ function StarsWorkspaceSection({
                         <span>|</span>
                         <span>Confidence {story.confidence_score}/5</span>
                       </div>
+                      <MiniList title="Questions this story answers" items={linkedQuestions} />
                     </div>
-                    <MiniList title="Questions this story answers" items={linkedQuestions} />
-                    <div className="flex flex-wrap gap-2 pt-1">
+                    <div className="flex flex-wrap gap-2 xl:max-w-[320px] xl:justify-end">
                       <button
                         type="button"
                         onClick={() => practiceStory(story.id)}
@@ -2192,7 +2185,6 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
         }
       >
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <p className="max-w-2xl text-sm leading-6 text-slate-600">{config.description}</p>
           <div className="flex w-full max-w-3xl flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
             <input
               value={query}
