@@ -99,7 +99,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">
                 One source of truth
               </p>
-              <p className="mt-1 max-w-xl text-[1.05rem] leading-[1.18] font-semibold text-slate-900 [font-family:var(--font-display)] lg:text-[1.12rem]">
+              <p className="mt-1 max-w-xl text-[0.9rem] leading-[1.15] font-normal text-slate-700 [font-family:var(--font-display)] lg:text-[0.97rem]">
                 Every note can become an action. Every day has a clear plan.
               </p>
             </div>

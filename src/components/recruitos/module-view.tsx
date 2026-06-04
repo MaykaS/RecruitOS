@@ -54,10 +54,10 @@ function buttonClassName(tone: "primary" | "secondary" | "quiet" = "secondary") 
 
 function iconButtonClassName(tone: "default" | "danger" = "default") {
   return cx(
-    "inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm transition",
+    "inline-flex items-center justify-center p-1 text-[1.05rem] leading-none transition",
     tone === "danger"
-      ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100",
+      ? "text-rose-500 hover:text-rose-700"
+      : "text-slate-500 hover:text-slate-800",
   );
 }
 
@@ -272,20 +272,18 @@ function MiniList({
 }) {
   if (!items.length) return null;
   return (
-    <div className="space-y-1">
-      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+      <div className="shrink-0 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">
         {title}
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {items.map((item) => (
-          <span
-            key={item}
-            className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600"
-          >
-            {sanitizeText(item)}
-          </span>
-        ))}
-      </div>
+      {items.map((item) => (
+        <span
+          key={item}
+          className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.77rem] text-slate-600"
+        >
+          {sanitizeText(item)}
+        </span>
+      ))}
     </div>
   );
 }
@@ -701,7 +699,7 @@ function RecordModal({
           <button
             type="button"
             onClick={onClose}
-            className="sticky top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-lg text-slate-500 shadow-sm hover:bg-slate-50"
+            className="sticky top-4 inline-flex items-center justify-center p-1 text-[1.35rem] leading-none text-slate-400 transition hover:text-slate-700"
             aria-label="Close form"
           >
             ×
@@ -1755,7 +1753,10 @@ function QuestionsSection({
         <div className="mt-3 space-y-2">
           {data.interviewQuestions.length ? (
             data.interviewQuestions.map((question) => (
-              <div key={question.id} className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+              <div
+                key={question.id}
+                className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3"
+              >
                 <button
                   type="button"
                   onClick={() => {
@@ -1764,11 +1765,11 @@ function QuestionsSection({
                     );
                     if (linkedStory) openStory(linkedStory);
                   }}
-                  className="text-left text-sm leading-6 text-slate-800"
+                  className="min-w-0 flex-1 text-left text-sm leading-6 text-slate-800"
                 >
                   {sanitizeText(question.question_text)}
                 </button>
-                <div className="mt-2 flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-1.5">
                   <IconButton
                     label={`Edit question ${question.question_text}`}
                     icon={"\u270E"}
@@ -1980,11 +1981,11 @@ function StarsWorkspaceSection({
               return (
                 <article key={story.id} className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4">
                   <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start xl:gap-5">
-                    <div className="min-w-0 space-y-2.5">
+                    <div className="min-w-0 space-y-2">
                       <button
                         type="button"
                         onClick={() => openStory(story)}
-                        className="text-left text-base font-semibold text-slate-900 [font-family:var(--font-display)] transition hover:text-teal-700"
+                        className="text-left text-[0.96rem] font-semibold text-slate-900 [font-family:var(--font-display)] transition hover:text-teal-700 lg:text-[1rem]"
                       >
                         {sanitizeText(story.title)}
                       </button>
@@ -1995,11 +1996,11 @@ function StarsWorkspaceSection({
                         <span>|</span>
                         <span>Confidence {story.confidence_score}/5</span>
                       </div>
-                      <div className="max-w-4xl">
+                      <div className="max-w-full">
                         <MiniList title="Questions this story answers" items={linkedQuestions} />
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 xl:max-w-[360px] xl:justify-end">
+                    <div className="flex flex-wrap items-center gap-2 xl:max-w-[360px] xl:justify-end xl:self-start">
                       <button
                         type="button"
                         onClick={() => practiceStory(story.id)}
