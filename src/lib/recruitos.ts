@@ -103,8 +103,6 @@ export interface PARStory extends BaseRecord {
 
 export interface InterviewQuestion extends BaseRecord {
   question_text: string;
-  category: string;
-  notes: string;
   linked_par_story_ids: string[];
 }
 
@@ -986,8 +984,6 @@ export const seedData = (): RecruitOSData => {
         created_at: timestamp,
         updated_at: timestamp,
         question_text: "Tell me about a time you influenced without authority.",
-        category: "Leadership",
-        notes: "",
         linked_par_story_ids: [parOracle, parMixer],
       },
       {
@@ -995,8 +991,6 @@ export const seedData = (): RecruitOSData => {
         created_at: timestamp,
         updated_at: timestamp,
         question_text: "Tell me about a failure and what you learned.",
-        category: "Reflection",
-        notes: "Pair with story that shows recovery.",
         linked_par_story_ids: [parMixer],
       },
     ],

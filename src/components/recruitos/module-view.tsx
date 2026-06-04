@@ -335,6 +335,44 @@ function FieldInput({
 
   if (field.type === "multiselect") {
     const selected = Array.isArray(value) ? value.map(String) : [];
+
+    if (field.key === "linked_question_ids") {
+      const selectedLabels = options
+        .filter((option) => selected.includes(option.value))
+        .map((option) => option.label);
+
+      return (
+        <details className="rounded-2xl border border-slate-200 bg-slate-50">
+          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm text-slate-900">
+            {selectedLabels.length
+              ? `${selectedLabels.length} question${selectedLabels.length === 1 ? "" : "s"} selected`
+              : "Choose interview questions"}
+          </summary>
+          <div className="max-h-56 space-y-2 overflow-y-auto border-t border-slate-200 px-3 py-3">
+            {options.map((option) => {
+              const checked = selected.includes(option.value);
+              return (
+                <label key={option.value} className="flex items-start gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(event) => {
+                      const nextValues = event.target.checked
+                        ? [...selected, option.value]
+                        : selected.filter((item) => item !== option.value);
+                      onChange(Array.from(new Set(nextValues)));
+                    }}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-400"
+                  />
+                  <span>{option.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </details>
+      );
+    }
+
     return (
       <select
         multiple
@@ -1531,141 +1569,97 @@ function QuestionsSection({
   const [draft, setDraft] = useState({
     id: "",
     question_text: "",
-    category: "",
-    notes: "",
     linked_par_story_ids: [] as string[],
   });
 
   return (
-    <Card title="Question Bank">
-      <div className="mb-4 rounded-2xl border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-sm text-slate-700">
-        Each question can map to multiple STAR stories, and each STAR story can answer multiple questions.
-      </div>
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-        <div className="space-y-3">
-          {data.interviewQuestions.map((question) => (
-            <div key={question.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="text-sm font-medium text-slate-900">{sanitizeText(question.question_text)}</div>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span>{sanitizeText(question.category || "General")}</span>
-                <span>|</span>
-                <span>{question.linked_par_story_ids.length} STAR{question.linked_par_story_ids.length === 1 ? "" : "s"}</span>
-              </div>
-              <div className="mt-3 space-y-2">
-                {question.linked_par_story_ids.length ? (
-                  question.linked_par_story_ids.map((parId) => {
-                    const par = data.parStories.find((item) => item.id === parId);
-                    return par ? (
-                      <button
-                        type="button"
-                        key={parId}
-                        onClick={() => openStory(par)}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:border-teal-200 hover:bg-cyan-50/50"
-                      >
-                        {sanitizeText(par.title)}
-                      </button>
-                    ) : null;
-                  })
-                ) : (
-                  <div className="text-sm text-slate-500">No linked STAR stories yet.</div>
-                )}
-              </div>
-              <div className="mt-3 flex gap-2">
+    <div className="space-y-3">
+      <div className="rounded-[26px] border border-slate-200 bg-slate-50 p-4">
+        <div className="mb-1 text-sm font-semibold text-slate-900">Question Bank</div>
+        <p className="mb-3 text-xs leading-5 text-slate-500">
+          Keep a simple list of interview questions, then pick as many of them as you want inside each STAR story.
+        </p>
+        <div className="space-y-2">
+          {data.interviewQuestions.length ? (
+            data.interviewQuestions.map((question) => (
+              <div key={question.id} className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
                 <button
                   type="button"
-                  onClick={() =>
-                    setDraft({
-                      id: question.id,
-                      question_text: question.question_text,
-                      category: question.category,
-                      notes: question.notes,
-                      linked_par_story_ids: question.linked_par_story_ids,
-                    })
-                  }
-                  className={buttonClassName("secondary")}
+                  onClick={() => {
+                    const linkedStory = data.parStories.find((story) =>
+                      question.linked_par_story_ids.includes(story.id),
+                    );
+                    if (linkedStory) openStory(linkedStory);
+                  }}
+                  className="text-left text-sm leading-6 text-slate-800"
                 >
-                  Edit Question
+                  {sanitizeText(question.question_text)}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => deleteInterviewQuestion(question.id)}
-                  className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
-                >
-                  Delete
-                </button>
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDraft({
+                        id: question.id,
+                        question_text: question.question_text,
+                        linked_par_story_ids: question.linked_par_story_ids,
+                      })
+                    }
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteInterviewQuestion(question.id)}
+                    className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div className="mb-4 text-sm font-medium text-slate-900">Add or update question</div>
-          <div className="space-y-3">
-            <input
-              value={draft.question_text}
-              onChange={(event) => setDraft((current) => ({ ...current, question_text: event.target.value }))}
-              placeholder="Question text"
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
-            />
-            <input
-              value={draft.category}
-              onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))}
-              placeholder="Category"
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
-            />
-            <textarea
-              value={draft.notes}
-              onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
-              rows={3}
-              placeholder="Notes"
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
-            />
-            <select
-              multiple
-              value={draft.linked_par_story_ids}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  linked_par_story_ids: Array.from(event.currentTarget.selectedOptions).map((option) => option.value),
-                }))
-              }
-              className="min-h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
-            >
-              {data.parStories.map((par) => (
-                <option key={par.id} value={par.id}>
-                  {par.title}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs leading-5 text-slate-500">
-              Choose one or more STAR stories for this question. A single STAR can also be reused across different questions.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                if (!draft.question_text.trim()) return;
-                saveInterviewQuestion({
-                  id: draft.id || undefined,
-                  question_text: draft.question_text,
-                  category: draft.category,
-                  notes: draft.notes,
-                  linked_par_story_ids: draft.linked_par_story_ids,
-                });
-                setDraft({
-                  id: "",
-                  question_text: "",
-                  category: "",
-                  notes: "",
-                  linked_par_story_ids: [],
-                });
-              }}
-              className={buttonClassName("primary")}
-            >
-              Save Question
-            </button>
-          </div>
+            ))
+          ) : (
+            <EmptyState label="Add interview questions to build your bank." />
+          )}
         </div>
       </div>
-    </Card>
+
+      <div className="rounded-[26px] border border-slate-200 bg-slate-50 p-4">
+        <div className="mb-3 text-sm font-semibold text-slate-900">
+          {draft.id ? "Edit question" : "Add question"}
+        </div>
+        <div className="space-y-2.5">
+          <input
+            value={draft.question_text}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, question_text: event.target.value }))
+            }
+            placeholder="Add interview question"
+            className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (!draft.question_text.trim()) return;
+              saveInterviewQuestion({
+                id: draft.id || undefined,
+                question_text: draft.question_text,
+                linked_par_story_ids: draft.linked_par_story_ids,
+              });
+              setDraft({
+                id: "",
+                question_text: "",
+                linked_par_story_ids: [],
+              });
+            }}
+            className="w-full rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
+          >
+            {draft.id ? "Update Question" : "Save Question"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1744,6 +1738,7 @@ function StarsWorkspaceSection({
   practiceStory,
   addAction,
   deleteStory,
+  questionBank,
 }: {
   stories: RecruitOSData["parStories"];
   query: string;
@@ -1758,131 +1753,135 @@ function StarsWorkspaceSection({
   practiceStory: (storyId: string) => void;
   addAction: (story: RecruitOSData["parStories"][number]) => void;
   deleteStory: (storyId: string) => void;
+  questionBank: React.ReactNode;
 }) {
   const { data } = useRecruitOS();
 
   return (
-    <Card
-      title="STAR Story Library"
-      actions={
-        <button
-          type="button"
-          onClick={addStory}
-          className="rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-4 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
-        >
-          Add STAR Story
-        </button>
-      }
-    >
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <p className="max-w-2xl text-sm leading-6 text-slate-600">
-          Add your STAR stories, link each one to as many interview questions as it answers, and open any story title to review the full note.
-        </p>
-        <div className="flex w-full max-w-3xl flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search star stories..."
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white lg:min-w-[260px]"
-          />
-          <div className="flex gap-2">
-            <select
-              value={sortKey}
-              onChange={(event) => setSortKey(event.target.value)}
-              className="min-w-[160px] rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
-            >
-              {sortOptions.map((option) => (
-                <option key={option.key} value={option.key}>
-                  Sort by {option.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
-              className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              {sortDirection === "asc" ? "Ascending" : "Descending"}
-            </button>
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,4fr)_minmax(280px,1fr)]">
+      <Card
+        title="STAR Story Library"
+        actions={
+          <button
+            type="button"
+            onClick={addStory}
+            className="rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-4 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
+          >
+            Add STAR Story
+          </button>
+        }
+      >
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <p className="max-w-2xl text-sm leading-6 text-slate-600">
+            Add your STAR stories, link each one to as many interview questions as it answers, and open any story title to review the full note.
+          </p>
+          <div className="flex w-full max-w-3xl flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search star stories..."
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white lg:min-w-[260px]"
+            />
+            <div className="flex gap-2">
+              <select
+                value={sortKey}
+                onChange={(event) => setSortKey(event.target.value)}
+                className="min-w-[160px] rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    Sort by {option.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+                className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                {sortDirection === "asc" ? "Ascending" : "Descending"}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-      {stories.length ? (
-        <div className="grid gap-4 xl:grid-cols-2">
-          {stories.map((story) => {
-            const linkedQuestions = story.linked_question_ids
-              .map((questionId) => data.interviewQuestions.find((question) => question.id === questionId)?.question_text)
-              .filter((value): value is string => Boolean(value));
-            return (
-              <article key={story.id} className="rounded-[26px] border border-slate-200 bg-slate-50 p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => openStory(story)}
-                      className="text-left text-[1.1rem] font-semibold text-slate-900 [font-family:var(--font-display)] transition hover:text-teal-700"
-                    >
-                      {sanitizeText(story.title)}
-                    </button>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                      <span>{sanitizeText(story.category || "General")}</span>
-                      <span>|</span>
-                      <span>{story.status}</span>
-                      <span>|</span>
-                      <span>Confidence {story.confidence_score}/5</span>
+        {stories.length ? (
+          <div className="grid gap-4 xl:grid-cols-2">
+            {stories.map((story) => {
+              const linkedQuestions = story.linked_question_ids
+                .map((questionId) => data.interviewQuestions.find((question) => question.id === questionId)?.question_text)
+                .filter((value): value is string => Boolean(value));
+              return (
+                <article key={story.id} className="rounded-[26px] border border-slate-200 bg-slate-50 p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => openStory(story)}
+                        className="text-left text-[1.1rem] font-semibold text-slate-900 [font-family:var(--font-display)] transition hover:text-teal-700"
+                      >
+                        {sanitizeText(story.title)}
+                      </button>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        <span>{sanitizeText(story.category || "General")}</span>
+                        <span>|</span>
+                        <span>{story.status}</span>
+                        <span>|</span>
+                        <span>Confidence {story.confidence_score}/5</span>
+                      </div>
+                    </div>
+                    <StatusBadge value={story.status} />
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">
+                    {sanitizeText(
+                      story.weakness_or_focus_area ||
+                        story.polished_answer ||
+                        story.result ||
+                        "Open the story to see the full STAR note.",
+                    )}
+                  </p>
+                  <div className="mt-4 space-y-3">
+                    <MiniList title="Questions this story answers" items={linkedQuestions} />
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => practiceStory(story.id)}
+                        className={buttonClassName("secondary")}
+                      >
+                        Practice
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => addAction(story)}
+                        className={buttonClassName("secondary")}
+                      >
+                        Add Action
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openStory(story)}
+                        className={buttonClassName("secondary")}
+                      >
+                        Open Story
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteStory(story.id)}
+                        className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
-                  <StatusBadge value={story.status} />
-                </div>
-                <p className="mt-3 text-sm leading-6 text-slate-700">
-                  {sanitizeText(
-                    story.weakness_or_focus_area ||
-                      story.polished_answer ||
-                      story.result ||
-                      "Open the story to see the full STAR note.",
-                  )}
-                </p>
-                <div className="mt-4 space-y-3">
-                  <MiniList title="Questions this story answers" items={linkedQuestions} />
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => practiceStory(story.id)}
-                      className={buttonClassName("secondary")}
-                    >
-                      Practice
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => addAction(story)}
-                      className={buttonClassName("secondary")}
-                    >
-                      Add Action
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openStory(story)}
-                      className={buttonClassName("secondary")}
-                    >
-                      Open Story
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteStory(story.id)}
-                      className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      ) : (
-        <EmptyState label="No STAR stories match this view yet." />
-      )}
-    </Card>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState label="No STAR stories match this view yet." />
+        )}
+      </Card>
+      <aside className="xl:pt-[2px]">{questionBank}</aside>
+    </div>
   );
 }
 
@@ -2121,13 +2120,13 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
               })
             }
             deleteStory={(storyId) => deleteRecord("pars", storyId)}
+            questionBank={<QuestionsSection openStory={openStarEditor} />}
           />
           <StarCoverageMatrix
             stories={sortedRecords as unknown as RecruitOSData["parStories"]}
             questions={data.interviewQuestions}
             openStory={openStarEditor}
           />
-          <QuestionsSection openStory={openStarEditor} />
           <RecordModal
             key={`${editing?.id ? String(editing.id) : "new"}-${modalOpen ? "open" : "closed"}`}
             title={editing ? `Edit ${config.singular}` : `Add ${config.singular}`}
