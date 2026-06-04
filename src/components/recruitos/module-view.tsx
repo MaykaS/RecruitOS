@@ -1525,12 +1525,19 @@ function QuestionsSection() {
 
   return (
     <Card title="Interview Questions View">
+      <div className="mb-4 rounded-2xl border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-sm text-slate-700">
+        Each question can map to multiple PAR stories, and each PAR story can answer multiple questions.
+      </div>
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
         <div className="space-y-3">
           {data.interviewQuestions.map((question) => (
             <div key={question.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="text-sm font-medium text-slate-900">{sanitizeText(question.question_text)}</div>
-              <div className="mt-1 text-xs text-slate-500">{sanitizeText(question.category || "General")}</div>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span>{sanitizeText(question.category || "General")}</span>
+                <span>•</span>
+                <span>{question.linked_par_story_ids.length} PAR{question.linked_par_story_ids.length === 1 ? "" : "s"}</span>
+              </div>
               <div className="mt-3 space-y-2">
                 {question.linked_par_story_ids.length ? (
                   question.linked_par_story_ids.map((parId) => {
@@ -1611,6 +1618,9 @@ function QuestionsSection() {
                 </option>
               ))}
             </select>
+            <p className="text-xs leading-5 text-slate-500">
+              Choose one or more PAR stories for this question. A single PAR can also be reused across different questions.
+            </p>
             <button
               type="button"
               onClick={() => {

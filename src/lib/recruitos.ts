@@ -1829,7 +1829,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
     title: "PARs",
     singular: "PAR Story",
     collection: "parStories",
-    description: "Build, practice, and map behavioral stories to interview questions.",
+    description: "Build, practice, and map PAR stories across multiple behavioral questions.",
     titleKey: "title",
     searchKeys: ["title", "category", "status", "weakness_or_focus_area"],
     columns: [
@@ -1863,7 +1863,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "last_practiced_date", label: "Last practiced", type: "date" },
       { key: "number_of_reps", label: "Number of reps", type: "number", min: 0, max: 999 },
       { key: "status", label: "Status", type: "select", options: ["Draft", "Good", "Strong", "Interview-Ready"] },
-      { key: "linked_question_ids", label: "Questions this story answers", type: "multiselect", options: (data) => data.interviewQuestions.map((question) => ({ label: question.question_text, value: question.id })) },
+      { key: "linked_question_ids", label: "Questions this story can answer", type: "multiselect", options: (data) => data.interviewQuestions.map((question) => ({ label: question.question_text, value: question.id })) },
       { key: "weakness_or_focus_area", label: "Weakness or focus", type: "textarea" },
       { key: "notes", label: "Notes", type: "textarea" },
       { key: "follow_up_questions", label: "Follow-up questions", type: "textarea" },
