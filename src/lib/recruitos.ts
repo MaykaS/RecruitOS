@@ -1399,7 +1399,17 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "recruiting_track", label: "Recruiting track", type: "select", options: (data) => toOptions(data.settings.recruiting_tracks) },
       { key: "location", label: "Location", type: "text" },
       { key: "posting_link", label: "Posting link", type: "text" },
-      { key: "status", label: "Status", type: "select", options: (data) => toOptions(data.settings.application_statuses) },
+      {
+        key: "status",
+        label: "Status",
+        type: "select",
+        options: (data) =>
+          toOptions(
+            Array.from(
+              new Set([...APPLICATION_STATUSES, ...data.settings.application_statuses]),
+            ),
+          ),
+      },
       { key: "priority", label: "Priority", type: "select", options: ACTION_ITEM_PRIORITIES },
       { key: "deadline", label: "Deadline", type: "date" },
       { key: "date_applied", label: "Date applied", type: "date" },

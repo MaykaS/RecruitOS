@@ -52,6 +52,40 @@ function buttonClassName(tone: "primary" | "secondary" | "quiet" = "secondary") 
   return "inline-flex h-8 items-center justify-center rounded-full border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100";
 }
 
+function iconButtonClassName(tone: "default" | "danger" = "default") {
+  return cx(
+    "inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm transition",
+    tone === "danger"
+      ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100",
+  );
+}
+
+function IconButton({
+  label,
+  icon,
+  tone = "default",
+  onClick,
+}: {
+  label: string;
+  icon: string;
+  tone?: "default" | "danger";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={iconButtonClassName(tone)}
+      aria-label={label}
+      title={label}
+    >
+      <span aria-hidden="true">{icon}</span>
+      <span className="sr-only">{label}</span>
+    </button>
+  );
+}
+
 function sanitizeText(value: string) {
   return value
     .replaceAll("â€”", "-")
@@ -346,7 +380,7 @@ function EditableSelectInput({
         <input
           value={open ? query : selectedLabel}
           onFocus={() => {
-            setQuery(selectedLabel);
+            setQuery("");
             setOpen(true);
           }}
           onChange={(event) => {
@@ -359,7 +393,10 @@ function EditableSelectInput({
         <button
           type="button"
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() => setOpen((current) => !current)}
+          onClick={() => {
+            setQuery("");
+            setOpen((current) => !current);
+          }}
           className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
         >
           ▾
@@ -1732,8 +1769,9 @@ function QuestionsSection({
                   {sanitizeText(question.question_text)}
                 </button>
                 <div className="mt-2 flex items-center gap-2">
-                  <button
-                    type="button"
+                  <IconButton
+                    label={`Edit question ${question.question_text}`}
+                    icon={"\u270E"}
                     onClick={() =>
                       setDraft({
                         id: question.id,
@@ -1741,17 +1779,13 @@ function QuestionsSection({
                         linked_par_story_ids: question.linked_par_story_ids,
                       })
                     }
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
+                  />
+                  <IconButton
+                    label={`Delete question ${question.question_text}`}
+                    icon={"\u{1F5D1}"}
+                    tone="danger"
                     onClick={() => deleteInterviewQuestion(question.id)}
-                    className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
-                  >
-                    Remove
-                  </button>
+                  />
                 </div>
               </div>
             ))
@@ -1894,7 +1928,7 @@ function StarsWorkspaceSection({
   const { data } = useRecruitOS();
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,2.8fr)_minmax(360px,1.15fr)]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,3.15fr)_minmax(390px,1fr)]">
       <Card
         title="STAR Story Library"
         actions={
@@ -1908,7 +1942,7 @@ function StarsWorkspaceSection({
         }
       >
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex w-full max-w-3xl flex-col gap-2 lg:w-auto lg:flex-row lg:items-center lg:ml-auto">
+          <div className="flex w-full max-w-3xl flex-col gap-2 lg:ml-auto lg:w-auto lg:flex-row lg:items-center">
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -1944,9 +1978,9 @@ function StarsWorkspaceSection({
                 .map((questionId) => data.interviewQuestions.find((question) => question.id === questionId)?.question_text)
                 .filter((value): value is string => Boolean(value));
               return (
-                <article key={story.id} className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="min-w-0 flex-1 space-y-2">
+                <article key={story.id} className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4">
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start xl:gap-5">
+                    <div className="min-w-0 space-y-2.5">
                       <button
                         type="button"
                         onClick={() => openStory(story)}
@@ -1961,9 +1995,11 @@ function StarsWorkspaceSection({
                         <span>|</span>
                         <span>Confidence {story.confidence_score}/5</span>
                       </div>
-                      <MiniList title="Questions this story answers" items={linkedQuestions} />
+                      <div className="max-w-4xl">
+                        <MiniList title="Questions this story answers" items={linkedQuestions} />
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 xl:max-w-[320px] xl:justify-end">
+                    <div className="flex flex-wrap items-center gap-2 xl:max-w-[360px] xl:justify-end">
                       <button
                         type="button"
                         onClick={() => practiceStory(story.id)}
@@ -1985,13 +2021,12 @@ function StarsWorkspaceSection({
                       >
                         Open Story
                       </button>
-                      <button
-                        type="button"
+                      <IconButton
+                        label={`Delete STAR story ${story.title}`}
+                        icon={"\u{1F5D1}"}
+                        tone="danger"
                         onClick={() => deleteStory(story.id)}
-                        className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
-                      >
-                        Delete
-                      </button>
+                      />
                     </div>
                   </div>
                 </article>
@@ -2431,8 +2466,9 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                             Open PDF
                           </a>
                         ) : null}
-                        <button
-                          type="button"
+                        <IconButton
+                          label={`Edit ${config.singular}`}
+                          icon={"\u270E"}
                           onClick={() => {
                             if (slug === "networking") {
                               openContactEditor(record as unknown as RecruitOSData["contacts"][number]);
@@ -2441,17 +2477,13 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                             setEditing(record);
                             setModalOpen(true);
                           }}
-                          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
+                        />
+                        <IconButton
+                          label={`Delete ${config.singular}`}
+                          icon={"\u{1F5D1}"}
+                          tone="danger"
                           onClick={() => deleteRecord(slug, String(record.id))}
-                          className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
-                        >
-                          Delete
-                        </button>
+                        />
                       </div>
                     </td>
                   </tr>
@@ -2484,4 +2516,3 @@ export function ModuleView({ slug }: { slug: ModuleSlug }) {
   if (slug === "settings") return <SettingsView />;
   return <GenericModuleView slug={slug as CrudModuleSlug} />;
 }
-
