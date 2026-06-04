@@ -98,8 +98,11 @@ create table if not exists applications (
   referral_status text not null default 'Not Asked',
   referral_date date,
   referral_notes text not null default '',
+  recruiter_name text not null default '',
   recruiter_email text not null default '',
+  hiring_manager_name text not null default '',
   hiring_manager_email text not null default '',
+  vp_or_director_name text not null default '',
   vp_or_director_email text not null default '',
   cold_email_sent boolean not null default false,
   follow_up_date date,
@@ -119,6 +122,10 @@ create table if not exists applications (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table if exists applications add column if not exists recruiter_name text not null default '';
+alter table if exists applications add column if not exists hiring_manager_name text not null default '';
+alter table if exists applications add column if not exists vp_or_director_name text not null default '';
 
 create table if not exists par_stories (
   id text primary key,

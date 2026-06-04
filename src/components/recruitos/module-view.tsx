@@ -292,18 +292,53 @@ function renderValue(value: unknown) {
   return sanitizeText(String(value));
 }
 
+function isReferenceField(field: FieldConfig) {
+  return field.key.endsWith("_id");
+}
+
+function collectExistingOptionValues(
+  data: RecruitOSData,
+  module: CrudModuleSlug,
+  key: string,
+) {
+  const values = new Set<string>();
+  const collectionKey = MODULE_CONFIGS[module].collection;
+  const collection = data[collectionKey];
+
+  if (Array.isArray(collection)) {
+    collection.forEach((item) => {
+      if (!item || typeof item !== "object" || !(key in item)) return;
+      const value = (item as unknown as Record<string, unknown>)[key];
+      if (typeof value === "string" && value.trim()) {
+        values.add(value.trim());
+      }
+    });
+  }
+
+  return [...values];
+}
+
 function FieldInput({
+  module,
   field,
   data,
   value,
   onChange,
 }: {
+  module: CrudModuleSlug;
   field: FieldConfig;
   data: RecruitOSData;
   value: unknown;
   onChange: (value: unknown) => void;
 }) {
-  const options = resolveOptions(field.options, data);
+  const baseOptions = resolveOptions(field.options, data);
+  const options = (() => {
+    const merged = new Map(baseOptions.map((option) => [option.value, option]));
+    collectExistingOptionValues(data, module, field.key).forEach((item) => {
+      if (!merged.has(item)) merged.set(item, { label: item, value: item });
+    });
+    return [...merged.values()];
+  })();
 
   if (field.type === "textarea") {
     return (
@@ -317,6 +352,31 @@ function FieldInput({
   }
 
   if (field.type === "select") {
+    if (!isReferenceField(field)) {
+      const listId = `options-${field.key}`;
+      return (
+        <div className="space-y-2">
+          <input
+            list={listId}
+            value={String(value ?? "")}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder={field.placeholder ?? "Type or choose a saved option"}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+          />
+          <datalist id={listId}>
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </datalist>
+          <p className="text-xs leading-5 text-slate-500">
+            Type a new value if you need one. Once saved, it will show up as a reusable option.
+          </p>
+        </div>
+      );
+    }
+
     return (
       <select
         value={String(value ?? "")}
@@ -335,59 +395,45 @@ function FieldInput({
 
   if (field.type === "multiselect") {
     const selected = Array.isArray(value) ? value.map(String) : [];
-
-    if (field.key === "linked_question_ids") {
-      const selectedLabels = options
-        .filter((option) => selected.includes(option.value))
-        .map((option) => option.label);
-
-      return (
-        <details className="rounded-2xl border border-slate-200 bg-slate-50">
-          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm text-slate-900">
-            {selectedLabels.length
-              ? `${selectedLabels.length} question${selectedLabels.length === 1 ? "" : "s"} selected`
-              : "Choose interview questions"}
-          </summary>
-          <div className="max-h-56 space-y-2 overflow-y-auto border-t border-slate-200 px-3 py-3">
-            {options.map((option) => {
-              const checked = selected.includes(option.value);
-              return (
-                <label key={option.value} className="flex items-start gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(event) => {
-                      const nextValues = event.target.checked
-                        ? [...selected, option.value]
-                        : selected.filter((item) => item !== option.value);
-                      onChange(Array.from(new Set(nextValues)));
-                    }}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-400"
-                  />
-                  <span>{option.label}</span>
-                </label>
-              );
-            })}
-          </div>
-        </details>
-      );
-    }
+    const selectedLabels = options
+      .filter((option) => selected.includes(option.value))
+      .map((option) => option.label);
+    const pickerLabel =
+      field.key === "linked_question_ids"
+        ? "Choose interview questions"
+        : field.key === "linked_contact_ids"
+          ? "Choose linked contacts"
+          : `Choose ${field.label.toLowerCase()}`;
 
     return (
-      <select
-        multiple
-        value={selected}
-        onChange={(event) =>
-          onChange(Array.from(event.currentTarget.selectedOptions).map((option) => option.value))
-        }
-        className="min-h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <details className="rounded-2xl border border-slate-200 bg-slate-50">
+        <summary className="cursor-pointer list-none px-3 py-2.5 text-sm text-slate-900">
+          {selectedLabels.length
+            ? `${selectedLabels.length} selected`
+            : pickerLabel}
+        </summary>
+        <div className="max-h-56 space-y-2 overflow-y-auto border-t border-slate-200 px-3 py-3">
+          {options.map((option) => {
+            const checked = selected.includes(option.value);
+            return (
+              <label key={option.value} className="flex items-start gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(event) => {
+                    const nextValues = event.target.checked
+                      ? [...selected, option.value]
+                      : selected.filter((item) => item !== option.value);
+                    onChange(Array.from(new Set(nextValues)));
+                  }}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-400"
+                />
+                <span>{option.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      </details>
     );
   }
 
@@ -593,6 +639,7 @@ function RecordModal({
               >
                 <span className="text-sm font-medium text-slate-700">{field.label}</span>
                 <FieldInput
+                  module={module}
                   field={field}
                   data={data}
                   value={form[field.key]}
