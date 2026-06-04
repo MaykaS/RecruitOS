@@ -383,7 +383,7 @@ export interface ContactWorkflowInsight {
 }
 
 export type InterviewPrepGap =
-  | "No linked PARs"
+  | "No linked STARs"
   | "No linked answers"
   | "No company notes"
   | "No interviewer questions"
@@ -519,7 +519,7 @@ export const INTERVIEW_PREP_CHECKLIST = [
   "Prepare Why this company",
   "Prepare Why this role",
   "Prepare Why me",
-  "Select 5-7 PAR stories",
+  "Select 5-7 STAR stories",
   "Practice likely behavioral questions",
   "Practice role-specific case",
   "Research company products",
@@ -534,7 +534,7 @@ export const INTERVIEW_PREP_CHECKLIST = [
 
 export const NAV_ITEMS: { slug: ModuleSlug; label: string }[] = [
   { slug: "dashboard", label: "Dashboard" },
-  { slug: "pars", label: "PARs" },
+  { slug: "pars", label: "STARs" },
   { slug: "interview-answers", label: "Interview Answers" },
   { slug: "cases", label: "Cases" },
   { slug: "networking", label: "Networking" },
@@ -1123,7 +1123,7 @@ export const seedData = (): RecruitOSData => {
         id: brainDump,
         created_at: timestamp,
         updated_at: timestamp,
-        title: "Practice failure PAR",
+        title: "Practice failure STAR",
         note: "Need a cleaner failure story for PM interviews.",
         category: "PAR",
         converted_action_item_id: "",
@@ -1335,7 +1335,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "linked_contact_id", label: "Linked contact", type: "select", options: getContactOptions },
       { key: "linked_company_id", label: "Linked company", type: "select", options: getCompanyOptions },
       { key: "linked_application_id", label: "Linked application", type: "select", options: getApplicationOptions },
-      { key: "linked_par_id", label: "Linked PAR", type: "select", options: getPAROptions },
+      { key: "linked_par_id", label: "Linked STAR", type: "select", options: getPAROptions },
       { key: "linked_case_id", label: "Linked case", type: "select", options: getCaseOptions },
       { key: "linked_mock_interview_id", label: "Linked mock interview", type: "select", options: (data) => data.mockInterviews.map((item) => ({ label: `${formatDate(item.date)} · ${item.interview_type}`, value: item.id })) },
       { key: "linked_resume_id", label: "Linked resume", type: "select", options: getResumeOptions },
@@ -1579,7 +1579,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
     title: "Interview Answers",
     singular: "Interview Answer",
     collection: "interviewAnswers",
-    description: "Reusable polished answers for non-PAR interview questions.",
+    description: "Reusable polished answers for non-STAR interview questions.",
     titleKey: "question",
     searchKeys: ["question", "answer_type", "target_role", "status"],
     columns: [
@@ -1611,7 +1611,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "last_practiced_date", label: "Last practiced", type: "date" },
       { key: "status", label: "Status", type: "select", options: ["Draft", "Good", "Interview-Ready"] },
       { key: "notes", label: "Notes", type: "textarea" },
-      { key: "linked_par_story_ids", label: "Linked PARs", type: "multiselect", options: getPAROptions },
+      { key: "linked_par_story_ids", label: "Linked STARs", type: "multiselect", options: getPAROptions },
       { key: "linked_application_ids", label: "Linked applications", type: "multiselect", options: getApplicationOptions },
       { key: "linked_interview_prep_ids", label: "Linked interview prep", type: "multiselect", options: getInterviewPrepOptions },
     ],
@@ -1667,7 +1667,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "interviewer_linkedin", label: "Interviewer LinkedIn", type: "text" },
       { key: "prep_status", label: "Prep status", type: "select", options: ["Not Started", "In Progress", "Ready", "Completed"] },
       { key: "linked_contact_ids", label: "Linked contacts", type: "multiselect", options: getContactOptions },
-      { key: "linked_par_story_ids", label: "Linked PARs", type: "multiselect", options: getPAROptions },
+      { key: "linked_par_story_ids", label: "Linked STARs", type: "multiselect", options: getPAROptions },
       { key: "linked_interview_answer_ids", label: "Linked answers", type: "multiselect", options: getInterviewAnswerOptions },
       { key: "linked_case_ids", label: "Linked cases", type: "multiselect", options: getCaseOptions },
       { key: "company_notes", label: "Company notes", type: "textarea" },
@@ -1731,7 +1731,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "target_role", label: "Target role", type: "select", options: TARGET_ROLES },
       { key: "questions_asked", label: "Questions asked", type: "textarea" },
       { key: "case_given", label: "Case given", type: "textarea" },
-      { key: "linked_par_story_ids", label: "Linked PARs", type: "multiselect", options: getPAROptions },
+      { key: "linked_par_story_ids", label: "Linked STARs", type: "multiselect", options: getPAROptions },
       { key: "linked_case_ids", label: "Linked cases", type: "multiselect", options: getCaseOptions },
       { key: "overall_score", label: "Overall score", type: "number", min: 1, max: 5 },
       { key: "strengths", label: "Strengths", type: "textarea" },
@@ -1826,10 +1826,10 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
   },
   pars: {
     slug: "pars",
-    title: "PARs",
-    singular: "PAR Story",
+    title: "STAR Stories",
+    singular: "STAR Story",
     collection: "parStories",
-    description: "Build, practice, and map PAR stories across multiple behavioral questions.",
+    description: "Build, practice, and map STAR stories across multiple behavioral questions.",
     titleKey: "title",
     searchKeys: ["title", "category", "status", "weakness_or_focus_area"],
     columns: [
@@ -1996,7 +1996,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "linked_contact_id", label: "Linked contact", type: "select", options: getContactOptions },
       { key: "linked_company_id", label: "Linked company", type: "select", options: getCompanyOptions },
       { key: "linked_application_id", label: "Linked application", type: "select", options: getApplicationOptions },
-      { key: "linked_par_id", label: "Linked PAR", type: "select", options: getPAROptions },
+      { key: "linked_par_id", label: "Linked STAR", type: "select", options: getPAROptions },
       { key: "linked_case_id", label: "Linked case", type: "select", options: getCaseOptions },
       { key: "linked_mock_interview_id", label: "Linked mock interview", type: "select", options: (data) => data.mockInterviews.map((item) => ({ label: `${formatDate(item.date)} · ${item.interview_type}`, value: item.id })) },
       { key: "linked_resume_id", label: "Linked resume", type: "select", options: getResumeOptions },
@@ -2487,7 +2487,7 @@ export function buildInterviewPrepPacket(
   const questionsToAsk = splitMultilineText(prep.questions_to_ask_interviewer);
   const gaps: InterviewPrepGap[] = [];
 
-  if (!recommendedPars.length) gaps.push("No linked PARs");
+  if (!recommendedPars.length) gaps.push("No linked STARs");
   if (!recommendedAnswers.length) gaps.push("No linked answers");
   if (!(prep.company_notes || company?.company_research_notes || company?.why_this_company)) {
     gaps.push("No company notes");

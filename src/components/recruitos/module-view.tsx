@@ -266,6 +266,15 @@ function MiniList({
   );
 }
 
+function openRecordEditor(
+  record: Record<string, unknown>,
+  setEditing: React.Dispatch<React.SetStateAction<Record<string, unknown> | null>>,
+  setModalOpen: React.Dispatch<React.SetStateAction<boolean>>,
+) {
+  setEditing(record);
+  setModalOpen(true);
+}
+
 function renderValue(value: unknown) {
   if (Array.isArray(value)) {
     if (!value.length) return "—";
@@ -895,7 +904,7 @@ function InterviewPrepPacketsSection({
                 <MiniList title="Prep gaps" items={packet.gaps} />
               </div>
               <div className="space-y-3">
-                <MiniList title="Recommended PARs" items={packet.recommendedPars.map((par) => par.title)} />
+                <MiniList title="Recommended STARs" items={packet.recommendedPars.map((par) => par.title)} />
                 <MiniList title="Recommended answers" items={packet.recommendedAnswers.map((answer) => answer.question)} />
                 <MiniList title="Linked cases" items={packet.linkedCases.map((item) => item.title)} />
               </div>
@@ -1050,7 +1059,7 @@ function DashboardView() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="flex h-full flex-col rounded-[28px] border border-slate-200 bg-[rgba(255,255,255,0.82)] p-5">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Assigned PAR Practice
+                Assigned STAR Practice
               </div>
               {parSuggestion ? (
                 <div className="mt-3 flex h-full flex-col">
@@ -1086,7 +1095,7 @@ function DashboardView() {
                   </div>
                 </div>
               ) : (
-                <EmptyState label="Add a PAR story to start daily practice suggestions." />
+                <EmptyState label="Add a STAR story to start daily practice suggestions." />
               )}
             </div>
 
@@ -1137,7 +1146,7 @@ function DashboardView() {
         <Card title="Weekly Progress Scoreboard">
           <div className="space-y-4">
             <ProgressBar
-              label={`PAR reps this week (${parRepsThisWeek}/${data.settings.weekly_par_target})`}
+              label={`STAR reps this week (${parRepsThisWeek}/${data.settings.weekly_par_target})`}
               value={progressPercentage(parRepsThisWeek, data.settings.weekly_par_target)}
             />
             <ProgressBar
@@ -1414,7 +1423,7 @@ function DashboardView() {
               </div>
               <div className="text-sm font-medium text-slate-900">{day.dateLabel}</div>
               <div className="mt-3 space-y-1 text-xs text-slate-600">
-                <div>PAR: {day.parLogs.length ? "Completed" : "Open"}</div>
+                <div>STAR: {day.parLogs.length ? "Completed" : "Open"}</div>
                 <div>Case: {day.caseLogs.length ? "Completed" : "Open"}</div>
                 <div>Networking: {day.followUps.length}</div>
                 <div>Apps: {day.applicationActions.length}</div>
@@ -1485,7 +1494,7 @@ function DashboardView() {
                 <div className="mt-2 text-sm text-slate-700">
                   {selectedDay.parLogs.length || selectedDay.caseLogs.length || selectedDay.mocks.length
                     ? [
-                        selectedDay.parLogs.length ? `${selectedDay.parLogs.length} PAR practice log(s)` : "",
+                        selectedDay.parLogs.length ? `${selectedDay.parLogs.length} STAR practice log(s)` : "",
                         selectedDay.caseLogs.length ? `${selectedDay.caseLogs.length} case practice log(s)` : "",
                         selectedDay.mocks.length ? `${selectedDay.mocks.length} mock interview(s)` : "",
                       ].filter(Boolean).join(" - ")
@@ -1513,7 +1522,11 @@ function DashboardView() {
   );
 }
 
-function QuestionsSection() {
+function QuestionsSection({
+  openStory,
+}: {
+  openStory: (story: RecruitOSData["parStories"][number]) => void;
+}) {
   const { data, saveInterviewQuestion, deleteInterviewQuestion } = useRecruitOS();
   const [draft, setDraft] = useState({
     id: "",
@@ -1524,9 +1537,9 @@ function QuestionsSection() {
   });
 
   return (
-    <Card title="Interview Questions View">
+    <Card title="Question Bank">
       <div className="mb-4 rounded-2xl border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-sm text-slate-700">
-        Each question can map to multiple PAR stories, and each PAR story can answer multiple questions.
+        Each question can map to multiple STAR stories, and each STAR story can answer multiple questions.
       </div>
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
         <div className="space-y-3">
@@ -1535,21 +1548,26 @@ function QuestionsSection() {
               <div className="text-sm font-medium text-slate-900">{sanitizeText(question.question_text)}</div>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 <span>{sanitizeText(question.category || "General")}</span>
-                <span>•</span>
-                <span>{question.linked_par_story_ids.length} PAR{question.linked_par_story_ids.length === 1 ? "" : "s"}</span>
+                <span>|</span>
+                <span>{question.linked_par_story_ids.length} STAR{question.linked_par_story_ids.length === 1 ? "" : "s"}</span>
               </div>
               <div className="mt-3 space-y-2">
                 {question.linked_par_story_ids.length ? (
                   question.linked_par_story_ids.map((parId) => {
                     const par = data.parStories.find((item) => item.id === parId);
                     return par ? (
-                      <div key={parId} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                      <button
+                        type="button"
+                        key={parId}
+                        onClick={() => openStory(par)}
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:border-teal-200 hover:bg-cyan-50/50"
+                      >
                         {sanitizeText(par.title)}
-                      </div>
+                      </button>
                     ) : null;
                   })
                 ) : (
-                  <div className="text-sm text-slate-500">No linked PAR stories yet.</div>
+                  <div className="text-sm text-slate-500">No linked STAR stories yet.</div>
                 )}
               </div>
               <div className="mt-3 flex gap-2">
@@ -1619,7 +1637,7 @@ function QuestionsSection() {
               ))}
             </select>
             <p className="text-xs leading-5 text-slate-500">
-              Choose one or more PAR stories for this question. A single PAR can also be reused across different questions.
+              Choose one or more STAR stories for this question. A single STAR can also be reused across different questions.
             </p>
             <button
               type="button"
@@ -1647,6 +1665,223 @@ function QuestionsSection() {
           </div>
         </div>
       </div>
+    </Card>
+  );
+}
+
+function StarCoverageMatrix({
+  stories,
+  questions,
+  openStory,
+}: {
+  stories: RecruitOSData["parStories"];
+  questions: RecruitOSData["interviewQuestions"];
+  openStory: (story: RecruitOSData["parStories"][number]) => void;
+}) {
+  return (
+    <Card title="STAR Coverage Matrix">
+      {stories.length && questions.length ? (
+        <div className="overflow-x-auto rounded-[24px] border border-slate-200 bg-white/80 p-2">
+          <table className="min-w-full border-separate border-spacing-y-2">
+            <thead>
+              <tr>
+                <th className="min-w-[220px] px-3 py-2 text-left text-xs uppercase tracking-[0.18em] text-slate-500">
+                  STAR Story
+                </th>
+                {questions.map((question) => (
+                  <th
+                    key={question.id}
+                    className="min-w-[180px] px-3 py-2 text-left text-xs uppercase tracking-[0.12em] text-slate-500"
+                  >
+                    {sanitizeText(question.question_text)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {stories.map((story) => (
+                <tr key={story.id} className="rounded-2xl bg-slate-50 shadow-[0_1px_0_rgba(226,232,240,1)]">
+                  <td className="px-3 py-3 align-top">
+                    <button
+                      type="button"
+                      onClick={() => openStory(story)}
+                      className="text-left text-sm font-medium text-slate-900 transition hover:text-teal-700"
+                    >
+                      {sanitizeText(story.title)}
+                    </button>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {sanitizeText(story.category || "General")} | {story.linked_question_ids.length} question{story.linked_question_ids.length === 1 ? "" : "s"}
+                    </div>
+                  </td>
+                  {questions.map((question) => (
+                    <td key={question.id} className="px-3 py-3 align-top text-sm text-slate-700">
+                      {story.linked_question_ids.includes(question.id) ? "Yes" : ""}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyState label="Add STAR stories and questions to see the coverage matrix." />
+      )}
+    </Card>
+  );
+}
+
+function StarsWorkspaceSection({
+  stories,
+  query,
+  setQuery,
+  sortKey,
+  setSortKey,
+  sortDirection,
+  setSortDirection,
+  sortOptions,
+  openStory,
+  addStory,
+  practiceStory,
+  addAction,
+  deleteStory,
+}: {
+  stories: RecruitOSData["parStories"];
+  query: string;
+  setQuery: React.Dispatch<React.SetStateAction<string>>;
+  sortKey: string;
+  setSortKey: React.Dispatch<React.SetStateAction<string>>;
+  sortDirection: SortDirection;
+  setSortDirection: React.Dispatch<React.SetStateAction<SortDirection>>;
+  sortOptions: SortOption[];
+  openStory: (story: RecruitOSData["parStories"][number]) => void;
+  addStory: () => void;
+  practiceStory: (storyId: string) => void;
+  addAction: (story: RecruitOSData["parStories"][number]) => void;
+  deleteStory: (storyId: string) => void;
+}) {
+  const { data } = useRecruitOS();
+
+  return (
+    <Card
+      title="STAR Story Library"
+      actions={
+        <button
+          type="button"
+          onClick={addStory}
+          className="rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-4 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
+        >
+          Add STAR Story
+        </button>
+      }
+    >
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <p className="max-w-2xl text-sm leading-6 text-slate-600">
+          Add your STAR stories, link each one to as many interview questions as it answers, and open any story title to review the full note.
+        </p>
+        <div className="flex w-full max-w-3xl flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search star stories..."
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white lg:min-w-[260px]"
+          />
+          <div className="flex gap-2">
+            <select
+              value={sortKey}
+              onChange={(event) => setSortKey(event.target.value)}
+              className="min-w-[160px] rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+            >
+              {sortOptions.map((option) => (
+                <option key={option.key} value={option.key}>
+                  Sort by {option.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {sortDirection === "asc" ? "Ascending" : "Descending"}
+            </button>
+          </div>
+        </div>
+      </div>
+      {stories.length ? (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {stories.map((story) => {
+            const linkedQuestions = story.linked_question_ids
+              .map((questionId) => data.interviewQuestions.find((question) => question.id === questionId)?.question_text)
+              .filter((value): value is string => Boolean(value));
+            return (
+              <article key={story.id} className="rounded-[26px] border border-slate-200 bg-slate-50 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => openStory(story)}
+                      className="text-left text-[1.1rem] font-semibold text-slate-900 [font-family:var(--font-display)] transition hover:text-teal-700"
+                    >
+                      {sanitizeText(story.title)}
+                    </button>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <span>{sanitizeText(story.category || "General")}</span>
+                      <span>|</span>
+                      <span>{story.status}</span>
+                      <span>|</span>
+                      <span>Confidence {story.confidence_score}/5</span>
+                    </div>
+                  </div>
+                  <StatusBadge value={story.status} />
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-700">
+                  {sanitizeText(
+                    story.weakness_or_focus_area ||
+                      story.polished_answer ||
+                      story.result ||
+                      "Open the story to see the full STAR note.",
+                  )}
+                </p>
+                <div className="mt-4 space-y-3">
+                  <MiniList title="Questions this story answers" items={linkedQuestions} />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => practiceStory(story.id)}
+                      className={buttonClassName("secondary")}
+                    >
+                      Practice
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addAction(story)}
+                      className={buttonClassName("secondary")}
+                    >
+                      Add Action
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openStory(story)}
+                      className={buttonClassName("secondary")}
+                    >
+                      Open Story
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteStory(story.id)}
+                      className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState label="No STAR stories match this view yet." />
+      )}
     </Card>
   );
 }
@@ -1697,7 +1932,7 @@ function SettingsView() {
         {[
           ["daily_application_target", "Daily application target"],
           ["weekly_application_target", "Weekly application target"],
-          ["weekly_par_target", "Weekly PAR target"],
+          ["weekly_par_target", "Weekly STAR target"],
           ["weekly_case_target", "Weekly case target"],
           ["weekly_mock_target", "Weekly mock target"],
           ["weekly_networking_target", "Weekly networking touch target"],
@@ -1828,6 +2063,12 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
     },
     [],
   );
+  const openStarEditor = useCallback(
+    (story: RecruitOSData["parStories"][number]) => {
+      openRecordEditor(story as unknown as Record<string, unknown>, setEditing, setModalOpen);
+    },
+    [],
+  );
 
   return (
     <div className="space-y-6">
@@ -1853,6 +2094,52 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
           createActionItemFromSource={createActionItemFromSource}
         />
       ) : null}
+
+      {slug === "pars" ? (
+        <>
+          <StarsWorkspaceSection
+            stories={sortedRecords as unknown as RecruitOSData["parStories"]}
+            query={query}
+            setQuery={setQuery}
+            sortKey={sortKey}
+            setSortKey={setSortKey}
+            sortDirection={sortDirection}
+            setSortDirection={setSortDirection}
+            sortOptions={config.sortOptions}
+            openStory={openStarEditor}
+            addStory={() => {
+              setEditing(null);
+              setModalOpen(true);
+            }}
+            practiceStory={(storyId) => logParPractice(storyId)}
+            addAction={(story) =>
+              createActionItemFromSource({
+                title: `Improve STAR: ${story.title}`,
+                source_type: "PAR",
+                source_id: story.id,
+                linked_par_id: story.id,
+              })
+            }
+            deleteStory={(storyId) => deleteRecord("pars", storyId)}
+          />
+          <StarCoverageMatrix
+            stories={sortedRecords as unknown as RecruitOSData["parStories"]}
+            questions={data.interviewQuestions}
+            openStory={openStarEditor}
+          />
+          <QuestionsSection openStory={openStarEditor} />
+          <RecordModal
+            key={`${editing?.id ? String(editing.id) : "new"}-${modalOpen ? "open" : "closed"}`}
+            title={editing ? `Edit ${config.singular}` : `Add ${config.singular}`}
+            open={modalOpen}
+            onClose={() => setModalOpen(false)}
+            module={slug}
+            initial={editing}
+          />
+        </>
+      ) : null}
+
+      {slug === "pars" ? null : (
 
       <Card
         title={config.title}
@@ -1941,15 +2228,6 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                     ))}
                     <td className="px-3 py-3">
                       <div className="flex justify-end gap-2">
-                        {slug === "pars" ? (
-                          <button
-                            type="button"
-                            onClick={() => logParPractice(String(record.id))}
-                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                          >
-                            Practice
-                          </button>
-                        ) : null}
                         {slug === "cases" ? (
                           <button
                             type="button"
@@ -1986,7 +2264,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                             {(record.status as string) === "Done" ? "Reopen" : "Check Off"}
                           </button>
                         ) : null}
-                        {(slug === "applications" || slug === "mock-interviews" || slug === "pars" || slug === "networking") ? (
+                        {(slug === "applications" || slug === "mock-interviews" || slug === "networking") ? (
                           <button
                             type="button"
                             onClick={() => {
@@ -2015,14 +2293,6 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                                   source_id: String(record.id),
                                   linked_mock_interview_id: String(record.id),
                                   linked_company_id: String(record.target_company_id || ""),
-                                });
-                              }
-                              if (slug === "pars") {
-                                createActionItemFromSource({
-                                  title: `Improve PAR: ${String(record.title)}`,
-                                  source_type: "PAR",
-                                  source_id: String(record.id),
-                                  linked_par_id: String(record.id),
                                 });
                               }
                             }}
@@ -2073,17 +2343,18 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
           <EmptyState label={`No ${config.title.toLowerCase()} match this view yet.`} />
         )}
       </Card>
+      )}
 
-      {slug === "pars" ? <QuestionsSection /> : null}
-
-      <RecordModal
-        key={`${editing?.id ? String(editing.id) : "new"}-${modalOpen ? "open" : "closed"}`}
-        title={editing ? `Edit ${config.singular}` : `Add ${config.singular}`}
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        module={slug}
-        initial={editing}
-      />
+      {slug === "pars" ? null : (
+        <RecordModal
+          key={`${editing?.id ? String(editing.id) : "new"}-${modalOpen ? "open" : "closed"}`}
+          title={editing ? `Edit ${config.singular}` : `Add ${config.singular}`}
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          module={slug}
+          initial={editing}
+        />
+      )}
     </div>
   );
 }
