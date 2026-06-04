@@ -1751,7 +1751,7 @@ function StarCoverageMatrix({
                       {sanitizeText(story.title)}
                     </button>
                     <div className="mt-1 text-xs text-slate-500">
-                      {sanitizeText(story.category || "General")} | {story.linked_question_ids.length} question{story.linked_question_ids.length === 1 ? "" : "s"}
+                      {story.status} | Confidence {story.confidence_score}/5 | {story.linked_question_ids.length} question{story.linked_question_ids.length === 1 ? "" : "s"}
                     </div>
                   </td>
                   {questions.map((question) => (
@@ -1858,37 +1858,26 @@ function StarsWorkspaceSection({
                 .map((questionId) => data.interviewQuestions.find((question) => question.id === questionId)?.question_text)
                 .filter((value): value is string => Boolean(value));
               return (
-                <article key={story.id} className="rounded-[26px] border border-slate-200 bg-slate-50 p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-2">
+                <article key={story.id} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
                       <button
                         type="button"
                         onClick={() => openStory(story)}
-                        className="text-left text-[1.1rem] font-semibold text-slate-900 [font-family:var(--font-display)] transition hover:text-teal-700"
+                        className="text-left text-base font-semibold text-slate-900 [font-family:var(--font-display)] transition hover:text-teal-700"
                       >
                         {sanitizeText(story.title)}
                       </button>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                        <span>{sanitizeText(story.category || "General")}</span>
+                        <span>{story.linked_question_ids.length ? `${story.linked_question_ids.length} question${story.linked_question_ids.length === 1 ? "" : "s"}` : "No questions linked"}</span>
                         <span>|</span>
                         <span>{story.status}</span>
                         <span>|</span>
                         <span>Confidence {story.confidence_score}/5</span>
                       </div>
                     </div>
-                    <StatusBadge value={story.status} />
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-slate-700">
-                    {sanitizeText(
-                      story.weakness_or_focus_area ||
-                        story.polished_answer ||
-                        story.result ||
-                        "Open the story to see the full STAR note.",
-                    )}
-                  </p>
-                  <div className="mt-4 space-y-3">
                     <MiniList title="Questions this story answers" items={linkedQuestions} />
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 pt-1">
                       <button
                         type="button"
                         onClick={() => practiceStory(story.id)}

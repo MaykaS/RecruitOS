@@ -1845,17 +1845,17 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
     collection: "parStories",
     description: "Build, practice, and map STAR stories across multiple behavioral questions.",
     titleKey: "title",
-    searchKeys: ["title", "category", "status", "weakness_or_focus_area"],
+    searchKeys: ["title", "status", "weakness_or_focus_area", "notes", "follow_up_questions"],
     columns: [
       { key: "title", label: "Title" },
-      { key: "category", label: "Category" },
+      { key: "linked_question_ids", label: "Questions" },
       { key: "status", label: "Status" },
       { key: "confidence_score", label: "Confidence" },
       { key: "last_practiced_date", label: "Last practiced" },
     ],
     sortOptions: [
       { key: "title", label: "Title", type: "text" },
-      { key: "category", label: "Category", type: "text" },
+      { key: "linked_question_ids", label: "Questions covered", type: "array" },
       { key: "status", label: "Status", type: "text", order: ["Draft", "Good", "Strong", "Interview-Ready"] },
       { key: "confidence_score", label: "Confidence score", type: "number" },
       { key: "number_of_reps", label: "Number of reps", type: "number" },
@@ -1865,7 +1865,6 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
     defaultSort: { key: "last_practiced_date", direction: "asc" },
     fields: [
       { key: "title", label: "Title", type: "text" },
-      { key: "category", label: "Category", type: "text" },
       { key: "situation", label: "Situation", type: "textarea" },
       { key: "problem", label: "Problem", type: "textarea" },
       { key: "action", label: "Action", type: "textarea" },
