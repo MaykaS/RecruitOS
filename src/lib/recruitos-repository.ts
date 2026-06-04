@@ -84,7 +84,7 @@ const ARRAY_FIELDS: Record<string, string[]> = {
   ],
   outreach_templates: [],
   par_practice_logs: [],
-  par_stories: ["target_roles", "linked_question_ids"],
+  par_stories: ["linked_question_ids"],
   resumes: ["linked_application_ids"],
   settings: [
     "preferred_target_roles",

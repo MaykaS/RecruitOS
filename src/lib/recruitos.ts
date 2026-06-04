@@ -84,7 +84,6 @@ export interface ActionItem extends BaseRecord {
 export interface PARStory extends BaseRecord {
   title: string;
   category: string;
-  target_roles: string[];
   situation: string;
   problem: string;
   action: string;
@@ -942,7 +941,6 @@ export const seedData = (): RecruitOSData => {
         updated_at: timestamp,
         title: "Oracle Agentic AI Strategy",
         category: "Leadership",
-        target_roles: ["PM", "AI Product", "Product Strategy"],
         situation: "Needed to shape internal AI agent strategy with limited alignment.",
         problem: "Teams had different assumptions about value and user pain.",
         action: "Built a decision memo, aligned stakeholders, and prioritized use cases.",
@@ -965,7 +963,6 @@ export const seedData = (): RecruitOSData => {
         updated_at: timestamp,
         title: "High Tech Club NYC Mixer",
         category: "Influence",
-        target_roles: ["PM", "Consulting", "General"],
         situation: "Needed to quickly build sponsor momentum for event turnout.",
         problem: "Low initial response and unclear partner value.",
         action: "Reframed pitch around sponsor reach and student quality.",
@@ -1855,7 +1852,6 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
     fields: [
       { key: "title", label: "Title", type: "text" },
       { key: "category", label: "Category", type: "text" },
-      { key: "target_roles", label: "Target roles", type: "multiselect", options: TARGET_ROLES },
       { key: "situation", label: "Situation", type: "textarea" },
       { key: "problem", label: "Problem", type: "textarea" },
       { key: "action", label: "Action", type: "textarea" },
@@ -1867,15 +1863,14 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "last_practiced_date", label: "Last practiced", type: "date" },
       { key: "number_of_reps", label: "Number of reps", type: "number", min: 0, max: 999 },
       { key: "status", label: "Status", type: "select", options: ["Draft", "Good", "Strong", "Interview-Ready"] },
+      { key: "linked_question_ids", label: "Questions this story answers", type: "multiselect", options: (data) => data.interviewQuestions.map((question) => ({ label: question.question_text, value: question.id })) },
       { key: "weakness_or_focus_area", label: "Weakness or focus", type: "textarea" },
       { key: "notes", label: "Notes", type: "textarea" },
       { key: "follow_up_questions", label: "Follow-up questions", type: "textarea" },
-      { key: "linked_question_ids", label: "Linked questions", type: "multiselect", options: (data) => data.interviewQuestions.map((question) => ({ label: question.question_text, value: question.id })) },
     ],
     defaultValues: {
       title: "",
       category: "",
-      target_roles: [],
       situation: "",
       problem: "",
       action: "",
@@ -2424,27 +2419,29 @@ export function getNetworkingWorkflowInsights(data: RecruitOSData): ContactWorkf
 function getSuggestedParsForPrep(
   data: RecruitOSData,
   prep: InterviewPrep,
-  application: Application | null,
+  _application: Application | null,
 ) {
+  void _application;
   const explicit = prep.linked_par_story_ids
     .map((id) => data.parStories.find((par) => par.id === id))
     .filter((item): item is PARStory => Boolean(item));
   if (explicit.length) return explicit;
 
-  const targetRole = application?.function || application?.role_title || "";
   return [...data.parStories]
-    .filter(
-      (par) =>
-        !targetRole ||
-        par.target_roles.some((role) =>
-          normalizeText(role).includes(normalizeText(targetRole)) ||
-          normalizeText(targetRole).includes(normalizeText(role)),
-        ),
-    )
     .sort((left, right) => {
-      const leftScore = left.confidence_score * 10 + left.number_of_reps;
-      const rightScore = right.confidence_score * 10 + right.number_of_reps;
-      return rightScore - leftScore;
+      const leftScore =
+        (left.status === "Interview-Ready" ? 30 : 0) +
+        left.confidence_score * 12 +
+        left.number_of_reps * 8 +
+        left.linked_question_ids.length * 5 +
+        (left.last_practiced_date ? 18 : 0);
+      const rightScore =
+        (right.status === "Interview-Ready" ? 30 : 0) +
+        right.confidence_score * 12 +
+        right.number_of_reps * 8 +
+        right.linked_question_ids.length * 5 +
+        (right.last_practiced_date ? 18 : 0);
+      return leftScore - rightScore;
     })
     .slice(0, 4);
 }
