@@ -276,17 +276,15 @@ function MiniList({
       <div className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">
         {title}
       </div>
-      <div className="overflow-x-auto pb-1">
-        <div className="flex min-w-max items-center gap-2">
-          {items.map((item) => (
-            <span
-              key={item}
-              className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.77rem] text-slate-600"
-            >
-              {sanitizeText(item)}
-            </span>
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-2">
+        {items.map((item) => (
+          <span
+            key={item}
+            className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.77rem] text-slate-600"
+          >
+            {sanitizeText(item)}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -1013,6 +1011,13 @@ function RecordModal({
     initial?.id && module !== "action-items"
       ? getLinkedActionItems(data, module, String(initial.id))
       : [];
+  const practiceLogs =
+    initial?.id && module === "pars"
+      ? data.parPracticeLogs
+          .filter((log) => log.par_story_id === String(initial.id))
+          .sort((left, right) => right.created_at.localeCompare(left.created_at))
+      : [];
+  const latestPractice = practiceLogs[0] ?? null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4 backdrop-blur-sm">
@@ -1184,6 +1189,81 @@ function RecordModal({
                 </a>
               </div>
             ) : null}
+          </div>
+        ) : null}
+
+        {module === "pars" && latestPractice ? (
+          <div className="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-sm font-medium text-slate-900">Latest practice feedback</div>
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span>{renderValue(latestPractice.date)}</span>
+                <span>·</span>
+                <span>{latestPractice.version_practiced}</span>
+                <span>·</span>
+                <span>Delivery {latestPractice.delivery_score}/5</span>
+                <span>·</span>
+                <span>Structure {latestPractice.structure_score}/5</span>
+                <span>·</span>
+                <span>Confidence {latestPractice.confidence_score}/5</span>
+              </div>
+              <div className="mt-3 text-sm text-slate-700">
+                <span className="font-medium text-slate-900">Question:</span>{" "}
+                {sanitizeText(latestPractice.prompt_used)}
+              </div>
+              {latestPractice.next_fix ? (
+                <div className="mt-3 text-sm text-slate-700">
+                  <span className="font-medium text-slate-900">Next fix:</span>{" "}
+                  {sanitizeText(latestPractice.next_fix)}
+                </div>
+              ) : null}
+              {latestPractice.notes ? (
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-700">
+                  {sanitizeText(latestPractice.notes)}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {module === "pars" && practiceLogs.length > 0 ? (
+          <div className="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-sm font-medium text-slate-900">Practice history</div>
+            <div className="space-y-3">
+              {practiceLogs.map((log) => (
+                <div
+                  key={log.id}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-4"
+                >
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span>{renderValue(log.date)}</span>
+                    <span>·</span>
+                    <span>{log.version_practiced}</span>
+                    <span>·</span>
+                    <span>D {log.delivery_score}/5</span>
+                    <span>·</span>
+                    <span>S {log.structure_score}/5</span>
+                    <span>·</span>
+                    <span>C {log.confidence_score}/5</span>
+                  </div>
+                  <div className="mt-2 text-sm text-slate-700">
+                    <span className="font-medium text-slate-900">Question:</span>{" "}
+                    {sanitizeText(log.prompt_used)}
+                  </div>
+                  {log.next_fix ? (
+                    <div className="mt-2 text-sm text-slate-700">
+                      <span className="font-medium text-slate-900">Next fix:</span>{" "}
+                      {sanitizeText(log.next_fix)}
+                    </div>
+                  ) : null}
+                  {log.notes ? (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-700">
+                      {sanitizeText(log.notes)}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
           </div>
         ) : null}
 

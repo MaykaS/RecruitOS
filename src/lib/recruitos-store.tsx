@@ -485,6 +485,8 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
                   1,
                   Math.min(5, normalized.confidence_score || par.confidence_score),
                 ),
+                weakness_or_focus_area:
+                  normalized.next_fix.trim() || par.weakness_or_focus_area,
                 updated_at: nowIso(),
               }
             : par,
