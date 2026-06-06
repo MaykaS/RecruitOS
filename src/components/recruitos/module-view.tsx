@@ -272,18 +272,22 @@ function MiniList({
 }) {
   if (!items.length) return null;
   return (
-    <div className="flex min-w-max items-center gap-2">
-      <div className="shrink-0 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">
+    <div className="space-y-1.5">
+      <div className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">
         {title}
       </div>
-      {items.map((item) => (
-        <span
-          key={item}
-          className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.77rem] text-slate-600"
-        >
-          {sanitizeText(item)}
-        </span>
-      ))}
+      <div className="overflow-x-auto pb-1">
+        <div className="flex min-w-max items-center gap-2">
+          {items.map((item) => (
+            <span
+              key={item}
+              className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.77rem] text-slate-600"
+            >
+              {sanitizeText(item)}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
