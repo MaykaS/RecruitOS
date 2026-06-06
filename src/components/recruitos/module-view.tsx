@@ -360,19 +360,22 @@ function buildCasePracticePrompt({
   question: string;
   questionType: string;
   framework: string;
-  durationLabel: string;
+  durationLabel?: string;
 }) {
   return [
     "You are my MBA case interview coach.",
-    `Run this ${questionType || "case"} with me: "${question}".`,
+    `Run this ${questionType || "case"} interview question with me: "${question}".`,
     framework
-      ? `I plan to use this framework: "${framework}".`
-      : "I may decide on the framework as we go.",
-    `Time the main case answer for about ${durationLabel}.`,
-    "Let me drive the case step by step, challenge weak assumptions, and ask follow-up questions where useful.",
-    "After I finish, give concise feedback on structure, analysis, communication, and synthesis.",
+      ? `I plan to use this framework to structure my answer: "${framework}".`
+      : "Let me choose the framework as I work through the case.",
+    durationLabel ? `If useful, roughly keep me moving with a ${durationLabel} answer window.` : "",
+    "Act like a live interviewer. Ask the question first, let me drive the case step by step, and do not solve it for me too early.",
+    "Challenge weak assumptions, push on unclear thinking, and ask follow-up questions where useful.",
+    "After I finish, give concise feedback on structure, analysis, communication, synthesis, and whether my framework actually fit the question.",
     "Then score me from 1-5 on structure, analysis, communication, and overall performance, and tell me the single most important fix for the next rep.",
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function PracticeStarModal({
@@ -670,10 +673,12 @@ function PracticeCaseModal({
 }) {
   const { data, logCasePractice } = useRecruitOS();
   const caseRecord = data.cases.find((item) => item.id === caseId) ?? null;
+  const [useTimer, setUseTimer] = useState(false);
   const [duration, setDuration] = useState(120);
   const [secondsLeft, setSecondsLeft] = useState(120);
   const [running, setRunning] = useState(false);
   const [frameworkUsed, setFrameworkUsed] = useState(() => caseRecord?.framework_used ?? "");
+  const [answerNotes, setAnswerNotes] = useState("");
   const [structureScore, setStructureScore] = useState(4);
   const [analysisScore, setAnalysisScore] = useState(4);
   const [communicationScore, setCommunicationScore] = useState(4);
@@ -711,7 +716,7 @@ function PracticeCaseModal({
     question: caseRecord.title,
     questionType: caseRecord.case_type,
     framework: frameworkUsed,
-    durationLabel,
+    durationLabel: useTimer ? durationLabel : undefined,
   });
 
   return (
@@ -759,62 +764,89 @@ function PracticeCaseModal({
             <div className="rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-medium text-slate-700">Timer</div>
-                  <div className="mt-1 text-[2rem] font-semibold text-slate-900 [font-family:var(--font-display)]">
-                    {formatTimer(secondsLeft)}
+                  <div className="text-sm font-medium text-slate-700">Practice format</div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    Cases are usually not strictly timed. Turn the timer on only if you want a paced rep.
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {[60, 120, 180].map((value) => (
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={useTimer}
+                    onChange={(event) => {
+                      const enabled = event.target.checked;
+                      setUseTimer(enabled);
+                      setRunning(false);
+                      setSecondsLeft(duration);
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                  />
+                  Use timer for this rep
+                </label>
+              </div>
+              {useTimer ? (
+                <>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="text-[2rem] font-semibold text-slate-900 [font-family:var(--font-display)]">
+                      {formatTimer(secondsLeft)}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {[60, 120, 180].map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            setDuration(value);
+                            setSecondsLeft(value);
+                            setRunning(false);
+                          }}
+                          className={cx(
+                            "rounded-full border px-3 py-1.5 text-xs transition",
+                            duration === value
+                              ? "border-teal-200 bg-cyan-50 text-teal-700"
+                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                          )}
+                        >
+                          {value === 60 ? "60 sec" : value === 120 ? "2 min" : "3 min"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
                     <button
-                      key={value}
+                      type="button"
+                      onClick={() => setRunning((current) => !current)}
+                      className={buttonClassName("primary")}
+                    >
+                      {running ? "Pause" : "Start Timer"}
+                    </button>
+                    <button
                       type="button"
                       onClick={() => {
-                        setDuration(value);
-                        setSecondsLeft(value);
                         setRunning(false);
+                        setSecondsLeft(duration);
                       }}
-                      className={cx(
-                        "rounded-full border px-3 py-1.5 text-xs transition",
-                        duration === value
-                          ? "border-teal-200 bg-cyan-50 text-teal-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-                      )}
+                      className={buttonClassName("secondary")}
                     >
-                      {value === 60 ? "60 sec" : value === 120 ? "2 min" : "3 min"}
+                      Reset
                     </button>
-                  ))}
+                  </div>
+                </>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                  Use GPT like a live interviewer, then save the feedback and next fix here.
                 </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRunning((current) => !current)}
-                  className={buttonClassName("primary")}
-                >
-                  {running ? "Pause" : "Start Timer"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRunning(false);
-                    setSecondsLeft(duration);
-                  }}
-                  className={buttonClassName("secondary")}
-                >
-                  Reset
-                </button>
-              </div>
+              )}
             </div>
 
             <div className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-medium text-slate-700">GPT Case Prompt</div>
-                  <div className="text-xs text-slate-500">
-                    Copy this into GPT to run the live case rep.
+                  <div>
+                    <div className="text-sm font-medium text-slate-700">GPT Case Prompt</div>
+                    <div className="text-xs text-slate-500">
+                      Copy this into GPT to run the live case rep. Every save creates a new practice log for this same question.
+                    </div>
                   </div>
-                </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -872,6 +904,16 @@ function PracticeCaseModal({
             </div>
 
             <div className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-700">Answer notes</span>
+                <textarea
+                  value={answerNotes}
+                  onChange={(event) => setAnswerNotes(event.target.value)}
+                  rows={4}
+                  placeholder="Capture your structure, key assumptions, and how you worked through the case."
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                />
+              </label>
               <label className="space-y-2">
                 <span className="text-sm font-medium text-slate-700">GPT feedback</span>
                 <textarea
@@ -980,7 +1022,9 @@ function PracticeCaseModal({
                       gpt_feedback: feedbackNotes,
                       next_fix: nextFix,
                       redo_needed: redoNeeded,
-                      notes: sessionNotes,
+                      notes: [answerNotes && `Answer notes:\n${answerNotes}`, sessionNotes && `Session notes:\n${sessionNotes}`]
+                        .filter(Boolean)
+                        .join("\n\n"),
                       create_tip: createTip,
                       tip_scope_type: tipScopeType,
                       tip_title: tipTitle,
@@ -1633,14 +1677,20 @@ function RecordModal({
 
         {module === "cases" && casePracticeLogs.length > 0 ? (
           <div className="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-sm font-medium text-slate-900">Practice history</div>
+            <div className="text-sm font-medium text-slate-900">
+              Practice history ({casePracticeLogs.length} rep{casePracticeLogs.length === 1 ? "" : "s"})
+            </div>
             <div className="space-y-3">
-              {casePracticeLogs.map((log) => (
+              {casePracticeLogs.map((log, index) => (
                 <div
                   key={log.id}
                   className="rounded-2xl border border-slate-200 bg-white px-4 py-4"
                 >
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span className="font-medium text-slate-700">
+                      Rep {casePracticeLogs.length - index}
+                    </span>
+                    <span>-</span>
                     <span>{renderValue(log.date)}</span>
                     <span>Overall {log.overall_score}/5</span>
                     <span>-</span>
@@ -1668,7 +1718,7 @@ function RecordModal({
                     </div>
                   ) : null}
                   {log.notes ? (
-                    <div className="mt-3 text-sm text-slate-600">
+                    <div className="mt-3 text-sm whitespace-pre-line text-slate-600">
                       {sanitizeText(log.notes)}
                     </div>
                   ) : null}
