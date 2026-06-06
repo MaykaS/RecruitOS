@@ -272,7 +272,7 @@ function MiniList({
 }) {
   if (!items.length) return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+    <div className="flex min-w-max items-center gap-2">
       <div className="shrink-0 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">
         {title}
       </div>
@@ -2331,7 +2331,7 @@ function StarsWorkspaceSection({
                         <span>|</span>
                         <span>Confidence {story.confidence_score}/5</span>
                       </div>
-                      <div className="max-w-full">
+                      <div className="max-w-full overflow-x-auto pb-1">
                         <MiniList title="Questions this story answers" items={linkedQuestions} />
                       </div>
                     </div>
@@ -2349,13 +2349,6 @@ function StarsWorkspaceSection({
                         className={buttonClassName("secondary")}
                       >
                         Add Action
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openStory(story)}
-                        className={buttonClassName("secondary")}
-                      >
-                        Open Story
                       </button>
                       <IconButton
                         label={`Delete STAR story ${story.title}`}
