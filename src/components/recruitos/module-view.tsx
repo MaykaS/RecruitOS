@@ -879,15 +879,15 @@ function PracticeCaseModal({
           </div>
 
           <div className="space-y-4">
-            <div className="grid gap-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
               {[
                 { label: "Structure", score: structureScore, setScore: setStructureScore },
                 { label: "Analysis", score: analysisScore, setScore: setAnalysisScore },
                 { label: "Communication", score: communicationScore, setScore: setCommunicationScore },
                 { label: "Overall", score: overallScore, setScore: setOverallScore },
               ].map(({ label, score, setScore }) => (
-                <label key={label} className="space-y-2">
-                  <span className="text-sm font-medium text-slate-700">{label}</span>
+                <label key={label} className="min-w-0 space-y-2">
+                  <span className="block text-sm font-medium text-slate-700">{label}</span>
                   <select
                     value={score}
                     onChange={(event) => setScore(Number(event.target.value))}
