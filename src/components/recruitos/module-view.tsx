@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ApplicationInsight,
   BRAIN_DUMP_CATEGORIES,
@@ -61,6 +61,42 @@ function iconButtonClassName(tone: "default" | "danger" = "default") {
   );
 }
 
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-[1.05rem] w-[1.05rem]" aria-hidden="true">
+      <path d="M4.5 15.5 5.2 12.8 12.85 5.15a1.24 1.24 0 0 1 1.77 0l.23.23a1.24 1.24 0 0 1 0 1.77L7.2 14.8 4.5 15.5Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M11.7 6.3 13.7 8.3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-[1.05rem] w-[1.05rem]" aria-hidden="true">
+      <path d="M4.75 5.75h10.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M8 5.75V4.9c0-.5.4-.9.9-.9h2.2c.5 0 .9.4.9.9v.85" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="m6.1 5.75.55 8.3c.05.74.66 1.3 1.4 1.3h3.9c.74 0 1.35-.56 1.4-1.3l.55-8.3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.6 8.5v4.1M11.4 8.5v4.1" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">
+      <path d="m5.75 7.75 4.25 4.5 4.25-4.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-[1.1rem] w-[1.1rem]" aria-hidden="true">
+      <path d="m5.5 5.5 9 9m0-9-9 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function IconButton({
   label,
   icon,
@@ -68,7 +104,7 @@ function IconButton({
   onClick,
 }: {
   label: string;
-  icon: string;
+  icon: ReactNode;
   tone?: "default" | "danger";
   onClick: () => void;
 }) {
@@ -390,7 +426,7 @@ function PracticeStarModal({
             className="sticky top-4 inline-flex items-center justify-center p-1 text-[1.35rem] leading-none text-slate-400 transition hover:text-slate-700"
             aria-label="Close practice modal"
           >
-            X
+            <CloseIcon />
           </button>
         </div>
 
@@ -610,12 +646,12 @@ function openRecordEditor(
 
 function renderValue(value: unknown) {
   if (Array.isArray(value)) {
-    if (!value.length) return "â€”";
+    if (!value.length) return "-";
     return sanitizeText(joinList(value.map((item) => String(item))));
   }
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "number") return String(value);
-  if (!value) return "â€”";
+  if (!value) return "-";
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
     return sanitizeText(formatDateTime(value));
   }
@@ -708,7 +744,7 @@ function EditableSelectInput({
           }}
           className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
         >
-          â–¾
+          <ChevronDownIcon />
         </button>
       </div>
       {open ? (
@@ -797,7 +833,9 @@ function SearchableMultiSelectInput({
         <span className="truncate">
           {selectedLabels.length ? `${selectedLabels.length} selected` : placeholder}
         </span>
-        <span className="text-slate-500">â–¾</span>
+        <span className="text-slate-500">
+          <ChevronDownIcon />
+        </span>
       </button>
       {selectedLabels.length ? (
         <div className="flex flex-wrap gap-1.5">
@@ -1018,7 +1056,7 @@ function RecordModal({
             className="sticky top-4 inline-flex items-center justify-center p-1 text-[1.35rem] leading-none text-slate-400 transition hover:text-slate-700"
             aria-label="Close form"
           >
-            Ã—
+            <CloseIcon />
           </button>
         </div>
 
@@ -1224,7 +1262,7 @@ function RecordModal({
                 <div>
                   <div className="text-sm font-medium text-slate-900">{action.title}</div>
                   <div className="text-xs text-slate-500">
-                    {action.priority} Â· {renderValue(action.due_date)}
+                    {action.priority} - {renderValue(action.due_date)}
                   </div>
                 </div>
                 <button
@@ -2137,7 +2175,7 @@ function QuestionsSection({
                 <div className="flex shrink-0 items-center gap-1.5">
                   <IconButton
                     label={`Edit question ${question.question_text}`}
-                    icon={"\u270E"}
+                    icon={<PencilIcon />}
                     onClick={() =>
                       setDraft({
                         id: question.id,
@@ -2148,7 +2186,7 @@ function QuestionsSection({
                   />
                   <IconButton
                     label={`Delete question ${question.question_text}`}
-                    icon={"\u{1F5D1}"}
+                    icon={<TrashIcon />}
                     tone="danger"
                     onClick={() => deleteInterviewQuestion(question.id)}
                   />
@@ -2382,7 +2420,7 @@ function StarsWorkspaceSection({
                       </button>
                       <IconButton
                         label={`Delete STAR story ${story.title}`}
-                        icon={"\u{1F5D1}"}
+                        icon={<TrashIcon />}
                         tone="danger"
                         onClick={() => deleteStory(story.id)}
                       />
@@ -2834,7 +2872,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                         ) : null}
                         <IconButton
                           label={`Edit ${config.singular}`}
-                          icon={"\u270E"}
+                          icon={<PencilIcon />}
                           onClick={() => {
                             if (slug === "networking") {
                               openContactEditor(record as unknown as RecruitOSData["contacts"][number]);
@@ -2846,7 +2884,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                         />
                         <IconButton
                           label={`Delete ${config.singular}`}
-                          icon={"\u{1F5D1}"}
+                          icon={<TrashIcon />}
                           tone="danger"
                           onClick={() => deleteRecord(slug, String(record.id))}
                         />
