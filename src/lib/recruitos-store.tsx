@@ -32,6 +32,18 @@ import {
 } from "react";
 
 type SaveRecordInput = Record<string, unknown> & { id?: string };
+type ParPracticeInput =
+  | string
+  | {
+      prompt_used?: string;
+      version_practiced?: string;
+      delivery_score?: number;
+      structure_score?: number;
+      confidence_score?: number;
+      notes?: string;
+      next_fix?: string;
+      date?: string;
+    };
 
 interface RecruitOSContextValue {
   data: RecruitOSData;
@@ -44,7 +56,7 @@ interface RecruitOSContextValue {
   deleteInterviewQuestion: (id: string) => void;
   deleteRecord: (module: CrudModuleSlug, id: string) => void;
   toggleActionItem: (id: string) => void;
-  logParPractice: (parId: string, prompt?: string) => void;
+  logParPractice: (parId: string, input?: ParPracticeInput) => void;
   markCasePracticed: (caseId: string) => void;
   markInterviewAnswerPracticed: (answerId: string) => void;
   markFollowUpDone: (contactId: string) => void;
@@ -421,7 +433,29 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logParPractice = useCallback(
-    (parId: string, prompt = "Daily practice prompt") => {
+    (parId: string, input: ParPracticeInput = "Daily practice prompt") => {
+      const normalized =
+        typeof input === "string"
+          ? {
+              prompt_used: input,
+              version_practiced: "Full",
+              delivery_score: 4,
+              structure_score: 4,
+              confidence_score: 4,
+              notes: "",
+              next_fix: "",
+              date: toDateInput(nowIso()),
+            }
+          : {
+              prompt_used: input.prompt_used || "Daily practice prompt",
+              version_practiced: input.version_practiced || "Full",
+              delivery_score: input.delivery_score ?? 4,
+              structure_score: input.structure_score ?? 4,
+              confidence_score: input.confidence_score ?? 4,
+              notes: input.notes ?? "",
+              next_fix: input.next_fix ?? "",
+              date: input.date || toDateInput(nowIso()),
+            };
       applyMutation(["parStories", "parPracticeLogs"], (current) => ({
         ...current,
         parPracticeLogs: [
@@ -431,23 +465,26 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
             created_at: nowIso(),
             updated_at: nowIso(),
             par_story_id: parId,
-            date: toDateInput(nowIso()),
-            prompt_used: prompt,
-            version_practiced: "Full",
-            delivery_score: 4,
-            structure_score: 4,
-            confidence_score: 4,
-            notes: "",
-            next_fix: "",
+            date: normalized.date,
+            prompt_used: normalized.prompt_used,
+            version_practiced: normalized.version_practiced,
+            delivery_score: normalized.delivery_score,
+            structure_score: normalized.structure_score,
+            confidence_score: normalized.confidence_score,
+            notes: normalized.notes,
+            next_fix: normalized.next_fix,
           },
         ],
         parStories: current.parStories.map((par) =>
           par.id === parId
             ? {
                 ...par,
-                last_practiced_date: toDateInput(nowIso()),
+                last_practiced_date: normalized.date,
                 number_of_reps: par.number_of_reps + 1,
-                confidence_score: Math.min(5, par.confidence_score + 1),
+                confidence_score: Math.max(
+                  1,
+                  Math.min(5, normalized.confidence_score || par.confidence_score),
+                ),
                 updated_at: nowIso(),
               }
             : par,

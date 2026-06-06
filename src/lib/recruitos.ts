@@ -1877,7 +1877,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "title", label: "Title", type: "text" },
       { key: "linked_question_ids", label: "Questions this story can answer", type: "multiselect", options: (data) => data.interviewQuestions.map((question) => ({ label: question.question_text, value: question.id })) },
       { key: "situation", label: "Situation", type: "textarea" },
-      { key: "problem", label: "Problem", type: "textarea" },
+      { key: "problem", label: "Task", type: "textarea" },
       { key: "action", label: "Action", type: "textarea" },
       { key: "result", label: "Result", type: "textarea" },
       { key: "polished_answer", label: "Polished answer", type: "textarea" },

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ApplicationInsight,
   BRAIN_DUMP_CATEGORIES,
@@ -284,6 +284,330 @@ function MiniList({
           {sanitizeText(item)}
         </span>
       ))}
+    </div>
+  );
+}
+
+function formatTimer(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(remaining).padStart(2, "0")}`;
+}
+
+function buildStarPracticePrompt({
+  title,
+  question,
+  durationLabel,
+}: {
+  title: string;
+  question: string;
+  durationLabel: string;
+}) {
+  return [
+    "You are my MBA behavioral interview coach.",
+    `Ask me this interview question: "${question}".`,
+    `I will answer using my STAR story titled "${title}".`,
+    `Time me for ${durationLabel}.`,
+    "After I answer, give concise feedback on structure, clarity, specificity, leadership, and impact.",
+    "Then score me from 1-5 on delivery, structure, and confidence, and tell me the single most important fix for the next rep.",
+  ].join("\n");
+}
+
+function PracticeStarModal({
+  open,
+  onClose,
+  storyId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  storyId: string | null;
+}) {
+  const { data, logParPractice } = useRecruitOS();
+  const story = data.parStories.find((item) => item.id === storyId) ?? null;
+  const questionOptions = useMemo(() => {
+    if (!story) return [];
+    return story.linked_question_ids
+      .map((questionId) => data.interviewQuestions.find((question) => question.id === questionId))
+      .filter((question): question is RecruitOSData["interviewQuestions"][number] => Boolean(question));
+  }, [data.interviewQuestions, story]);
+  const initialQuestionId =
+    questionOptions[0]?.id ?? data.interviewQuestions[0]?.id ?? "";
+  const [questionId, setQuestionId] = useState(initialQuestionId);
+  const [version, setVersion] = useState("Full");
+  const [duration, setDuration] = useState(120);
+  const [secondsLeft, setSecondsLeft] = useState(120);
+  const [running, setRunning] = useState(false);
+  const [answerNotes, setAnswerNotes] = useState("");
+  const [feedbackNotes, setFeedbackNotes] = useState("");
+  const [nextFix, setNextFix] = useState("");
+  const [deliveryScore, setDeliveryScore] = useState(4);
+  const [structureScore, setStructureScore] = useState(4);
+  const [confidenceScore, setConfidenceScore] = useState(4);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!open || !running) return;
+    const timer = window.setInterval(() => {
+      setSecondsLeft((current) => {
+        if (current <= 1) {
+          window.clearInterval(timer);
+          setRunning(false);
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [open, running]);
+
+  if (!open || !story) return null;
+
+  const selectedQuestion =
+    questionOptions.find((question) => question.id === questionId)?.question_text ||
+    "Ask me a behavioral question that this STAR story can answer.";
+  const durationLabel =
+    duration === 60 ? "60 seconds" : duration === 120 ? "2 minutes" : "3 minutes";
+  const prompt = buildStarPracticePrompt({
+    title: story.title,
+    question: selectedQuestion,
+    durationLabel,
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,252,0.98))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+        <div className="sticky top-0 z-20 -mx-6 -mt-6 mb-5 flex items-start justify-between gap-4 border-b border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,252,0.98))] px-6 py-4">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">
+              STAR Practice
+            </p>
+            <h3 className="text-xl font-semibold text-slate-900">{sanitizeText(story.title)}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="sticky top-4 inline-flex items-center justify-center p-1 text-[1.35rem] leading-none text-slate-400 transition hover:text-slate-700"
+            aria-label="Close practice modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+          <div className="space-y-4">
+            <div className="grid gap-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-700">Question</span>
+                <select
+                  value={questionId}
+                  onChange={(event) => setQuestionId(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+                >
+                  {questionOptions.length ? (
+                    questionOptions.map((question) => (
+                      <option key={question.id} value={question.id}>
+                        {sanitizeText(question.question_text)}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">No linked questions yet</option>
+                  )}
+                </select>
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-700">Version</span>
+                <select
+                  value={version}
+                  onChange={(event) => setVersion(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+                >
+                  {["60-sec", "2-min", "Full"].map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-slate-700">Timer</div>
+                  <div className="mt-1 text-[2rem] font-semibold text-slate-900 [font-family:var(--font-display)]">
+                    {formatTimer(secondsLeft)}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[60, 120, 180].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setDuration(value);
+                        setSecondsLeft(value);
+                        setRunning(false);
+                      }}
+                      className={cx(
+                        "rounded-full border px-3 py-1.5 text-xs transition",
+                        duration === value
+                          ? "border-teal-200 bg-cyan-50 text-teal-700"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                      )}
+                    >
+                      {value === 60 ? "60 sec" : value === 120 ? "2 min" : "3 min"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRunning((current) => !current)}
+                  className={buttonClassName("primary")}
+                >
+                  {running ? "Pause" : "Start Timer"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRunning(false);
+                    setSecondsLeft(duration);
+                  }}
+                  className={buttonClassName("secondary")}
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-slate-700">GPT Practice Prompt</div>
+                  <div className="text-xs text-slate-500">
+                    Copy this into GPT to run the live coaching rep.
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(prompt);
+                      setCopied(true);
+                      window.setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className={buttonClassName("secondary")}
+                  >
+                    {copied ? "Copied" : "Copy Prompt"}
+                  </button>
+                  <a
+                    href="https://chatgpt.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className={buttonClassName("secondary")}
+                  >
+                    Open GPT
+                  </a>
+                </div>
+              </div>
+              <textarea
+                readOnly
+                value={prompt}
+                rows={6}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid gap-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+              {[
+                { label: "Delivery", score: deliveryScore, setScore: setDeliveryScore },
+                { label: "Structure", score: structureScore, setScore: setStructureScore },
+                { label: "Confidence", score: confidenceScore, setScore: setConfidenceScore },
+              ].map(({ label, score, setScore }) => (
+                <label key={label} className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">{label}</span>
+                  <select
+                    value={score}
+                    onChange={(event) => setScore(Number(event.target.value))}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+                  >
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <option key={value} value={value}>
+                        {value}/5
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+
+            <div className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-700">Answer notes</span>
+                <textarea
+                  value={answerNotes}
+                  onChange={(event) => setAnswerNotes(event.target.value)}
+                  rows={4}
+                  placeholder="Paste your answer summary or quick notes from the rep."
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-700">Feedback notes</span>
+                <textarea
+                  value={feedbackNotes}
+                  onChange={(event) => setFeedbackNotes(event.target.value)}
+                  rows={4}
+                  placeholder="Record the GPT feedback or your own takeaways."
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-700">Next fix</span>
+                <textarea
+                  value={nextFix}
+                  onChange={(event) => setNextFix(event.target.value)}
+                  rows={3}
+                  placeholder="What will you improve on the next rep?"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                />
+              </label>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className={buttonClassName("secondary")}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    logParPractice(story.id, {
+                      prompt_used: selectedQuestion,
+                      version_practiced: version,
+                      delivery_score: deliveryScore,
+                      structure_score: structureScore,
+                      confidence_score: confidenceScore,
+                      notes: [answerNotes && `Answer notes:\n${answerNotes}`, feedbackNotes && `Feedback:\n${feedbackNotes}`]
+                        .filter(Boolean)
+                        .join("\n\n"),
+                      next_fix: nextFix,
+                    });
+                    onClose();
+                  }}
+                  className={buttonClassName("primary")}
+                >
+                  Save Practice Log
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1175,6 +1499,7 @@ function DashboardView() {
   } = useRecruitOS();
   const [parIndex, setParIndex] = useState(0);
   const [caseIndex, setCaseIndex] = useState(0);
+  const [practiceStoryId, setPracticeStoryId] = useState<string | null>(null);
   const [selectedWeekDate, setSelectedWeekDate] = useState(toDateInput(new Date().toISOString()));
   const [networkingModalOpen, setNetworkingModalOpen] = useState(false);
   const [networkingEditing, setNetworkingEditing] = useState<Record<string, unknown> | null>(null);
@@ -1287,9 +1612,13 @@ function DashboardView() {
                     </p>
                   </div>
                   <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-4 sm:flex-nowrap">
-                    <Link href="/pars" className={buttonClassName("secondary")}>
+                    <button
+                      type="button"
+                      onClick={() => setPracticeStoryId(parSuggestion.id)}
+                      className={buttonClassName("secondary")}
+                    >
                       Start Practice
-                    </Link>
+                    </button>
                     <button
                       type="button"
                       onClick={() => logParPractice(parSuggestion.id, "Daily dashboard practice")}
@@ -1730,6 +2059,12 @@ function DashboardView() {
         module="networking"
         initial={networkingEditing}
       />
+      <PracticeStarModal
+        key={`${practiceStoryId ?? "none"}-${practiceStoryId ? "open" : "closed"}`}
+        open={Boolean(practiceStoryId)}
+        onClose={() => setPracticeStoryId(null)}
+        storyId={practiceStoryId}
+      />
     </div>
   );
 }
@@ -2152,12 +2487,13 @@ function ActionItemsFilters({
 }
 
 function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
-  const { data, deleteRecord, logParPractice, markCasePracticed, markFollowUpDone, markInterviewAnswerPracticed, toggleActionItem, createActionItemFromSource } = useRecruitOS();
+  const { data, deleteRecord, markCasePracticed, markFollowUpDone, markInterviewAnswerPracticed, toggleActionItem, createActionItemFromSource } = useRecruitOS();
   const config = MODULE_CONFIGS[slug];
   const records = data[config.collection] as unknown as Array<Record<string, unknown>>;
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
+  const [practiceStoryId, setPracticeStoryId] = useState<string | null>(null);
   const [actionView, setActionView] = useState("Today");
   const [sortKey, setSortKey] = useState(config.defaultSort.key);
   const [sortDirection, setSortDirection] = useState<SortDirection>(config.defaultSort.direction);
@@ -2268,7 +2604,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
               setEditing(null);
               setModalOpen(true);
             }}
-            practiceStory={(storyId) => logParPractice(storyId)}
+            practiceStory={(storyId) => setPracticeStoryId(storyId)}
             addAction={(story) =>
               createActionItemFromSource({
                 title: `Improve STAR: ${story.title}`,
@@ -2292,6 +2628,12 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
             onClose={() => setModalOpen(false)}
             module={slug}
             initial={editing}
+          />
+          <PracticeStarModal
+            key={`${practiceStoryId ?? "none"}-${practiceStoryId ? "open" : "closed"}`}
+            open={Boolean(practiceStoryId)}
+            onClose={() => setPracticeStoryId(null)}
+            storyId={practiceStoryId}
           />
         </>
       ) : null}
@@ -2517,3 +2859,4 @@ export function ModuleView({ slug }: { slug: ModuleSlug }) {
   if (slug === "settings") return <SettingsView />;
   return <GenericModuleView slug={slug as CrudModuleSlug} />;
 }
+
