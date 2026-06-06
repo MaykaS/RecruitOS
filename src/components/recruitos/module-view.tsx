@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -88,11 +88,11 @@ function IconButton({
 
 function sanitizeText(value: string) {
   return value
-    .replaceAll("â€”", "-")
+    .replaceAll("Ã¢â‚¬â€", "-")
+    .replaceAll("Ã‚Â·", " - ")
     .replaceAll("Â·", " - ")
-    .replaceAll("·", " - ")
-    .replaceAll("â€™", "'")
-    .replaceAll("’", "'");
+    .replaceAll("Ã¢â‚¬â„¢", "'")
+    .replaceAll("â€™", "'");
 }
 
 function getSortValue(value: unknown, option: SortOption) {
@@ -335,7 +335,6 @@ function PracticeStarModal({
   const initialQuestionId =
     questionOptions[0]?.id ?? data.interviewQuestions[0]?.id ?? "";
   const [questionId, setQuestionId] = useState(initialQuestionId);
-  const [version, setVersion] = useState("Full");
   const [duration, setDuration] = useState(120);
   const [secondsLeft, setSecondsLeft] = useState(120);
   const [running, setRunning] = useState(false);
@@ -391,13 +390,13 @@ function PracticeStarModal({
             className="sticky top-4 inline-flex items-center justify-center p-1 text-[1.35rem] leading-none text-slate-400 transition hover:text-slate-700"
             aria-label="Close practice modal"
           >
-            ×
+            X
           </button>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
           <div className="space-y-4">
-            <div className="grid gap-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:grid-cols-2">
+            <div className="grid gap-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
               <label className="space-y-2">
                 <span className="text-sm font-medium text-slate-700">Question</span>
                 <select
@@ -414,20 +413,6 @@ function PracticeStarModal({
                   ) : (
                     <option value="">No linked questions yet</option>
                   )}
-                </select>
-              </label>
-              <label className="space-y-2">
-                <span className="text-sm font-medium text-slate-700">Version</span>
-                <select
-                  value={version}
-                  onChange={(event) => setVersion(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
-                >
-                  {["60-sec", "2-min", "Full"].map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
                 </select>
               </label>
             </div>
@@ -590,7 +575,7 @@ function PracticeStarModal({
                   onClick={() => {
                     logParPractice(story.id, {
                       prompt_used: selectedQuestion,
-                      version_practiced: version,
+                      version_practiced: "Polished",
                       delivery_score: deliveryScore,
                       structure_score: structureScore,
                       confidence_score: confidenceScore,
@@ -625,12 +610,12 @@ function openRecordEditor(
 
 function renderValue(value: unknown) {
   if (Array.isArray(value)) {
-    if (!value.length) return "—";
+    if (!value.length) return "â€”";
     return sanitizeText(joinList(value.map((item) => String(item))));
   }
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "number") return String(value);
-  if (!value) return "—";
+  if (!value) return "â€”";
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
     return sanitizeText(formatDateTime(value));
   }
@@ -723,7 +708,7 @@ function EditableSelectInput({
           }}
           className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
         >
-          ▾
+          â–¾
         </button>
       </div>
       {open ? (
@@ -812,7 +797,7 @@ function SearchableMultiSelectInput({
         <span className="truncate">
           {selectedLabels.length ? `${selectedLabels.length} selected` : placeholder}
         </span>
-        <span className="text-slate-500">▾</span>
+        <span className="text-slate-500">â–¾</span>
       </button>
       {selectedLabels.length ? (
         <div className="flex flex-wrap gap-1.5">
@@ -1017,8 +1002,6 @@ function RecordModal({
           .filter((log) => log.par_story_id === String(initial.id))
           .sort((left, right) => right.created_at.localeCompare(left.created_at))
       : [];
-  const latestPractice = practiceLogs[0] ?? null;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,252,0.98))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
@@ -1035,7 +1018,7 @@ function RecordModal({
             className="sticky top-4 inline-flex items-center justify-center p-1 text-[1.35rem] leading-none text-slate-400 transition hover:text-slate-700"
             aria-label="Close form"
           >
-            ×
+            Ã—
           </button>
         </div>
 
@@ -1192,40 +1175,6 @@ function RecordModal({
           </div>
         ) : null}
 
-        {module === "pars" && latestPractice ? (
-          <div className="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-sm font-medium text-slate-900">Latest practice feedback</div>
-            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span>{renderValue(latestPractice.date)}</span>
-                <span>·</span>
-                <span>{latestPractice.version_practiced}</span>
-                <span>·</span>
-                <span>Delivery {latestPractice.delivery_score}/5</span>
-                <span>·</span>
-                <span>Structure {latestPractice.structure_score}/5</span>
-                <span>·</span>
-                <span>Confidence {latestPractice.confidence_score}/5</span>
-              </div>
-              <div className="mt-3 text-sm text-slate-700">
-                <span className="font-medium text-slate-900">Question:</span>{" "}
-                {sanitizeText(latestPractice.prompt_used)}
-              </div>
-              {latestPractice.next_fix ? (
-                <div className="mt-3 text-sm text-slate-700">
-                  <span className="font-medium text-slate-900">Next fix:</span>{" "}
-                  {sanitizeText(latestPractice.next_fix)}
-                </div>
-              ) : null}
-              {latestPractice.notes ? (
-                <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-700">
-                  {sanitizeText(latestPractice.notes)}
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
         {module === "pars" && practiceLogs.length > 0 ? (
           <div className="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-sm font-medium text-slate-900">Practice history</div>
@@ -1237,13 +1186,10 @@ function RecordModal({
                 >
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                     <span>{renderValue(log.date)}</span>
-                    <span>·</span>
-                    <span>{log.version_practiced}</span>
-                    <span>·</span>
                     <span>D {log.delivery_score}/5</span>
-                    <span>·</span>
+                    <span>-</span>
                     <span>S {log.structure_score}/5</span>
-                    <span>·</span>
+                    <span>-</span>
                     <span>C {log.confidence_score}/5</span>
                   </div>
                   <div className="mt-2 text-sm text-slate-700">
@@ -1278,7 +1224,7 @@ function RecordModal({
                 <div>
                   <div className="text-sm font-medium text-slate-900">{action.title}</div>
                   <div className="text-xs text-slate-500">
-                    {action.priority} · {renderValue(action.due_date)}
+                    {action.priority} Â· {renderValue(action.due_date)}
                   </div>
                 </div>
                 <button
