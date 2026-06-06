@@ -1610,7 +1610,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
     fields: [
       { key: "title", label: "Question", type: "textarea" },
       { key: "case_type", label: "Question type", type: "select", options: (data) => toOptions(data.settings.case_types) },
-      { key: "source", label: "Source", type: "text" },
+      { key: "source", label: "Source", type: "select" },
       { key: "difficulty", label: "Difficulty", type: "select", options: ["Easy", "Medium", "Hard"] },
       { key: "status", label: "Status", type: "select", options: ["Not Started", "Practiced", "Redo Needed", "Strong"] },
       { key: "weakness_area", label: "Weakness area", type: "text" },
