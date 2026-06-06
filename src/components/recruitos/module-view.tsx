@@ -351,6 +351,30 @@ function buildStarPracticePrompt({
   ].join("\n");
 }
 
+function buildCasePracticePrompt({
+  question,
+  questionType,
+  framework,
+  durationLabel,
+}: {
+  question: string;
+  questionType: string;
+  framework: string;
+  durationLabel: string;
+}) {
+  return [
+    "You are my MBA case interview coach.",
+    `Run this ${questionType || "case"} with me: "${question}".`,
+    framework
+      ? `I plan to use this framework: "${framework}".`
+      : "I may decide on the framework as we go.",
+    `Time the main case answer for about ${durationLabel}.`,
+    "Let me drive the case step by step, challenge weak assumptions, and ask follow-up questions where useful.",
+    "After I finish, give concise feedback on structure, analysis, communication, and synthesis.",
+    "Then score me from 1-5 on structure, analysis, communication, and overall performance, and tell me the single most important fix for the next rep.",
+  ].join("\n");
+}
+
 function PracticeStarModal({
   open,
   onClose,
@@ -619,6 +643,348 @@ function PracticeStarModal({
                         .filter(Boolean)
                         .join("\n\n"),
                       next_fix: nextFix,
+                    });
+                    onClose();
+                  }}
+                  className={buttonClassName("primary")}
+                >
+                  Save Practice Log
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PracticeCaseModal({
+  open,
+  onClose,
+  caseId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  caseId: string | null;
+}) {
+  const { data, logCasePractice } = useRecruitOS();
+  const caseRecord = data.cases.find((item) => item.id === caseId) ?? null;
+  const [duration, setDuration] = useState(120);
+  const [secondsLeft, setSecondsLeft] = useState(120);
+  const [running, setRunning] = useState(false);
+  const [frameworkUsed, setFrameworkUsed] = useState(() => caseRecord?.framework_used ?? "");
+  const [structureScore, setStructureScore] = useState(4);
+  const [analysisScore, setAnalysisScore] = useState(4);
+  const [communicationScore, setCommunicationScore] = useState(4);
+  const [overallScore, setOverallScore] = useState(4);
+  const [feedbackNotes, setFeedbackNotes] = useState("");
+  const [nextFix, setNextFix] = useState("");
+  const [sessionNotes, setSessionNotes] = useState("");
+  const [redoNeeded, setRedoNeeded] = useState(false);
+  const [createTip, setCreateTip] = useState(false);
+  const [tipScopeType, setTipScopeType] = useState("Question Type");
+  const [tipTitle, setTipTitle] = useState("");
+  const [tipText, setTipText] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!open || !running) return;
+    const timer = window.setInterval(() => {
+      setSecondsLeft((current) => {
+        if (current <= 1) {
+          window.clearInterval(timer);
+          setRunning(false);
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [open, running]);
+
+  if (!open || !caseRecord) return null;
+
+  const durationLabel =
+    duration === 60 ? "60 seconds" : duration === 120 ? "2 minutes" : "3 minutes";
+  const prompt = buildCasePracticePrompt({
+    question: caseRecord.title,
+    questionType: caseRecord.case_type,
+    framework: frameworkUsed,
+    durationLabel,
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,252,0.98))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+        <div className="sticky top-0 z-20 -mx-6 -mt-6 mb-5 flex items-start justify-between gap-4 border-b border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,252,0.98))] px-6 py-4">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">
+              Case Practice
+            </p>
+            <h3 className="text-xl font-semibold text-slate-900">
+              {sanitizeText(caseRecord.title)}
+            </h3>
+            <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
+              <span>{sanitizeText(caseRecord.case_type)}</span>
+              {caseRecord.source ? <span>- {sanitizeText(caseRecord.source)}</span> : null}
+              {caseRecord.difficulty ? <span>- {sanitizeText(caseRecord.difficulty)}</span> : null}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="sticky top-4 inline-flex items-center justify-center p-1 text-[1.35rem] leading-none text-slate-400 transition hover:text-slate-700"
+            aria-label="Close case practice modal"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+          <div className="space-y-4">
+            <div className="rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <div className="text-sm font-medium text-slate-700">Framework used</div>
+              <input
+                value={frameworkUsed}
+                onChange={(event) => setFrameworkUsed(event.target.value)}
+                placeholder="Type the framework you used for this question"
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                Framework suggestions for each question type can stay empty until you add your own.
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-slate-700">Timer</div>
+                  <div className="mt-1 text-[2rem] font-semibold text-slate-900 [font-family:var(--font-display)]">
+                    {formatTimer(secondsLeft)}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[60, 120, 180].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setDuration(value);
+                        setSecondsLeft(value);
+                        setRunning(false);
+                      }}
+                      className={cx(
+                        "rounded-full border px-3 py-1.5 text-xs transition",
+                        duration === value
+                          ? "border-teal-200 bg-cyan-50 text-teal-700"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                      )}
+                    >
+                      {value === 60 ? "60 sec" : value === 120 ? "2 min" : "3 min"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRunning((current) => !current)}
+                  className={buttonClassName("primary")}
+                >
+                  {running ? "Pause" : "Start Timer"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRunning(false);
+                    setSecondsLeft(duration);
+                  }}
+                  className={buttonClassName("secondary")}
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-slate-700">GPT Case Prompt</div>
+                  <div className="text-xs text-slate-500">
+                    Copy this into GPT to run the live case rep.
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(prompt);
+                      setCopied(true);
+                      window.setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className={buttonClassName("secondary")}
+                  >
+                    {copied ? "Copied" : "Copy Prompt"}
+                  </button>
+                  <a
+                    href="https://chatgpt.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className={buttonClassName("secondary")}
+                  >
+                    Open GPT
+                  </a>
+                </div>
+              </div>
+              <textarea
+                readOnly
+                value={prompt}
+                rows={7}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid gap-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                { label: "Structure", score: structureScore, setScore: setStructureScore },
+                { label: "Analysis", score: analysisScore, setScore: setAnalysisScore },
+                { label: "Communication", score: communicationScore, setScore: setCommunicationScore },
+                { label: "Overall", score: overallScore, setScore: setOverallScore },
+              ].map(({ label, score, setScore }) => (
+                <label key={label} className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">{label}</span>
+                  <select
+                    value={score}
+                    onChange={(event) => setScore(Number(event.target.value))}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+                  >
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <option key={value} value={value}>
+                        {value}/5
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+
+            <div className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-700">GPT feedback</span>
+                <textarea
+                  value={feedbackNotes}
+                  onChange={(event) => setFeedbackNotes(event.target.value)}
+                  rows={4}
+                  placeholder="Paste the GPT evaluation or your core takeaways."
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-700">Next fix</span>
+                <textarea
+                  value={nextFix}
+                  onChange={(event) => setNextFix(event.target.value)}
+                  rows={3}
+                  placeholder="What should you change next time?"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-700">Session notes</span>
+                <textarea
+                  value={sessionNotes}
+                  onChange={(event) => setSessionNotes(event.target.value)}
+                  rows={3}
+                  placeholder="Where you got stuck, what felt strong, or anything worth remembering."
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={redoNeeded}
+                  onChange={(event) => setRedoNeeded(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                />
+                Mark this case for another rep
+              </label>
+            </div>
+
+            <div className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={createTip}
+                  onChange={(event) => setCreateTip(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                />
+                Promote a reusable casing tip from this rep
+              </label>
+              {createTip ? (
+                <div className="grid gap-4">
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Tip scope</span>
+                    <select
+                      value={tipScopeType}
+                      onChange={(event) => setTipScopeType(event.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+                    >
+                      {["Question", "Question Type", "General"].map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Tip title</span>
+                    <input
+                      value={tipTitle}
+                      onChange={(event) => setTipTitle(event.target.value)}
+                      placeholder="Short label for the learning"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Tip text</span>
+                    <textarea
+                      value={tipText}
+                      onChange={(event) => setTipText(event.target.value)}
+                      rows={3}
+                      placeholder="Write the recurring insight you want to keep."
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
+                    />
+                  </label>
+                </div>
+              ) : null}
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className={buttonClassName("secondary")}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    logCasePractice(caseRecord.id, {
+                      framework_used: frameworkUsed,
+                      structure_score: structureScore,
+                      analysis_score: analysisScore,
+                      communication_score: communicationScore,
+                      overall_score: overallScore,
+                      gpt_feedback: feedbackNotes,
+                      next_fix: nextFix,
+                      redo_needed: redoNeeded,
+                      notes: sessionNotes,
+                      create_tip: createTip,
+                      tip_scope_type: tipScopeType,
+                      tip_title: tipTitle,
+                      tip_text: tipText || nextFix || feedbackNotes,
                     });
                     onClose();
                   }}
@@ -1040,6 +1406,20 @@ function RecordModal({
           .filter((log) => log.par_story_id === String(initial.id))
           .sort((left, right) => right.created_at.localeCompare(left.created_at))
       : [];
+  const casePracticeLogs =
+    initial?.id && module === "cases"
+      ? data.casePracticeLogs
+          .filter((log) => log.case_id === String(initial.id))
+          .sort((left, right) => right.created_at.localeCompare(left.created_at))
+      : [];
+  const caseLearnings =
+    initial?.id && module === "cases"
+      ? data.caseLearnings.filter(
+          (learning) =>
+            learning.linked_case_id === String(initial.id) ||
+            learning.linked_question_type === String(initial.case_type || ""),
+        )
+      : [];
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,252,0.98))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
@@ -1245,6 +1625,80 @@ function RecordModal({
                       {sanitizeText(log.notes)}
                     </div>
                   ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {module === "cases" && casePracticeLogs.length > 0 ? (
+          <div className="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-sm font-medium text-slate-900">Practice history</div>
+            <div className="space-y-3">
+              {casePracticeLogs.map((log) => (
+                <div
+                  key={log.id}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-4"
+                >
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span>{renderValue(log.date)}</span>
+                    <span>Overall {log.overall_score}/5</span>
+                    <span>-</span>
+                    <span>Structure {log.structure_score}/5</span>
+                    <span>-</span>
+                    <span>Analysis {log.analysis_score}/5</span>
+                    <span>-</span>
+                    <span>Communication {log.communication_score}/5</span>
+                  </div>
+                  {log.framework_used ? (
+                    <div className="mt-2 text-sm text-slate-700">
+                      <span className="font-medium text-slate-900">Framework:</span>{" "}
+                      {sanitizeText(log.framework_used)}
+                    </div>
+                  ) : null}
+                  {log.next_fix ? (
+                    <div className="mt-2 text-sm text-slate-700">
+                      <span className="font-medium text-slate-900">Next fix:</span>{" "}
+                      {sanitizeText(log.next_fix)}
+                    </div>
+                  ) : null}
+                  {log.gpt_feedback ? (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-700">
+                      {sanitizeText(log.gpt_feedback)}
+                    </div>
+                  ) : null}
+                  {log.notes ? (
+                    <div className="mt-3 text-sm text-slate-600">
+                      {sanitizeText(log.notes)}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {module === "cases" && caseLearnings.length > 0 ? (
+          <div className="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-sm font-medium text-slate-900">Recurring tips</div>
+            <div className="space-y-3">
+              {caseLearnings.map((learning) => (
+                <div
+                  key={learning.id}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-4"
+                >
+                  <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.16em] text-slate-500">
+                    <span>{sanitizeText(learning.scope_type)}</span>
+                    {learning.linked_question_type ? (
+                      <span>- {sanitizeText(learning.linked_question_type)}</span>
+                    ) : null}
+                  </div>
+                  <div className="mt-2 text-sm font-medium text-slate-900">
+                    {sanitizeText(learning.title)}
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-slate-700">
+                    {sanitizeText(learning.tip_text)}
+                  </div>
                 </div>
               ))}
             </div>
@@ -1568,6 +2022,7 @@ function DashboardView() {
   const [parIndex, setParIndex] = useState(0);
   const [caseIndex, setCaseIndex] = useState(0);
   const [practiceStoryId, setPracticeStoryId] = useState<string | null>(null);
+  const [practiceCaseId, setPracticeCaseId] = useState<string | null>(null);
   const [selectedWeekDate, setSelectedWeekDate] = useState(toDateInput(new Date().toISOString()));
   const [networkingModalOpen, setNetworkingModalOpen] = useState(false);
   const [networkingEditing, setNetworkingEditing] = useState<Record<string, unknown> | null>(null);
@@ -1616,7 +2071,7 @@ function DashboardView() {
   );
   const mocksThisWeek = data.mockInterviews.filter((mock) => isInCurrentWeek(mock.date));
   const parRepsThisWeek = data.parPracticeLogs.filter((log) => isInCurrentWeek(log.date)).length;
-  const caseRepsThisWeek = data.cases.filter((item) => isInCurrentWeek(item.date)).length;
+  const caseRepsThisWeek = data.casePracticeLogs.filter((log) => isInCurrentWeek(log.date)).length;
   const networkingTouchesThisWeek = data.contacts.filter((contact) =>
     isInCurrentWeek(contact.last_contact_date),
   ).length;
@@ -1639,7 +2094,7 @@ function DashboardView() {
       label: day.toLocaleDateString(undefined, { weekday: "short" }),
       dateLabel: day.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
       parLogs: data.parPracticeLogs.filter((log) => log.date === key),
-      caseLogs: data.cases.filter((item) => item.date === key),
+      caseLogs: data.casePracticeLogs.filter((item) => item.date === key),
       followUps: data.contacts.filter((contact) => contact.next_follow_up_date === key),
       applicationActions: data.applications.filter(
         (application) => application.follow_up_date === key || application.deadline === key,
@@ -1726,9 +2181,13 @@ function DashboardView() {
                     </p>
                   </div>
                   <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-4 sm:flex-nowrap">
-                    <Link href="/cases" className={buttonClassName("secondary")}>
+                    <button
+                      type="button"
+                      onClick={() => setPracticeCaseId(caseSuggestion.id)}
+                      className={buttonClassName("secondary")}
+                    >
                       Start Case
-                    </Link>
+                    </button>
                     <button
                       type="button"
                       onClick={() => markCasePracticed(caseSuggestion.id)}
@@ -1746,7 +2205,7 @@ function DashboardView() {
                   </div>
                 </div>
               ) : (
-                <EmptyState label="Add a case practice record to start daily case suggestions." />
+                <EmptyState label="Add a case question to start daily case suggestions." />
               )}
             </div>
           </div>
@@ -2132,6 +2591,12 @@ function DashboardView() {
         open={Boolean(practiceStoryId)}
         onClose={() => setPracticeStoryId(null)}
         storyId={practiceStoryId}
+      />
+      <PracticeCaseModal
+        key={`${practiceCaseId ?? "none"}-${practiceCaseId ? "open" : "closed"}`}
+        open={Boolean(practiceCaseId)}
+        onClose={() => setPracticeCaseId(null)}
+        caseId={practiceCaseId}
       />
     </div>
   );
@@ -2548,13 +3013,14 @@ function ActionItemsFilters({
 }
 
 function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
-  const { data, deleteRecord, markCasePracticed, markFollowUpDone, markInterviewAnswerPracticed, toggleActionItem, createActionItemFromSource } = useRecruitOS();
+  const { data, deleteRecord, markFollowUpDone, markInterviewAnswerPracticed, toggleActionItem, createActionItemFromSource } = useRecruitOS();
   const config = MODULE_CONFIGS[slug];
   const records = data[config.collection] as unknown as Array<Record<string, unknown>>;
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const [practiceStoryId, setPracticeStoryId] = useState<string | null>(null);
+  const [practiceCaseId, setPracticeCaseId] = useState<string | null>(null);
   const [actionView, setActionView] = useState("Today");
   const [sortKey, setSortKey] = useState(config.defaultSort.key);
   const [sortDirection, setSortDirection] = useState<SortDirection>(config.defaultSort.direction);
@@ -2790,10 +3256,10 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                         {slug === "cases" ? (
                           <button
                             type="button"
-                            onClick={() => markCasePracticed(String(record.id))}
+                            onClick={() => setPracticeCaseId(String(record.id))}
                             className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
-                            Mark Practiced
+                            Practice
                           </button>
                         ) : null}
                         {slug === "interview-answers" ? (
@@ -2911,6 +3377,12 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
           initial={editing}
         />
       )}
+      <PracticeCaseModal
+        key={`${practiceCaseId ?? "none"}-${practiceCaseId ? "open" : "closed"}`}
+        open={Boolean(practiceCaseId)}
+        onClose={() => setPracticeCaseId(null)}
+        caseId={practiceCaseId}
+      />
     </div>
   );
 }

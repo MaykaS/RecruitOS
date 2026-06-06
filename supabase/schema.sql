@@ -215,6 +215,43 @@ create table if not exists cases (
   notes text not null default '',
   weakness_area text not null default '',
   redo_needed boolean not null default false,
+  status text not null default 'Not Started',
+  last_practiced_date date,
+  times_practiced integer not null default 0,
+  average_score numeric(3,1) not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table if exists cases add column if not exists status text not null default 'Not Started';
+alter table if exists cases add column if not exists last_practiced_date date;
+alter table if exists cases add column if not exists times_practiced integer not null default 0;
+alter table if exists cases add column if not exists average_score numeric(3,1) not null default 0;
+
+create table if not exists case_practice_logs (
+  id text primary key,
+  case_id text not null references cases(id) on delete cascade,
+  date date not null,
+  framework_used text not null default '',
+  structure_score integer not null default 3,
+  analysis_score integer not null default 3,
+  communication_score integer not null default 3,
+  overall_score integer not null default 3,
+  gpt_feedback text not null default '',
+  next_fix text not null default '',
+  redo_needed boolean not null default false,
+  notes text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists case_learnings (
+  id text primary key,
+  title text not null default '',
+  tip_text text not null default '',
+  scope_type text not null default 'Question Type',
+  linked_case_id text not null default '',
+  linked_question_type text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

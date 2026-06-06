@@ -45,6 +45,8 @@ const TABLE_BY_COLLECTION: Record<CollectionKey, string> = {
   applications: "applications",
   brainDumps: "brain_dumps",
   cases: "cases",
+  caseLearnings: "case_learnings",
+  casePracticeLogs: "case_practice_logs",
   companies: "companies",
   contacts: "contacts",
   interviewAnswers: "interview_answers",
@@ -62,6 +64,8 @@ const COLLECTIONS = Object.keys(TABLE_BY_COLLECTION) as CollectionKey[];
 const ARRAY_FIELDS: Record<string, string[]> = {
   applications: ["linked_contact_ids", "linked_action_item_ids"],
   brain_dumps: [],
+  case_learnings: [],
+  case_practice_logs: [],
   companies: ["linked_contact_ids", "linked_application_ids"],
   contacts: ["tags", "linked_application_ids"],
   interview_answers: [
@@ -175,6 +179,8 @@ function buildDataFromTables(
     applications: mapNormalized("applications", rowsByCollection.applications ?? fallback.applications) as unknown as RecruitOSData["applications"],
     brainDumps: mapNormalized("brain_dumps", rowsByCollection.brainDumps ?? fallback.brainDumps) as unknown as RecruitOSData["brainDumps"],
     cases: toRows(rowsByCollection.cases ?? fallback.cases) as unknown as RecruitOSData["cases"],
+    caseLearnings: toRows(rowsByCollection.caseLearnings ?? fallback.caseLearnings) as unknown as RecruitOSData["caseLearnings"],
+    casePracticeLogs: toRows(rowsByCollection.casePracticeLogs ?? fallback.casePracticeLogs) as unknown as RecruitOSData["casePracticeLogs"],
     companies: mapNormalized("companies", rowsByCollection.companies ?? fallback.companies) as unknown as RecruitOSData["companies"],
     contacts: mapNormalized("contacts", rowsByCollection.contacts ?? fallback.contacts) as unknown as RecruitOSData["contacts"],
     interviewAnswers: mapNormalized("interview_answers", rowsByCollection.interviewAnswers ?? fallback.interviewAnswers) as unknown as RecruitOSData["interviewAnswers"],
@@ -371,6 +377,10 @@ export function getPersistenceCollectionsForModule(
 
   if (module === "applications") {
     return ["applications", "companies"];
+  }
+
+  if (module === "cases") {
+    return ["cases", "casePracticeLogs", "caseLearnings"];
   }
 
   return [moduleMap[module]];

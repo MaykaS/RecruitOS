@@ -147,6 +147,32 @@ export interface CasePractice extends BaseRecord {
   notes: string;
   weakness_area: string;
   redo_needed: boolean;
+  status: string;
+  last_practiced_date: string;
+  times_practiced: number;
+  average_score: number;
+}
+
+export interface CasePracticeLog extends BaseRecord {
+  case_id: string;
+  date: string;
+  framework_used: string;
+  structure_score: number;
+  analysis_score: number;
+  communication_score: number;
+  overall_score: number;
+  gpt_feedback: string;
+  next_fix: string;
+  redo_needed: boolean;
+  notes: string;
+}
+
+export interface CaseLearning extends BaseRecord {
+  title: string;
+  tip_text: string;
+  scope_type: string;
+  linked_case_id: string;
+  linked_question_type: string;
 }
 
 export interface Contact extends BaseRecord {
@@ -330,6 +356,8 @@ export interface RecruitOSData {
   parPracticeLogs: PARPracticeLog[];
   interviewAnswers: InterviewAnswer[];
   cases: CasePractice[];
+  casePracticeLogs: CasePracticeLog[];
+  caseLearnings: CaseLearning[];
   contacts: Contact[];
   companies: Company[];
   applications: Application[];
@@ -680,6 +708,10 @@ export const seedData = (): RecruitOSData => {
   const answerTmay = "answer-tmay";
   const caseMetrics = "case-metrics";
   const caseGtm = "case-gtm";
+  const casePracticeMetrics = "case-practice-metrics";
+  const casePracticeGtm = "case-practice-gtm";
+  const caseLearningMetrics = "case-learning-metrics";
+  const caseLearningGtm = "case-learning-gtm";
   const mockBehavioral = "mock-behavioral";
   const prepOracle = "prep-oracle";
   const brainDump = "brain-1";
@@ -1030,7 +1062,7 @@ export const seedData = (): RecruitOSData => {
         id: caseMetrics,
         created_at: timestamp,
         updated_at: timestamp,
-        title: "Retention Metrics Deep Dive",
+        title: "How would you diagnose a sudden drop in weekly retention for a B2B workflow product?",
         case_type: "PM Metrics",
         source: "RocketBlocks",
         practiced_with: "Self",
@@ -1041,12 +1073,16 @@ export const seedData = (): RecruitOSData => {
         notes: "",
         weakness_area: "Need sharper tradeoff framing.",
         redo_needed: true,
+        status: "Redo Needed",
+        last_practiced_date: dateOffset(-11),
+        times_practiced: 1,
+        average_score: 3,
       },
       {
         id: caseGtm,
         created_at: timestamp,
         updated_at: timestamp,
-        title: "AI Workflow Tool GTM",
+        title: "How would you launch an AI workflow tool for mid-market operations teams?",
         case_type: "GTM Strategy",
         source: "Peer prep",
         practiced_with: "Classmate",
@@ -1057,6 +1093,66 @@ export const seedData = (): RecruitOSData => {
         notes: "Need faster prioritization.",
         weakness_area: "Synthesis",
         redo_needed: true,
+        status: "Redo Needed",
+        last_practiced_date: dateOffset(-4),
+        times_practiced: 1,
+        average_score: 2,
+      },
+    ],
+    casePracticeLogs: [
+      {
+        id: casePracticeMetrics,
+        created_at: timestamp,
+        updated_at: timestamp,
+        case_id: caseMetrics,
+        date: dateOffset(-11),
+        framework_used: "North Star, input metrics, diagnosis tree",
+        structure_score: 3,
+        analysis_score: 3,
+        communication_score: 4,
+        overall_score: 3,
+        gpt_feedback: "Good diagnosis tree, but prioritize likely drivers earlier and state assumptions faster.",
+        next_fix: "Lead with the top retention segments before diving into every metric bucket.",
+        redo_needed: true,
+        notes: "Got stuck comparing activation vs retention too late.",
+      },
+      {
+        id: casePracticeGtm,
+        created_at: timestamp,
+        updated_at: timestamp,
+        case_id: caseGtm,
+        date: dateOffset(-4),
+        framework_used: "Segmentation, wedge, pricing, channels",
+        structure_score: 2,
+        analysis_score: 2,
+        communication_score: 3,
+        overall_score: 2,
+        gpt_feedback: "Clear buckets, but the prioritization and launch sequencing were too broad.",
+        next_fix: "Choose one ICP and one wedge earlier instead of listing every possible segment.",
+        redo_needed: true,
+        notes: "Need stronger synthesis at the end.",
+      },
+    ],
+    caseLearnings: [
+      {
+        id: caseLearningMetrics,
+        created_at: timestamp,
+        updated_at: timestamp,
+        title: "Prioritize retention segments first",
+        tip_text: "For PM Metrics questions, quickly identify the segment and step of the funnel where the drop matters most before exploring all hypotheses.",
+        scope_type: "Question Type",
+        linked_case_id: "",
+        linked_question_type: "PM Metrics",
+      },
+      {
+        id: caseLearningGtm,
+        created_at: timestamp,
+        updated_at: timestamp,
+        title: "Pick one wedge early",
+        tip_text: "For GTM cases, commit to one customer wedge and one launch path early so the answer feels decisive.",
+        scope_type: "Question Type",
+        linked_case_id: "",
+        linked_question_type: "GTM Strategy",
       },
     ],
     interviewPrep: [
@@ -1486,39 +1582,38 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
   cases: {
     slug: "cases",
     title: "Cases",
-    singular: "Case",
+    singular: "Case Question",
     collection: "cases",
-    description: "Manage case practice, weak spots, and redo-needed sessions.",
+    description: "Keep a library of case questions, then practice them with GPT and save your feedback.",
     titleKey: "title",
-    searchKeys: ["title", "case_type", "weakness_area", "source"],
+    searchKeys: ["title", "case_type", "weakness_area", "source", "notes"],
     columns: [
-      { key: "title", label: "Title" },
-      { key: "case_type", label: "Type" },
-      { key: "score", label: "Score" },
-      { key: "date", label: "Last practice" },
-      { key: "redo_needed", label: "Redo" },
+      { key: "title", label: "Question" },
+      { key: "case_type", label: "Question type" },
+      { key: "source", label: "Source" },
+      { key: "last_practiced_date", label: "Last practiced" },
+      { key: "average_score", label: "Avg score" },
+      { key: "status", label: "Status" },
     ],
     sortOptions: [
-      { key: "title", label: "Title", type: "text" },
-      { key: "case_type", label: "Case type", type: "text" },
-      { key: "score", label: "Score", type: "number" },
-      { key: "date", label: "Last practice", type: "date" },
+      { key: "title", label: "Question", type: "text" },
+      { key: "case_type", label: "Question type", type: "text" },
+      { key: "source", label: "Source", type: "text" },
+      { key: "average_score", label: "Average score", type: "number" },
+      { key: "last_practiced_date", label: "Last practiced", type: "date" },
+      { key: "status", label: "Status", type: "text", order: ["Not Started", "Practiced", "Redo Needed", "Strong"] },
       { key: "redo_needed", label: "Redo needed", type: "boolean" },
       { key: "difficulty", label: "Difficulty", type: "text", order: ["Easy", "Medium", "Hard"] },
       { key: "created_at", label: "Created", type: "date" },
     ],
-    defaultSort: { key: "date", direction: "desc" },
+    defaultSort: { key: "last_practiced_date", direction: "desc" },
     fields: [
-      { key: "title", label: "Title", type: "text" },
-      { key: "case_type", label: "Case type", type: "select", options: (data) => toOptions(data.settings.case_types) },
+      { key: "title", label: "Question", type: "textarea" },
+      { key: "case_type", label: "Question type", type: "select", options: (data) => toOptions(data.settings.case_types) },
       { key: "source", label: "Source", type: "text" },
-      { key: "practiced_with", label: "Practiced with", type: "text" },
-      { key: "date", label: "Date", type: "date" },
       { key: "difficulty", label: "Difficulty", type: "select", options: ["Easy", "Medium", "Hard"] },
-      { key: "framework_used", label: "Framework used", type: "text" },
-      { key: "score", label: "Score", type: "number", min: 1, max: 5 },
+      { key: "status", label: "Status", type: "select", options: ["Not Started", "Practiced", "Redo Needed", "Strong"] },
       { key: "weakness_area", label: "Weakness area", type: "text" },
-      { key: "redo_needed", label: "Redo needed", type: "checkbox" },
       { key: "notes", label: "Notes", type: "textarea" },
     ],
     defaultValues: {
@@ -1529,10 +1624,14 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       date: "",
       difficulty: "Medium",
       framework_used: "",
-      score: 3,
+      score: 0,
       notes: "",
       weakness_area: "",
       redo_needed: false,
+      status: "Not Started",
+      last_practiced_date: "",
+      times_practiced: 0,
+      average_score: 0,
     },
   },
   companies: {
@@ -2088,13 +2187,13 @@ export function sortParSuggestions(items: PARStory[]) {
 export function sortCaseSuggestions(items: CasePractice[]) {
   return [...items].sort((left, right) => {
     const leftScore =
-      left.score * 8 +
+      left.average_score * 8 +
       (left.redo_needed ? -10 : 0) +
-      (left.date ? new Date(left.date).getTime() / 1_000_000_000_000 : 0);
+      (left.last_practiced_date ? new Date(left.last_practiced_date).getTime() / 1_000_000_000_000 : 0);
     const rightScore =
-      right.score * 8 +
+      right.average_score * 8 +
       (right.redo_needed ? -10 : 0) +
-      (right.date ? new Date(right.date).getTime() / 1_000_000_000_000 : 0);
+      (right.last_practiced_date ? new Date(right.last_practiced_date).getTime() / 1_000_000_000_000 : 0);
     return leftScore - rightScore;
   });
 }

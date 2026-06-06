@@ -44,6 +44,22 @@ type ParPracticeInput =
       next_fix?: string;
       date?: string;
     };
+type CasePracticeInput = {
+  framework_used?: string;
+  structure_score?: number;
+  analysis_score?: number;
+  communication_score?: number;
+  overall_score?: number;
+  gpt_feedback?: string;
+  next_fix?: string;
+  redo_needed?: boolean;
+  notes?: string;
+  date?: string;
+  create_tip?: boolean;
+  tip_scope_type?: string;
+  tip_title?: string;
+  tip_text?: string;
+};
 
 interface RecruitOSContextValue {
   data: RecruitOSData;
@@ -57,6 +73,7 @@ interface RecruitOSContextValue {
   deleteRecord: (module: CrudModuleSlug, id: string) => void;
   toggleActionItem: (id: string) => void;
   logParPractice: (parId: string, input?: ParPracticeInput) => void;
+  logCasePractice: (caseId: string, input?: CasePracticeInput) => void;
   markCasePracticed: (caseId: string) => void;
   markInterviewAnswerPracticed: (answerId: string) => void;
   markFollowUpDone: (contactId: string) => void;
@@ -76,6 +93,18 @@ function uniqueStrings(values: string[]) {
 }
 
 function syncDerivedState(input: RecruitOSData): RecruitOSData {
+  const cases = input.cases.map((item) => ({
+    ...item,
+    status:
+      item.status ||
+      (item.redo_needed ? "Redo Needed" : item.last_practiced_date || item.date ? "Practiced" : "Not Started"),
+    last_practiced_date: item.last_practiced_date || item.date,
+    times_practiced:
+      typeof item.times_practiced === "number" ? item.times_practiced : item.date ? 1 : 0,
+    average_score:
+      typeof item.average_score === "number" ? item.average_score : item.score ?? 0,
+  }));
+
   const companies = input.companies.map((company) => ({
     ...company,
     linked_contact_ids: uniqueStrings([
@@ -178,6 +207,7 @@ function syncDerivedState(input: RecruitOSData): RecruitOSData {
 
   return {
     ...input,
+    cases,
     companies,
     contacts,
     applications,
@@ -404,10 +434,20 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
         const nextCollection = (
           current[collectionKey] as unknown as Array<Record<string, unknown>>
         ).filter((item) => item.id !== id);
-        return {
+        const nextState = {
           ...current,
           [collectionKey]: nextCollection,
         } as RecruitOSData;
+
+        if (module === "cases") {
+          return {
+            ...nextState,
+            casePracticeLogs: nextState.casePracticeLogs.filter((log) => log.case_id !== id),
+            caseLearnings: nextState.caseLearnings.filter((learning) => learning.linked_case_id !== id),
+          };
+        }
+
+        return nextState;
       });
     },
     [applyMutation],
@@ -498,20 +538,156 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
 
   const markCasePracticed = useCallback(
     (caseId: string) => {
-      applyMutation(["cases"], (current) => ({
-        ...current,
-        cases: current.cases.map((item) =>
-          item.id === caseId
-            ? {
-                ...item,
-                date: toDateInput(nowIso()),
-                score: Math.min(5, item.score + 1),
-                redo_needed: false,
-                updated_at: nowIso(),
-              }
-            : item,
-        ),
-      }));
+      applyMutation(["cases", "casePracticeLogs"], (current) => {
+        const targetCase = current.cases.find((item) => item.id === caseId);
+        if (!targetCase) return current;
+
+        const quickLog = {
+          id: createId("case-practice"),
+          created_at: nowIso(),
+          updated_at: nowIso(),
+          case_id: caseId,
+          date: toDateInput(nowIso()),
+          framework_used: targetCase.framework_used,
+          structure_score: 4,
+          analysis_score: 4,
+          communication_score: 4,
+          overall_score: 4,
+          gpt_feedback: "Quick completion from dashboard.",
+          next_fix: targetCase.weakness_area || "",
+          redo_needed: false,
+          notes: "",
+        };
+
+        const nextPracticeLogs = [...current.casePracticeLogs, quickLog];
+        const relatedLogs = nextPracticeLogs.filter((log) => log.case_id === caseId);
+        const averageScore = Number(
+          (
+            relatedLogs.reduce((sum, log) => sum + log.overall_score, 0) /
+            Math.max(relatedLogs.length, 1)
+          ).toFixed(1),
+        );
+
+        return {
+          ...current,
+          casePracticeLogs: nextPracticeLogs,
+          cases: current.cases.map((item) =>
+            item.id === caseId
+              ? {
+                  ...item,
+                  date: quickLog.date,
+                  last_practiced_date: quickLog.date,
+                  times_practiced: relatedLogs.length,
+                  score: averageScore,
+                  average_score: averageScore,
+                  redo_needed: false,
+                  status: item.status === "Strong" ? "Strong" : "Practiced",
+                  updated_at: nowIso(),
+                }
+              : item,
+          ),
+        };
+      });
+    },
+    [applyMutation],
+  );
+
+  const logCasePractice = useCallback(
+    (caseId: string, input: CasePracticeInput = {}) => {
+      const normalized = {
+        framework_used: input.framework_used?.trim() ?? "",
+        structure_score: input.structure_score ?? 4,
+        analysis_score: input.analysis_score ?? 4,
+        communication_score: input.communication_score ?? 4,
+        overall_score: input.overall_score ?? 4,
+        gpt_feedback: input.gpt_feedback?.trim() ?? "",
+        next_fix: input.next_fix?.trim() ?? "",
+        redo_needed: input.redo_needed ?? false,
+        notes: input.notes?.trim() ?? "",
+        date: input.date || toDateInput(nowIso()),
+        create_tip: input.create_tip ?? false,
+        tip_scope_type: input.tip_scope_type || "Question Type",
+        tip_title: input.tip_title?.trim() ?? "",
+        tip_text: input.tip_text?.trim() ?? "",
+      };
+
+      applyMutation(["cases", "casePracticeLogs", "caseLearnings"], (current) => {
+        const targetCase = current.cases.find((item) => item.id === caseId);
+        if (!targetCase) return current;
+
+        const nextLog = {
+          id: createId("case-practice"),
+          created_at: nowIso(),
+          updated_at: nowIso(),
+          case_id: caseId,
+          date: normalized.date,
+          framework_used: normalized.framework_used,
+          structure_score: normalized.structure_score,
+          analysis_score: normalized.analysis_score,
+          communication_score: normalized.communication_score,
+          overall_score: normalized.overall_score,
+          gpt_feedback: normalized.gpt_feedback,
+          next_fix: normalized.next_fix,
+          redo_needed: normalized.redo_needed,
+          notes: normalized.notes,
+        };
+
+        const nextPracticeLogs = [...current.casePracticeLogs, nextLog];
+        const relatedLogs = nextPracticeLogs.filter((log) => log.case_id === caseId);
+        const averageScore = Number(
+          (
+            relatedLogs.reduce((sum, log) => sum + log.overall_score, 0) /
+            Math.max(relatedLogs.length, 1)
+          ).toFixed(1),
+        );
+
+        const nextCaseLearnings =
+          normalized.create_tip && normalized.tip_text
+            ? [
+                ...current.caseLearnings,
+                {
+                  id: createId("case-learning"),
+                  created_at: nowIso(),
+                  updated_at: nowIso(),
+                  title:
+                    normalized.tip_title ||
+                    normalized.next_fix ||
+                    `Learning for ${targetCase.case_type}`,
+                  tip_text: normalized.tip_text,
+                  scope_type: normalized.tip_scope_type,
+                  linked_case_id:
+                    normalized.tip_scope_type === "Question" ? caseId : "",
+                  linked_question_type:
+                    normalized.tip_scope_type === "Question Type"
+                      ? targetCase.case_type
+                      : "",
+                },
+              ]
+            : current.caseLearnings;
+
+        return {
+          ...current,
+          casePracticeLogs: nextPracticeLogs,
+          caseLearnings: nextCaseLearnings,
+          cases: current.cases.map((item) =>
+            item.id === caseId
+              ? {
+                  ...item,
+                  date: normalized.date,
+                  last_practiced_date: normalized.date,
+                  framework_used: normalized.framework_used || item.framework_used,
+                  score: averageScore,
+                  average_score: averageScore,
+                  weakness_area: normalized.next_fix || item.weakness_area,
+                  redo_needed: normalized.redo_needed,
+                  status: normalized.redo_needed ? "Redo Needed" : "Practiced",
+                  times_practiced: relatedLogs.length,
+                  updated_at: nowIso(),
+                }
+              : item,
+          ),
+        };
+      });
     },
     [applyMutation],
   );
@@ -695,6 +871,7 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
       deleteRecord,
       toggleActionItem,
       logParPractice,
+      logCasePractice,
       markCasePracticed,
       markInterviewAnswerPracticed,
       markFollowUpDone,
@@ -713,6 +890,7 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
       isSyncing,
       loaded,
       logParPractice,
+      logCasePractice,
       markApplicationActionDone,
       markCasePracticed,
       markFollowUpDone,
