@@ -1433,7 +1433,11 @@ function RecordModal({
 }) {
   const { data, saveRecord, toggleActionItem } = useRecruitOS();
   const config = MODULE_CONFIGS[module];
-  const [form, setForm] = useState<Record<string, unknown>>(initial ?? config.defaultValues);
+  const initialForm = useMemo(
+    () => ({ ...config.defaultValues, ...(initial ?? {}) }),
+    [config.defaultValues, initial],
+  );
+  const [form, setForm] = useState<Record<string, unknown>>(initialForm);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const companyNameValue =

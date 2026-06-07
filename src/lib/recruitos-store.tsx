@@ -94,6 +94,7 @@ function uniqueStrings(values: string[]) {
 
 function syncDerivedState(input: RecruitOSData): RecruitOSData {
   const cases = input.cases.map((item) => ({
+    ...MODULE_CONFIGS.cases.defaultValues,
     ...item,
     status:
       item.status ||
@@ -328,7 +329,7 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
         const collectionKey = getCollectionKey(module);
         const collection = current[collectionKey] as unknown as Array<Record<string, unknown>>;
         const existing = collection.find((item) => item.id === record.id);
-        let preparedRecord = { ...record };
+        let preparedRecord = { ...MODULE_CONFIGS[module].defaultValues, ...record };
         let nextCompanies = current.companies;
 
         if (module === "networking" || module === "applications") {
