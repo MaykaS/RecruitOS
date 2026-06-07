@@ -2178,24 +2178,24 @@ function DashboardView() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)]">
         <Card title="Today's Command Center">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex h-full flex-col rounded-[28px] border border-slate-200 bg-[rgba(255,255,255,0.82)] p-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <div className="flex h-full flex-col rounded-[28px] border border-slate-200/90 bg-white/88 p-5 shadow-[0_12px_30px_rgba(15,23,42,0.035)]">
+              <div className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
                 Assigned STAR Practice
               </div>
               {parSuggestion ? (
                 <div className="mt-3 flex h-full flex-col">
-                  <div className="space-y-2.5">
-                    <h3 className="min-h-[3rem] text-[1.6rem] leading-[1.08] font-semibold text-slate-900 [font-family:var(--font-display)]">
+                  <div className="space-y-2">
+                    <h3 className="min-h-[2.65rem] text-[1.45rem] leading-[1.04] font-semibold text-slate-900 [font-family:var(--font-display)]">
                       {parSuggestion.title}
                     </h3>
-                    <p className="min-h-[3rem] text-sm leading-5 text-slate-600">
+                    <p className="min-h-[2.5rem] text-[0.94rem] leading-5 text-slate-600">
                       Prompt: Tell me about a time you influenced without authority.
                     </p>
-                    <p className="min-h-[3rem] text-sm leading-5 text-slate-700">
+                    <p className="min-h-[2.5rem] text-[0.94rem] leading-5 text-slate-700">
                       Focus: {parSuggestion.weakness_or_focus_area || "Sharpen structure and confidence."}
                     </p>
                   </div>
-                  <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-4 sm:flex-nowrap">
+                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
                     <button
                       type="button"
                       onClick={() => setPracticeStoryId(parSuggestion.id)}
@@ -2224,24 +2224,24 @@ function DashboardView() {
               )}
             </div>
 
-            <div className="flex h-full flex-col rounded-[28px] border border-slate-200 bg-[rgba(255,255,255,0.82)] p-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <div className="flex h-full flex-col rounded-[28px] border border-slate-200/90 bg-white/88 p-5 shadow-[0_12px_30px_rgba(15,23,42,0.035)]">
+              <div className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
                 Assigned Case Practice
               </div>
               {caseSuggestion ? (
                 <div className="mt-3 flex h-full flex-col">
-                  <div className="space-y-2.5">
-                    <h3 className="min-h-[3rem] text-[1.6rem] leading-[1.08] font-semibold text-slate-900 [font-family:var(--font-display)]">
+                  <div className="space-y-2">
+                    <h3 className="min-h-[2.65rem] text-[1.45rem] leading-[1.04] font-semibold text-slate-900 [font-family:var(--font-display)]">
                       {caseSuggestion.title}
                     </h3>
-                    <p className="min-h-[3rem] text-sm leading-5 text-slate-600">
+                    <p className="min-h-[2.5rem] text-[0.94rem] leading-5 text-slate-600">
                       Focus area: {caseSuggestion.weakness_area || "Keep sharp under time pressure."}
                     </p>
-                    <p className="min-h-[3rem] text-sm leading-5 text-slate-700">
+                    <p className="min-h-[2.5rem] text-[0.94rem] leading-5 text-slate-700">
                       Suggested session: {caseSuggestion.case_type}
                     </p>
                   </div>
-                  <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-4 sm:flex-nowrap">
+                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
                     <button
                       type="button"
                       onClick={() => setPracticeCaseId(caseSuggestion.id)}
@@ -2665,8 +2665,12 @@ function DashboardView() {
 
 function QuestionsSection({
   openStory,
+  collapsed,
+  onToggle,
 }: {
   openStory: (story: RecruitOSData["parStories"][number]) => void;
+  collapsed: boolean;
+  onToggle: () => void;
 }) {
   const { data, saveInterviewQuestion, deleteInterviewQuestion } = useRecruitOS();
   const [draft, setDraft] = useState({
@@ -2677,88 +2681,117 @@ function QuestionsSection({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-[26px] border border-slate-200 bg-slate-50 p-4">
-        <div className="mb-1 text-sm font-semibold text-slate-900">Question Bank</div>
-        <div className="mt-3 space-y-2">
-          {data.interviewQuestions.length ? (
-            data.interviewQuestions.map((question) => (
-              <div
-                key={question.id}
-                className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3"
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    const linkedStory = data.parStories.find((story) =>
-                      question.linked_par_story_ids.includes(story.id),
-                    );
-                    if (linkedStory) openStory(linkedStory);
-                  }}
-                  className="min-w-0 flex-1 text-left text-sm leading-6 text-slate-800"
-                >
-                  {sanitizeText(question.question_text)}
-                </button>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <IconButton
-                    label={`Edit question ${question.question_text}`}
-                    icon={<PencilIcon />}
-                    onClick={() =>
-                      setDraft({
-                        id: question.id,
-                        question_text: question.question_text,
-                        linked_par_story_ids: question.linked_par_story_ids,
-                      })
-                    }
-                  />
-                  <IconButton
-                    label={`Delete question ${question.question_text}`}
-                    icon={<TrashIcon />}
-                    tone="danger"
-                    onClick={() => deleteInterviewQuestion(question.id)}
-                  />
-                </div>
-              </div>
-            ))
-          ) : (
-            <EmptyState label="Add interview questions to build your bank." />
-          )}
-        </div>
-      </div>
-
-      <div className="rounded-[26px] border border-slate-200 bg-slate-50 p-4">
-        <div className="mb-3 text-sm font-semibold text-slate-900">
-          {draft.id ? "Edit question" : "Add question"}
-        </div>
-        <div className="space-y-2.5">
-          <input
-            value={draft.question_text}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, question_text: event.target.value }))
-            }
-            placeholder="Add interview question"
-            className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300"
-          />
+      <div className="rounded-[26px] border border-slate-200 bg-slate-50/90 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-slate-900">Question Bank</div>
+            <div className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">
+              {data.interviewQuestions.length} saved
+            </div>
+          </div>
           <button
             type="button"
-            onClick={() => {
-              if (!draft.question_text.trim()) return;
-              saveInterviewQuestion({
-                id: draft.id || undefined,
-                question_text: draft.question_text,
-                linked_par_story_ids: draft.linked_par_story_ids,
-              });
-              setDraft({
-                id: "",
-                question_text: "",
-                linked_par_story_ids: [],
-              });
-            }}
-            className="w-full rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
+            onClick={onToggle}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
           >
-            {draft.id ? "Update Question" : "Save Question"}
+            <span>{collapsed ? "Expand" : "Collapse"}</span>
+            <span
+              className={cx(
+                "text-slate-500 transition-transform",
+                collapsed ? "-rotate-90" : "rotate-0",
+              )}
+            >
+              <ChevronDownIcon />
+            </span>
           </button>
         </div>
       </div>
+
+      {collapsed ? null : (
+        <>
+          <div className="rounded-[26px] border border-slate-200 bg-slate-50 p-4">
+            <div className="space-y-2">
+              {data.interviewQuestions.length ? (
+                data.interviewQuestions.map((question) => (
+                  <div
+                    key={question.id}
+                    className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const linkedStory = data.parStories.find((story) =>
+                          question.linked_par_story_ids.includes(story.id),
+                        );
+                        if (linkedStory) openStory(linkedStory);
+                      }}
+                      className="min-w-0 flex-1 text-left text-sm leading-6 text-slate-800"
+                    >
+                      {sanitizeText(question.question_text)}
+                    </button>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <IconButton
+                        label={`Edit question ${question.question_text}`}
+                        icon={<PencilIcon />}
+                        onClick={() =>
+                          setDraft({
+                            id: question.id,
+                            question_text: question.question_text,
+                            linked_par_story_ids: question.linked_par_story_ids,
+                          })
+                        }
+                      />
+                      <IconButton
+                        label={`Delete question ${question.question_text}`}
+                        icon={<TrashIcon />}
+                        tone="danger"
+                        onClick={() => deleteInterviewQuestion(question.id)}
+                      />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <EmptyState label="Add interview questions to build your bank." />
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[26px] border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-3 text-sm font-semibold text-slate-900">
+              {draft.id ? "Edit question" : "Add question"}
+            </div>
+            <div className="space-y-2.5">
+              <input
+                value={draft.question_text}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, question_text: event.target.value }))
+                }
+                placeholder="Add interview question"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!draft.question_text.trim()) return;
+                  saveInterviewQuestion({
+                    id: draft.id || undefined,
+                    question_text: draft.question_text,
+                    linked_par_story_ids: draft.linked_par_story_ids,
+                  });
+                  setDraft({
+                    id: "",
+                    question_text: "",
+                    linked_par_story_ids: [],
+                  });
+                }}
+                className="w-full rounded-full bg-gradient-to-r from-teal-500 to-sky-500 px-3 py-2 text-sm font-medium text-white shadow-[0_8px_18px_rgba(13,148,136,0.14)] hover:from-teal-400 hover:to-sky-400"
+              >
+                {draft.id ? "Update Question" : "Save Question"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -2853,12 +2886,20 @@ function StarsWorkspaceSection({
   practiceStory: (storyId: string) => void;
   addAction: (story: RecruitOSData["parStories"][number]) => void;
   deleteStory: (storyId: string) => void;
-  questionBank: React.ReactNode;
+  questionBank: (collapsed: boolean, onToggle: () => void) => React.ReactNode;
 }) {
   const { data } = useRecruitOS();
+  const [questionBankCollapsed, setQuestionBankCollapsed] = useState(true);
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,3.15fr)_minmax(390px,1fr)]">
+    <div
+      className={cx(
+        "grid gap-6",
+        questionBankCollapsed
+          ? "xl:grid-cols-[minmax(0,1fr)_220px]"
+          : "xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.42fr)]",
+      )}
+    >
       <Card
         title="STAR Story Library"
         actions={
@@ -2908,28 +2949,31 @@ function StarsWorkspaceSection({
                 .map((questionId) => data.interviewQuestions.find((question) => question.id === questionId)?.question_text)
                 .filter((value): value is string => Boolean(value));
               return (
-                <article key={story.id} className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4">
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start xl:gap-5">
-                    <div className="min-w-0 space-y-2">
+                <article
+                  key={story.id}
+                  className="rounded-[24px] border border-slate-200/90 bg-white px-5 py-4 shadow-[0_10px_26px_rgba(15,23,42,0.035)] transition hover:border-slate-300 hover:shadow-[0_14px_32px_rgba(15,23,42,0.05)]"
+                >
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start xl:gap-6">
+                    <div className="min-w-0 space-y-2.5">
                       <button
                         type="button"
                         onClick={() => openStory(story)}
-                        className="text-left text-[0.96rem] font-semibold text-slate-900 [font-family:var(--font-display)] transition hover:text-teal-700 lg:text-[1rem]"
+                        className="text-left text-[0.98rem] font-semibold leading-tight text-slate-900 [font-family:var(--font-display)] transition hover:text-teal-700 lg:text-[1.03rem]"
                       >
                         {sanitizeText(story.title)}
                       </button>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <div className="flex flex-wrap items-center gap-2 text-[0.78rem] text-slate-500">
                         <span>{story.linked_question_ids.length ? `${story.linked_question_ids.length} question${story.linked_question_ids.length === 1 ? "" : "s"}` : "No questions linked"}</span>
                         <span>|</span>
                         <span>{story.status}</span>
                         <span>|</span>
                         <span>Confidence {story.confidence_score}/5</span>
                       </div>
-                      <div className="max-w-full overflow-x-auto pb-1">
+                      <div className="max-w-full">
                         <MiniList title="Questions this story answers" items={linkedQuestions} />
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 xl:max-w-[360px] xl:justify-end xl:self-start">
+                    <div className="flex flex-wrap items-center gap-2 xl:max-w-[340px] xl:justify-end xl:self-start">
                       <button
                         type="button"
                         onClick={() => practiceStory(story.id)}
@@ -2960,7 +3004,32 @@ function StarsWorkspaceSection({
           <EmptyState label="No STAR stories match this view yet." />
         )}
       </Card>
-      <aside className="xl:pt-[2px]">{questionBank}</aside>
+      <aside className="xl:pt-[2px]">
+        {questionBankCollapsed ? (
+          <div className="rounded-[26px] border border-slate-200 bg-slate-50/90 p-4">
+            <div className="flex min-h-[88px] flex-col justify-between">
+              <div>
+                <div className="text-sm font-semibold text-slate-900">Question Bank</div>
+                <div className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-500">
+                  Hidden
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuestionBankCollapsed(false)}
+                className="mt-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+              >
+                <span>Open</span>
+                <span className="-rotate-90 text-slate-500">
+                  <ChevronDownIcon />
+                </span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>{questionBank(questionBankCollapsed, () => setQuestionBankCollapsed((current) => !current))}</>
+        )}
+      </aside>
     </div>
   );
 }
@@ -3208,7 +3277,13 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
               })
             }
             deleteStory={(storyId) => deleteRecord("pars", storyId)}
-            questionBank={<QuestionsSection openStory={openStarEditor} />}
+            questionBank={(collapsed, onToggle) => (
+              <QuestionsSection
+                openStory={openStarEditor}
+                collapsed={collapsed}
+                onToggle={onToggle}
+              />
+            )}
           />
           <StarCoverageMatrix
             stories={sortedRecords as unknown as RecruitOSData["parStories"]}
