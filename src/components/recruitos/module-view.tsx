@@ -260,6 +260,42 @@ function ProgressBar({ value, label }: { value: number; label: string }) {
   );
 }
 
+function CommandCenterAssignmentCard({
+  eyebrow,
+  title,
+  details,
+  actions,
+}: {
+  eyebrow: string;
+  title: string;
+  details: Array<{ label: string; value: string }>;
+  actions: ReactNode;
+}) {
+  return (
+    <div className="flex h-full flex-col rounded-[28px] border border-slate-200/90 bg-white/92 p-6 shadow-[0_12px_28px_rgba(15,23,42,0.03)]">
+      <div className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
+        {eyebrow}
+      </div>
+      <div className="mt-4 grid h-full grid-rows-[auto_1fr_auto]">
+        <h3 className="min-h-[4.9rem] max-w-[18ch] text-[1.3rem] leading-[1.02] font-semibold text-slate-900 [font-family:var(--font-display)] md:text-[1.38rem]">
+          {sanitizeText(title)}
+        </h3>
+        <dl className="space-y-4 pt-3">
+          {details.map((detail) => (
+            <div key={detail.label} className="space-y-1">
+              <dt className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                {detail.label}
+              </dt>
+              <dd className="text-[0.95rem] leading-6 text-slate-700">{sanitizeText(detail.value)}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="flex flex-wrap items-center gap-2 pt-5">{actions}</div>
+      </div>
+    </div>
+  );
+}
+
 function Card({
   title,
   children,
@@ -2178,24 +2214,23 @@ function DashboardView() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)]">
         <Card title="Today's Command Center">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex h-full flex-col rounded-[28px] border border-slate-200/90 bg-white/88 p-5 shadow-[0_12px_30px_rgba(15,23,42,0.035)]">
-              <div className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Assigned STAR Practice
-              </div>
-              {parSuggestion ? (
-                <div className="mt-3 flex h-full flex-col">
-                  <div className="space-y-2">
-                    <h3 className="min-h-[2.65rem] text-[1.45rem] leading-[1.04] font-semibold text-slate-900 [font-family:var(--font-display)]">
-                      {parSuggestion.title}
-                    </h3>
-                    <p className="min-h-[2.5rem] text-[0.94rem] leading-5 text-slate-600">
-                      Prompt: Tell me about a time you influenced without authority.
-                    </p>
-                    <p className="min-h-[2.5rem] text-[0.94rem] leading-5 text-slate-700">
-                      Focus: {parSuggestion.weakness_or_focus_area || "Sharpen structure and confidence."}
-                    </p>
-                  </div>
-                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
+            {parSuggestion ? (
+              <CommandCenterAssignmentCard
+                eyebrow="Assigned STAR Practice"
+                title={parSuggestion.title}
+                details={[
+                  {
+                    label: "Question",
+                    value: "Tell me about a time you influenced without authority.",
+                  },
+                  {
+                    label: "Focus",
+                    value:
+                      parSuggestion.weakness_or_focus_area || "Sharpen structure and confidence.",
+                  },
+                ]}
+                actions={
+                  <>
                     <button
                       type="button"
                       onClick={() => setPracticeStoryId(parSuggestion.id)}
@@ -2217,31 +2252,30 @@ function DashboardView() {
                     >
                       Swap
                     </button>
-                  </div>
-                </div>
-              ) : (
+                  </>
+                }
+              />
+            ) : (
+              <div className="rounded-[28px] border border-slate-200/90 bg-white/92 p-6 shadow-[0_12px_28px_rgba(15,23,42,0.03)]">
                 <EmptyState label="Add a STAR story to start daily practice suggestions." />
-              )}
-            </div>
-
-            <div className="flex h-full flex-col rounded-[28px] border border-slate-200/90 bg-white/88 p-5 shadow-[0_12px_30px_rgba(15,23,42,0.035)]">
-              <div className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Assigned Case Practice
               </div>
-              {caseSuggestion ? (
-                <div className="mt-3 flex h-full flex-col">
-                  <div className="space-y-2">
-                    <h3 className="min-h-[2.65rem] text-[1.45rem] leading-[1.04] font-semibold text-slate-900 [font-family:var(--font-display)]">
-                      {caseSuggestion.title}
-                    </h3>
-                    <p className="min-h-[2.5rem] text-[0.94rem] leading-5 text-slate-600">
-                      Focus area: {caseSuggestion.weakness_area || "Keep sharp under time pressure."}
-                    </p>
-                    <p className="min-h-[2.5rem] text-[0.94rem] leading-5 text-slate-700">
-                      Suggested session: {caseSuggestion.case_type}
-                    </p>
-                  </div>
-                  <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
+            )}
+            {caseSuggestion ? (
+              <CommandCenterAssignmentCard
+                eyebrow="Assigned Case Practice"
+                title={caseSuggestion.title}
+                details={[
+                  {
+                    label: "Focus",
+                    value: caseSuggestion.weakness_area || "Keep sharp under time pressure.",
+                  },
+                  {
+                    label: "Suggested Session",
+                    value: caseSuggestion.case_type,
+                  },
+                ]}
+                actions={
+                  <>
                     <button
                       type="button"
                       onClick={() => setPracticeCaseId(caseSuggestion.id)}
@@ -2263,12 +2297,14 @@ function DashboardView() {
                     >
                       Swap
                     </button>
-                  </div>
-                </div>
-              ) : (
+                  </>
+                }
+              />
+            ) : (
+              <div className="rounded-[28px] border border-slate-200/90 bg-white/92 p-6 shadow-[0_12px_28px_rgba(15,23,42,0.03)]">
                 <EmptyState label="Add a case question to start daily case suggestions." />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </Card>
 
