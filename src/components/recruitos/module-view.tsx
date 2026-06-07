@@ -111,7 +111,10 @@ function IconButton({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
       className={iconButtonClassName(tone)}
       aria-label={label}
       title={label}
@@ -3139,6 +3142,12 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
     },
     [],
   );
+  const openGenericRecordEditor = useCallback(
+    (record: Record<string, unknown>) => {
+      openRecordEditor(record, setEditing, setModalOpen);
+    },
+    [],
+  );
 
   return (
     <div className="space-y-6">
@@ -3289,7 +3298,15 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                 {sortedRecords.map((record) => (
                   <tr
                     key={String(record.id)}
-                    className="rounded-2xl bg-slate-50 shadow-[0_1px_0_rgba(226,232,240,1)]"
+                    onClick={
+                      slug === "cases"
+                        ? () => openGenericRecordEditor(record)
+                        : undefined
+                    }
+                    className={cx(
+                      "rounded-2xl bg-slate-50 shadow-[0_1px_0_rgba(226,232,240,1)]",
+                      slug === "cases" && "cursor-pointer transition hover:bg-white",
+                    )}
                   >
                     {config.columns.map((column) => (
                       <td key={column.key} className="px-3 py-3.5 text-sm text-slate-700">
@@ -3306,7 +3323,10 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                         {slug === "cases" ? (
                           <button
                             type="button"
-                            onClick={() => setPracticeCaseId(String(record.id))}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPracticeCaseId(String(record.id));
+                            }}
                             className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             Practice
@@ -3315,7 +3335,10 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                         {slug === "interview-answers" ? (
                           <button
                             type="button"
-                            onClick={() => markInterviewAnswerPracticed(String(record.id))}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              markInterviewAnswerPracticed(String(record.id));
+                            }}
                             className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             Practice
@@ -3324,7 +3347,10 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                         {slug === "networking" ? (
                           <button
                             type="button"
-                            onClick={() => markFollowUpDone(String(record.id))}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              markFollowUpDone(String(record.id));
+                            }}
                             className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             Follow-Up Done
@@ -3333,7 +3359,10 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                         {slug === "action-items" ? (
                           <button
                             type="button"
-                            onClick={() => toggleActionItem(String(record.id))}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleActionItem(String(record.id));
+                            }}
                             className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             {(record.status as string) === "Done" ? "Reopen" : "Check Off"}
@@ -3342,7 +3371,8 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                         {(slug === "applications" || slug === "mock-interviews" || slug === "networking") ? (
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(event) => {
+                              event.stopPropagation();
                               if (slug === "applications") {
                                 createActionItemFromSource({
                                   title: `${String(record.company_name || "")}: ${String(record.next_step || "Follow up")}`,
@@ -3394,8 +3424,7 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                               openContactEditor(record as unknown as RecruitOSData["contacts"][number]);
                               return;
                             }
-                            setEditing(record);
-                            setModalOpen(true);
+                            openGenericRecordEditor(record);
                           }}
                         />
                         <IconButton
