@@ -272,25 +272,35 @@ function CommandCenterAssignmentCard({
   actions: ReactNode;
 }) {
   return (
-    <div className="flex h-full flex-col rounded-[28px] border border-slate-200/90 bg-white/92 p-6 shadow-[0_12px_28px_rgba(15,23,42,0.03)]">
-      <div className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
+    <div className="flex h-full min-h-[320px] flex-col rounded-[26px] border border-slate-200/90 bg-white/94 p-5 shadow-[0_10px_24px_rgba(15,23,42,0.028)]">
+      <div className="text-[0.66rem] font-semibold uppercase tracking-[0.22em] text-slate-500">
         {eyebrow}
       </div>
-      <div className="mt-4 grid h-full grid-rows-[auto_1fr_auto]">
-        <h3 className="min-h-[4.9rem] max-w-[18ch] text-[1.3rem] leading-[1.02] font-semibold text-slate-900 [font-family:var(--font-display)] md:text-[1.38rem]">
+      <div className="mt-3 grid h-full grid-rows-[auto_1fr_auto]">
+        <h3
+          className="min-h-[4.1rem] max-w-[19ch] text-[1.16rem] leading-[1.06] font-semibold text-slate-900 md:text-[1.22rem]"
+          style={{
+            display: "-webkit-box",
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
           {sanitizeText(title)}
         </h3>
-        <dl className="space-y-4 pt-3">
+        <dl className="space-y-3 border-t border-slate-100 pt-4">
           {details.map((detail) => (
             <div key={detail.label} className="space-y-1">
-              <dt className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              <dt className="text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 {detail.label}
               </dt>
-              <dd className="text-[0.95rem] leading-6 text-slate-700">{sanitizeText(detail.value)}</dd>
+              <dd className="text-[0.94rem] leading-6 text-slate-700">{sanitizeText(detail.value)}</dd>
             </div>
           ))}
         </dl>
-        <div className="flex flex-wrap items-center gap-2 pt-5">{actions}</div>
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+          {actions}
+        </div>
       </div>
     </div>
   );
