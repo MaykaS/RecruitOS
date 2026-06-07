@@ -207,6 +207,10 @@ function syncDerivedState(input: RecruitOSData): RecruitOSData {
 
   return {
     ...input,
+    parPracticeLogs: input.parPracticeLogs ?? [],
+    casePracticeLogs: input.casePracticeLogs ?? [],
+    caseLearnings: input.caseLearnings ?? [],
+    brainDumps: input.brainDumps ?? [],
     cases,
     companies,
     contacts,

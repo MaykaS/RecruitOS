@@ -1449,7 +1449,7 @@ function RecordModal({
       : [];
   const practiceLogs =
     initial?.id && module === "pars"
-      ? data.parPracticeLogs
+      ? (data.parPracticeLogs ?? [])
           .filter((log) => log.par_story_id === String(initial.id))
           .sort((left, right) =>
             String(right.created_at ?? "").localeCompare(String(left.created_at ?? "")),
@@ -1457,7 +1457,7 @@ function RecordModal({
       : [];
   const casePracticeLogs =
     initial?.id && module === "cases"
-      ? data.casePracticeLogs
+      ? (data.casePracticeLogs ?? [])
           .filter((log) => log.case_id === String(initial.id))
           .sort((left, right) =>
             String(right.created_at ?? "").localeCompare(String(left.created_at ?? "")),
@@ -1465,7 +1465,7 @@ function RecordModal({
       : [];
   const caseLearnings =
     initial?.id && module === "cases"
-      ? data.caseLearnings.filter(
+      ? (data.caseLearnings ?? []).filter(
           (learning) =>
             learning.linked_case_id === String(initial.id) ||
             learning.linked_question_type === String(initial.case_type || ""),
