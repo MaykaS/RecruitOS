@@ -125,8 +125,8 @@ function IconButton({
   );
 }
 
-function sanitizeText(value: string) {
-  return value
+function sanitizeText(value: unknown) {
+  return String(value ?? "")
     .replaceAll("Ã¢â‚¬â€", "-")
     .replaceAll("Ã‚Â·", " - ")
     .replaceAll("Â·", " - ")
@@ -1451,13 +1451,17 @@ function RecordModal({
     initial?.id && module === "pars"
       ? data.parPracticeLogs
           .filter((log) => log.par_story_id === String(initial.id))
-          .sort((left, right) => right.created_at.localeCompare(left.created_at))
+          .sort((left, right) =>
+            String(right.created_at ?? "").localeCompare(String(left.created_at ?? "")),
+          )
       : [];
   const casePracticeLogs =
     initial?.id && module === "cases"
       ? data.casePracticeLogs
           .filter((log) => log.case_id === String(initial.id))
-          .sort((left, right) => right.created_at.localeCompare(left.created_at))
+          .sort((left, right) =>
+            String(right.created_at ?? "").localeCompare(String(left.created_at ?? "")),
+          )
       : [];
   const caseLearnings =
     initial?.id && module === "cases"
