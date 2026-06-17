@@ -79,6 +79,17 @@ Last updated: 2026-06-16
 
 ## Fixed Issues
 
+### BUG-017: Case practice prompt could not simulate configurable interviewer probes
+- Status: Fixed
+- Severity: Medium
+- Module: Cases
+- Fixed date: 2026-06-16
+- Description: The case practice modal encouraged GPT to challenge assumptions, but the user could not control how much interviewer pushback or probing the case rep should include.
+- Fix summary: Added an interviewer probe selector to the case practice modal, defaulted it to 2 for a realistic rep, reflected the selected intensity in the UI, and injected the configured probe behavior directly into the GPT case prompt.
+- Files changed: `src/components/recruitos/module-view.tsx`, `BUGS.md`
+- Verification performed:
+- Notes: The selector supports a light mode with minimal interruptions and higher probe counts for more realistic pushback.
+
 ### BUG-016: STAR practice prompt could not simulate configurable interviewer follow-up questions
 - Status: Fixed
 - Severity: Medium

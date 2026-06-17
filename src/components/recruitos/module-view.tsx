@@ -410,11 +410,13 @@ function buildCasePracticePrompt({
   questionType,
   framework,
   durationLabel,
+  probeCount,
 }: {
   question: string;
   questionType: string;
   framework: string;
   durationLabel?: string;
+  probeCount: number;
 }) {
   return [
     "You are my MBA case interview coach.",
@@ -424,7 +426,9 @@ function buildCasePracticePrompt({
       : "Let me choose the framework as I work through the case.",
     durationLabel ? `If useful, roughly keep me moving with a ${durationLabel} answer window.` : "",
     "Act like a live interviewer. Ask the question first, let me drive the case step by step, and do not solve it for me too early.",
-    "Challenge weak assumptions, push on unclear thinking, and ask follow-up questions where useful.",
+    probeCount > 0
+      ? `During the case, push back like a real interviewer and ask about ${probeCount} concise probing follow-up question${probeCount === 1 ? "" : "s"} at natural moments to test my assumptions, math, prioritization, or next step.`
+      : "Let me drive the case with minimal interruptions unless I get stuck or ask for clarification.",
     "After I finish, give concise feedback on structure, analysis, communication, synthesis, and whether my framework actually fit the question.",
     "Then score me from 1-5 on structure, analysis, communication, and overall performance, and tell me the single most important fix for the next rep.",
   ]
@@ -761,6 +765,7 @@ function PracticeCaseModal({
   const caseRecord = data.cases.find((item) => item.id === caseId) ?? null;
   const [useTimer, setUseTimer] = useState(false);
   const [duration, setDuration] = useState(120);
+  const [probeCount, setProbeCount] = useState(2);
   const [secondsLeft, setSecondsLeft] = useState(120);
   const [running, setRunning] = useState(false);
   const [frameworkUsed, setFrameworkUsed] = useState(() => caseRecord?.framework_used ?? "");
@@ -803,6 +808,7 @@ function PracticeCaseModal({
     questionType: caseRecord.case_type,
     framework: frameworkUsed,
     durationLabel: useTimer ? durationLabel : undefined,
+    probeCount,
   });
 
   return (
@@ -844,6 +850,36 @@ function PracticeCaseModal({
               />
               <div className="mt-2 text-xs text-slate-500">
                 Framework suggestions for each question type can stay empty until you add your own.
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-slate-700">Interviewer probes</span>
+                  <span className="text-xs text-slate-500">
+                    {probeCount === 0
+                      ? "Minimal interruptions"
+                      : `${probeCount} probe${probeCount === 1 ? "" : "s"} selected`}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[0, 1, 2, 3, 4].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setProbeCount(value)}
+                      className={cx(
+                        "rounded-full border px-3 py-1.5 text-xs transition",
+                        probeCount === value
+                          ? "border-teal-200 bg-cyan-50 text-teal-700"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                      )}
+                    >
+                      {value === 0 ? "Light" : value}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500">
+                  Use 2 for a realistic default, or increase it if you want more pushback during the case.
+                </p>
               </div>
             </div>
 
@@ -930,7 +966,7 @@ function PracticeCaseModal({
                   <div>
                     <div className="text-sm font-medium text-slate-700">GPT Case Prompt</div>
                     <div className="text-xs text-slate-500">
-                      Copy this into GPT to run the live case rep. Every save creates a new practice log for this same question.
+                      Copy this into GPT to run the live case rep with {probeCount} interviewer probe{probeCount === 1 ? "" : "s"}. Every save creates a new practice log for this same question.
                     </div>
                   </div>
                 <div className="flex flex-wrap gap-2">
