@@ -1,6 +1,6 @@
 # RecruitOS Bug Tracker
 
-Last updated: 2026-05-21
+Last updated: 2026-06-16
 
 ## How to use this file
 
@@ -71,7 +71,79 @@ Last updated: 2026-05-21
 - Files changed:
 - Notes:
 
+
+
+
+
+
+
 ## Fixed Issues
+
+### BUG-016: STAR practice prompt could not simulate configurable interviewer follow-up questions
+- Status: Fixed
+- Severity: Medium
+- Module: PARs
+- Fixed date: 2026-06-16
+- Description: The STAR practice modal generated a strong base GPT prompt, but it could not tell GPT to ask realistic interviewer-style follow-up questions, and the user had no control over how many follow-ups to include in a rep.
+- Fix summary: Added a follow-up question selector to the STAR practice modal, defaulted it to 2 for a realistic rep, reflected the selected count in the UI, and injected the configured interviewer-style follow-up instructions directly into the GPT prompt.
+- Files changed: `src/components/recruitos/module-view.tsx`, `BUGS.md`
+- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
+- Notes: The selector supports zero follow-ups for quick reps and updates the prompt live as the user changes the count.
+
+### BUG-015: RecruitOS has no user-facing export or backup flow for personal recruiting data
+- Status: Fixed
+- Severity: High
+- Module: Data Safety
+- Fixed date: 2026-05-22
+- Description: The app stored recruiting data in Supabase or local browser storage, but it did not currently give the user a simple way to download a backup copy.
+- Fix summary: Added a one-click JSON export in Settings that downloads the current RecruitOS dataset with export metadata and the active persistence mode.
+- Files changed: `src/components/recruitos/module-view.tsx`, `BUGS.md`
+- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
+- Notes: The export uses the live in-memory RecruitOS dataset, so it works for both Supabase-backed and local-mode sessions.
+
+### BUG-014: Interview prep lacks an assembled packet view for upcoming interviews
+- Status: Fixed
+- Severity: High
+- Module: Interview Prep
+- Fixed date: 2026-05-22
+- Description: Interview prep records generated checklist action items, but the user still had to manually gather the company snapshot, application context, best PARs, best answers, and open prep tasks.
+- Fix summary: Added a pure interview prep packet builder, surfaced packet cards on the dashboard and interview prep module, highlighted missing prep gaps, and kept open checklist actions actionable from the packet view.
+- Files changed: `src/lib/recruitos.ts`, `src/components/recruitos/module-view.tsx`, `BUGS.md`
+- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
+- Notes: The v1 packet uses explicit links first and falls back to role/confidence-based suggestions.
+
+### BUG-013: Networking module is missing execution support for outreach sequencing and post-call follow-through
+- Status: Fixed
+- Severity: High
+- Module: Networking
+- Fixed date: 2026-05-22
+- Description: Contacts were tracked, but the app did not guide the user through who to contact next, how to prep for the conversation, or how to turn a call into next steps.
+- Fix summary: Added contact workflow insights, next-best-action groupings, prep prompts, and post-call shortcut actions on both the dashboard and networking module.
+- Files changed: `src/lib/recruitos.ts`, `src/components/recruitos/module-view.tsx`, `BUGS.md`
+- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
+- Notes: The workflow is still heuristic-driven and intentionally derived from existing single-user data.
+
+### BUG-012: Applications module lacks specialized pipeline triage workflows
+- Status: Fixed
+- Severity: High
+- Module: Applications
+- Fixed date: 2026-05-22
+- Description: Applications rendered as a generic CRUD table without strategy buckets such as Double Down, Apply This Week, Network First, At Risk, Waiting Too Long, and Drop.
+- Fix summary: Added derived application insights, strategy buckets, driver badges, and recruiting-specific action presets above the applications table and on the dashboard.
+- Files changed: `src/lib/recruitos.ts`, `src/components/recruitos/module-view.tsx`, `BUGS.md`
+- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
+- Notes: Labels and rankings are derived from deadline pressure, referral leverage, role fit, timeline, and stalled follow-up signals.
+
+### BUG-011: Dashboard lacks an opinionated prioritization layer for daily recruiting decisions
+- Status: Fixed
+- Severity: High
+- Module: Dashboard
+- Fixed date: 2026-05-22
+- Description: The dashboard surfaced activity, but it did not clearly rank what the user should do now based on application urgency, referral leverage, interview momentum, or stalled follow-ups.
+- Fix summary: Replaced generic action lists with a ranked What To Do Now queue and added shared decision-layer selectors that surface application, networking, and interview prep priorities.
+- Files changed: `src/lib/recruitos.ts`, `src/components/recruitos/module-view.tsx`, `BUGS.md`
+- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
+- Notes: The queue uses derived heuristics only and does not require schema changes.
 
 ### BUG-010: Resume versions cannot upload PDF files directly into RecruitOS
 - Status: Fixed
@@ -232,3 +304,5 @@ Maintain this checklist and update it as the product evolves:
 - [x] Settings targets update dashboard progress.
 - [x] Weekly view shows tasks by day.
 - [x] Brain dump can be converted into action item.
+
+

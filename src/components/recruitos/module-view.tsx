@@ -385,16 +385,21 @@ function buildStarPracticePrompt({
   title,
   question,
   durationLabel,
+  followUpCount,
 }: {
   title: string;
   question: string;
   durationLabel: string;
+  followUpCount: number;
 }) {
   return [
     "You are my MBA behavioral interview coach.",
     `Ask me this interview question: "${question}".`,
     `I will answer using my STAR story titled "${title}".`,
     `Time me for ${durationLabel}.`,
+    followUpCount > 0
+      ? `After my initial answer, ask ${followUpCount} concise interviewer-style follow-up question${followUpCount === 1 ? "" : "s"}, one at a time, the way a real interviewer would.`
+      : "Do not ask follow-up questions after my initial answer.",
     "After I answer, give concise feedback on structure, clarity, specificity, leadership, and impact.",
     "Then score me from 1-5 on delivery, structure, and confidence, and tell me the single most important fix for the next rep.",
   ].join("\n");
@@ -448,6 +453,7 @@ function PracticeStarModal({
     questionOptions[0]?.id ?? data.interviewQuestions[0]?.id ?? "";
   const [questionId, setQuestionId] = useState(initialQuestionId);
   const [duration, setDuration] = useState(120);
+  const [followUpCount, setFollowUpCount] = useState(2);
   const [secondsLeft, setSecondsLeft] = useState(120);
   const [running, setRunning] = useState(false);
   const [answerNotes, setAnswerNotes] = useState("");
@@ -484,6 +490,7 @@ function PracticeStarModal({
     title: story.title,
     question: selectedQuestion,
     durationLabel,
+    followUpCount,
   });
 
   return (
@@ -527,6 +534,36 @@ function PracticeStarModal({
                   )}
                 </select>
               </label>
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-slate-700">Interviewer follow-ups</span>
+                  <span className="text-xs text-slate-500">
+                    {followUpCount === 0
+                      ? "No follow-ups"
+                      : `${followUpCount} follow-up${followUpCount === 1 ? "" : "s"} selected`}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[0, 1, 2, 3, 4].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setFollowUpCount(value)}
+                      className={cx(
+                        "rounded-full border px-3 py-1.5 text-xs transition",
+                        followUpCount === value
+                          ? "border-teal-200 bg-cyan-50 text-teal-700"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                      )}
+                    >
+                      {value === 0 ? "None" : value}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500">
+                  Use 2 for a realistic default, or change it based on how intense you want the rep to feel.
+                </p>
+              </div>
             </div>
 
             <div className="rounded-[24px] border border-slate-200/80 bg-white/82 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
@@ -585,7 +622,7 @@ function PracticeStarModal({
                 <div>
                   <div className="text-sm font-medium text-slate-700">GPT Practice Prompt</div>
                   <div className="text-xs text-slate-500">
-                    Copy this into GPT to run the live coaching rep.
+                    Copy this into GPT to run the live coaching rep with {followUpCount} interviewer-style follow-up{followUpCount === 1 ? "" : "s"}.
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
