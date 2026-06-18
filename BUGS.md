@@ -79,6 +79,17 @@ Last updated: 2026-06-18
 
 ## Fixed Issues
 
+### BUG-019: Networking contact names do not open the contact editor
+- Status: Fixed
+- Severity: Low
+- Module: Networking
+- Fixed date: 2026-06-18
+- Description: Contacts could be opened through the edit icon, but clicking a contact name in the Networking table or Networking Execution card did nothing.
+- Fix summary: Made contact names open the existing contact editor in both the main Networking table and Networking Execution cards.
+- Files changed: `src/components/recruitos/module-view.tsx`, `BUGS.md`
+- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
+- Notes: The behavior uses the existing edit modal so relationship links and follow-up fields stay editable in one place.
+
 ### BUG-018: Networking Execution is oversized and over-eager with some contact suggestions
 - Status: Fixed
 - Severity: Medium

@@ -2098,9 +2098,13 @@ function NetworkingWorkflowSection({
                   <div key={insight.contact.id} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-sm font-medium text-slate-900">
+                        <button
+                          type="button"
+                          onClick={() => openContactEditor(insight.contact)}
+                          className="text-left text-sm font-medium text-slate-900 underline-offset-4 transition hover:text-teal-700 hover:underline"
+                        >
                           {sanitizeText(insight.contact.name)} - {sanitizeText(insight.company?.name || insight.contact.company_name || "Networking")}
-                        </div>
+                        </button>
                         <div className="text-xs text-slate-500">
                           {sanitizeText(insight.contact.role || "Contact")} - strength {insight.contact.relationship_strength}/5
                         </div>
@@ -3544,7 +3548,17 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                   >
                     {config.columns.map((column) => (
                       <td key={column.key} className="px-3 py-3.5 text-sm text-slate-700">
-                        {["status", "priority", "target_category", "referral_status", "prep_status"].includes(column.key) ||
+                        {slug === "networking" && column.key === "name" ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openContactEditor(record as unknown as RecruitOSData["contacts"][number])
+                            }
+                            className="text-left font-medium text-slate-900 underline-offset-4 transition hover:text-teal-700 hover:underline"
+                          >
+                            {renderValue(record[column.key])}
+                          </button>
+                        ) : ["status", "priority", "target_category", "referral_status", "prep_status"].includes(column.key) ||
                         typeof record[column.key] === "boolean" ? (
                           <StatusBadge value={record[column.key] as string} />
                         ) : (
