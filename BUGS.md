@@ -79,6 +79,17 @@ Last updated: 2026-06-18
 
 ## Fixed Issues
 
+### BUG-020: Networking rows and execution cards do not open from the full item click target
+- Status: Fixed
+- Severity: Low
+- Module: Networking
+- Fixed date: 2026-06-18
+- Description: Contact names opened the contact editor, but clicking elsewhere on a Networking row or Networking Execution card did not behave like the Cases section row opening pattern.
+- Fix summary: Made full Networking table rows and Networking Execution contact cards open the existing contact editor, while preserving action button behavior with isolated clicks.
+- Files changed: `src/components/recruitos/module-view.tsx`, `BUGS.md`
+- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
+- Notes: This makes Networking match the click affordance already used by case records.
+
 ### BUG-019: Networking contact names do not open the contact editor
 - Status: Fixed
 - Severity: Low

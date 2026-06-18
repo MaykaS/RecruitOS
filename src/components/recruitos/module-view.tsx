@@ -2095,16 +2095,24 @@ function NetworkingWorkflowSection({
               </div>
               <div className="grid gap-3 lg:grid-cols-2">
                 {items.map((insight) => (
-                  <div key={insight.contact.id} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                  <div
+                    key={insight.contact.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openContactEditor(insight.contact)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openContactEditor(insight.contact);
+                      }
+                    }}
+                    className="cursor-pointer rounded-[24px] border border-slate-200 bg-slate-50 p-4 transition hover:bg-white"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <button
-                          type="button"
-                          onClick={() => openContactEditor(insight.contact)}
-                          className="text-left text-sm font-medium text-slate-900 underline-offset-4 transition hover:text-teal-700 hover:underline"
-                        >
+                        <div className="text-sm font-medium text-slate-900">
                           {sanitizeText(insight.contact.name)} - {sanitizeText(insight.company?.name || insight.contact.company_name || "Networking")}
-                        </button>
+                        </div>
                         <div className="text-xs text-slate-500">
                           {sanitizeText(insight.contact.role || "Contact")} - strength {insight.contact.relationship_strength}/5
                         </div>
@@ -2119,14 +2127,20 @@ function NetworkingWorkflowSection({
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => markFollowUpDone(insight.contact.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          markFollowUpDone(insight.contact.id);
+                        }}
                         className={buttonClassName("secondary")}
                       >
                         Mark Touch Complete
                       </button>
                       <button
                         type="button"
-                        onClick={() => openContactEditor(insight.contact, "takeaway")}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openContactEditor(insight.contact, "takeaway");
+                        }}
                         className={buttonClassName("secondary")}
                       >
                         Log Takeaways
@@ -3539,25 +3553,21 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                     onClick={
                       slug === "cases"
                         ? () => openGenericRecordEditor(record)
+                        : slug === "networking"
+                          ? () => openContactEditor(record as unknown as RecruitOSData["contacts"][number])
                         : undefined
                     }
                     className={cx(
                       "rounded-2xl bg-slate-50 shadow-[0_1px_0_rgba(226,232,240,1)]",
-                      slug === "cases" && "cursor-pointer transition hover:bg-white",
+                      (slug === "cases" || slug === "networking") && "cursor-pointer transition hover:bg-white",
                     )}
                   >
                     {config.columns.map((column) => (
                       <td key={column.key} className="px-3 py-3.5 text-sm text-slate-700">
                         {slug === "networking" && column.key === "name" ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openContactEditor(record as unknown as RecruitOSData["contacts"][number])
-                            }
-                            className="text-left font-medium text-slate-900 underline-offset-4 transition hover:text-teal-700 hover:underline"
-                          >
+                          <span className="font-medium text-slate-900">
                             {renderValue(record[column.key])}
-                          </button>
+                          </span>
                         ) : ["status", "priority", "target_category", "referral_status", "prep_status"].includes(column.key) ||
                         typeof record[column.key] === "boolean" ? (
                           <StatusBadge value={record[column.key] as string} />
