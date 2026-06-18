@@ -2477,10 +2477,14 @@ export function getNetworkingWorkflowInsights(data: RecruitOSData): ContactWorkf
       let nextAction: ContactNextActionLabel = "Send Outreach";
       let primaryReason = "Open a relationship with a targeted outreach note.";
 
-      if (nextFollowUpDiff != null && nextFollowUpDiff < 0) {
+      if (nextFollowUpDiff != null && nextFollowUpDiff <= 0) {
         urgency += 35;
         nextAction = "Follow Up Now";
         primaryReason = "This relationship is due for a follow-up now.";
+      } else if (lastTouchDiff != null && lastTouchDiff <= -1 && !contact.conversation_notes) {
+        urgency += 28;
+        nextAction = "Log Takeaways";
+        primaryReason = "Capture the last conversation before the details fade.";
       } else if (
         linkedApplications.some((application) => application.referral_needed) &&
         contact.can_refer === "Yes" &&
@@ -2499,15 +2503,12 @@ export function getNetworkingWorkflowInsights(data: RecruitOSData): ContactWorkf
         primaryReason = "There is an upcoming touchpoint worth preparing for.";
       } else if (
         linkedApplications.length === 0 &&
+        contact.relationship_strength >= 4 &&
         (company?.priority === "High" || contact.priority === "High")
       ) {
         urgency += 20;
         nextAction = "Convert To Application";
         primaryReason = "This relationship is warm enough to turn into an application path.";
-      } else if (lastTouchDiff != null && lastTouchDiff <= -1 && !contact.conversation_notes) {
-        urgency += 14;
-        nextAction = "Log Takeaways";
-        primaryReason = "Capture the last conversation before the details fade.";
       }
 
       const companyLabel = company?.name || contact.company_name || "this company";

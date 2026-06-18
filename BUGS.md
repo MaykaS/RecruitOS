@@ -1,6 +1,6 @@
 # RecruitOS Bug Tracker
 
-Last updated: 2026-06-16
+Last updated: 2026-06-18
 
 ## How to use this file
 
@@ -78,6 +78,17 @@ Last updated: 2026-06-16
 
 
 ## Fixed Issues
+
+### BUG-018: Networking Execution is oversized and over-eager with some contact suggestions
+- Status: Fixed
+- Severity: Medium
+- Module: Networking
+- Fixed date: 2026-06-18
+- Description: The Networking Execution section rendered all suggestion groups expanded by default, making the Networking page feel heavy. Its follow-up heuristic also missed contacts due today, and its convert-to-application heuristic could suggest conversion based on high priority alone rather than a genuinely warm relationship.
+- Fix summary: Made Networking Execution collapsible with compact bucket counts, treated follow-ups due today as Follow Up Now, prioritized missing takeaways before conversion suggestions, and required strong relationship strength before recommending Convert To Application.
+- Files changed: `src/components/recruitos/module-view.tsx`, `src/lib/recruitos.ts`, `BUGS.md`
+- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
+- Notes: The bucket labels remain heuristic-driven, but the rules now better match actual networking workflow timing.
 
 ### BUG-017: Case practice prompt could not simulate configurable interviewer probes
 - Status: Fixed

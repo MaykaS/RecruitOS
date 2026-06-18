@@ -2047,10 +2047,42 @@ function NetworkingWorkflowSection({
   markFollowUpDone: ReturnType<typeof useRecruitOS>["markFollowUpDone"];
   openContactEditor: (contact: RecruitOSData["contacts"][number], mode?: "takeaway") => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const bucketCounts = CONTACT_BUCKET_ORDER.map((label) => ({
+    label,
+    count: insights.filter((insight) => insight.contactNextBestAction === label).length,
+  })).filter((bucket) => bucket.count > 0);
+
   return (
-    <Card title="Networking Execution">
+    <Card
+      title="Networking Execution"
+      actions={
+        <button
+          type="button"
+          onClick={() => setExpanded((current) => !current)}
+          className={buttonClassName("secondary")}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Collapse" : "Expand"}
+        </button>
+      }
+    >
       <div className="space-y-4">
-        {CONTACT_BUCKET_ORDER.map((label) => {
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
+            {insights.length} contact{insights.length === 1 ? "" : "s"} ranked
+          </span>
+          {bucketCounts.map((bucket) => (
+            <span
+              key={bucket.label}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600"
+            >
+              {bucket.label}: {bucket.count}
+            </span>
+          ))}
+        </div>
+
+        {expanded ? CONTACT_BUCKET_ORDER.map((label) => {
           const items = insights.filter((insight) => insight.contactNextBestAction === label).slice(0, 2);
           if (!items.length) return null;
           return (
@@ -2101,7 +2133,7 @@ function NetworkingWorkflowSection({
               </div>
             </div>
           );
-        })}
+        }) : null}
       </div>
     </Card>
   );
