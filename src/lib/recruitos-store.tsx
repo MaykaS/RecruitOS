@@ -92,6 +92,16 @@ function uniqueStrings(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function normalizeStringArray(value: unknown) {
+  if (Array.isArray(value)) {
+    return uniqueStrings(value.map((item) => String(item).trim()));
+  }
+  if (typeof value === "string" && value.trim()) {
+    return [value.trim()];
+  }
+  return [];
+}
+
 function syncDerivedState(input: RecruitOSData): RecruitOSData {
   const cases = input.cases.map((item) => ({
     ...MODULE_CONFIGS.cases.defaultValues,
@@ -108,6 +118,7 @@ function syncDerivedState(input: RecruitOSData): RecruitOSData {
 
   const companies = input.companies.map((company) => ({
     ...company,
+    role_fit: normalizeStringArray(company.role_fit),
     linked_contact_ids: uniqueStrings([
       ...company.linked_contact_ids,
       ...input.contacts

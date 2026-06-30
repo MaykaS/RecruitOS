@@ -66,7 +66,7 @@ const ARRAY_FIELDS: Record<string, string[]> = {
   brain_dumps: [],
   case_learnings: [],
   case_practice_logs: [],
-  companies: ["linked_contact_ids", "linked_application_ids"],
+  companies: ["role_fit", "linked_contact_ids", "linked_application_ids"],
   contacts: ["tags", "linked_application_ids"],
   interview_answers: [
     "linked_par_story_ids",

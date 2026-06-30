@@ -200,7 +200,7 @@ export interface Company extends BaseRecord {
   name: string;
   industry: string;
   target_category: string;
-  role_fit: string;
+  role_fit: string[];
   priority: string;
   visa_friendliness: string;
   recruiting_timeline: string;
@@ -730,7 +730,7 @@ export const seedData = (): RecruitOSData => {
         name: "Oracle",
         industry: "Enterprise Software",
         target_category: "Dream",
-        role_fit: "AI Product",
+        role_fit: ["AI Product"],
         priority: "High",
         visa_friendliness: "Medium",
         recruiting_timeline: "Regular",
@@ -756,7 +756,7 @@ export const seedData = (): RecruitOSData => {
         name: "Adobe",
         industry: "Software",
         target_category: "Strong",
-        role_fit: "PM",
+        role_fit: ["PM"],
         priority: "High",
         visa_friendliness: "Unknown",
         recruiting_timeline: "Early",
@@ -780,7 +780,7 @@ export const seedData = (): RecruitOSData => {
         name: "Amazon",
         industry: "Technology",
         target_category: "Exploratory",
-        role_fit: "TPM",
+        role_fit: ["TPM"],
         priority: "Medium",
         visa_friendliness: "Strong",
         recruiting_timeline: "Just-in-Time",
@@ -1663,10 +1663,11 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       { key: "name", label: "Name", type: "text" },
       { key: "industry", label: "Industry", type: "text" },
       { key: "target_category", label: "Target category", type: "select", options: ["Dream", "Strong", "Backup", "Exploratory"] },
-      { key: "role_fit", label: "Role fit", type: "select", options: ["PM", "TPM", "Product Strategy", "BizOps", "AI Product", "Consulting", "Other"] },
+      { key: "role_fit", label: "Role fit", type: "multiselect", options: ["PM", "TPM", "Product Strategy", "BizOps", "AI Product", "Consulting", "Other"] },
       { key: "priority", label: "Priority", type: "select", options: ACTION_ITEM_PRIORITIES },
       { key: "visa_friendliness", label: "Visa friendliness", type: "select", options: ["Strong", "Medium", "Weak", "Unknown"] },
       { key: "recruiting_timeline", label: "Recruiting timeline", type: "select", options: ["Early", "Regular", "Just-in-Time", "Unknown"] },
+      { key: "linked_contact_ids", label: "Linked networking contacts", type: "multiselect", options: getContactOptions },
       { key: "why_this_company", label: "Why this company", type: "textarea" },
       { key: "relevant_experience", label: "Relevant experience", type: "textarea" },
       { key: "best_angle", label: "Best angle", type: "text" },
@@ -1682,7 +1683,7 @@ export const MODULE_CONFIGS: Record<CrudModuleSlug, ModuleConfig> = {
       name: "",
       industry: "",
       target_category: "Strong",
-      role_fit: "PM",
+      role_fit: [],
       priority: "Medium",
       visa_friendliness: "Unknown",
       recruiting_timeline: "Unknown",
@@ -2350,7 +2351,7 @@ export function getApplicationInsights(data: RecruitOSData): ApplicationInsight[
       let score = 0;
 
       if (company?.priority === "High" || application.priority === "High") score += 18;
-      if (company?.role_fit && TARGET_ROLES.includes(company.role_fit)) score += 8;
+      if (company?.role_fit?.some((role) => TARGET_ROLES.includes(role))) score += 8;
       if (hasWarmContact) score += 14;
       if (hasInterviewSignal) score += 16;
       if (application.status === "Ready to Apply") score += 18;

@@ -1594,6 +1594,18 @@ function RecordModal({
             learning.linked_question_type === String(initial.case_type || ""),
         )
       : [];
+  const companyNetworkingContacts =
+    initial?.id && module === "companies"
+      ? data.contacts
+          .filter((contact) => {
+            const companyId = String(initial.id);
+            const manuallyLinked = Array.isArray(initial.linked_contact_ids)
+              ? initial.linked_contact_ids.map(String).includes(contact.id)
+              : false;
+            return contact.company_id === companyId || manuallyLinked;
+          })
+          .sort((left, right) => left.name.localeCompare(right.name))
+      : [];
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,251,252,0.98))] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
@@ -1879,6 +1891,48 @@ function RecordModal({
                   <div className="mt-2 text-sm leading-6 text-slate-700">
                     {sanitizeText(learning.tip_text)}
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {module === "companies" && companyNetworkingContacts.length > 0 ? (
+          <div className="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-sm font-medium text-slate-900">
+              Networking connections ({companyNetworkingContacts.length})
+            </div>
+            <div className="grid gap-3 lg:grid-cols-2">
+              {companyNetworkingContacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                >
+                  <div className="text-sm font-medium text-slate-900">
+                    {sanitizeText(contact.name)}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {sanitizeText(contact.role || "Contact")}
+                    {contact.company_name ? ` - ${sanitizeText(contact.company_name)}` : ""}
+                  </div>
+                  <div className="mt-2 text-xs text-slate-500">
+                    Strength {contact.relationship_strength}/5
+                    {contact.next_follow_up_date
+                      ? ` - follow-up ${sanitizeText(renderValue(contact.next_follow_up_date))}`
+                      : ""}
+                  </div>
+                  {contact.tags.length ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {contact.tags.slice(0, 4).map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600"
+                        >
+                          {sanitizeText(tag)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>

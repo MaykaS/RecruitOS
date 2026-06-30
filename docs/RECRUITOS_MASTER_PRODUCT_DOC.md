@@ -1,6 +1,6 @@
 # RecruitOS Master Product Document
 
-Last updated: 2026-06-16
+Last updated: 2026-06-30
 Owner: Maya + Codex
 Document type: Living product source of truth
 
@@ -201,7 +201,7 @@ The user should be able to:
 | Action Items | Universal linked action items | Exists | Stay synced everywhere and power all workflows | Medium | Critical |
 | Applications | Opportunity tracker | Exists | Become the main recruiting execution hub | Medium | Critical |
 | Applications | Outreach / recruiter / referral workflow | Partial | Reflect how MBA users actually pursue roles | High | Critical |
-| Companies | Company intelligence and linkage | Exists | Be driven primarily by real recruiting targets | Medium | High |
+| Companies | Company intelligence and linkage | Exists | Be driven primarily by real recruiting targets and show real networking coverage | Medium | High |
 | Networking | Contact CRM and follow-up | Exists | Support warm outreach, referral tracking, and next steps | Medium | Critical |
 | STAR | Story library | Exists | Fast to browse, practice, improve, and map to questions | Medium | Critical |
 | STAR | Question bank and coverage | Exists | Show real coverage strengths and gaps | Medium | High |
@@ -325,14 +325,25 @@ Track target companies and hold recruiting context.
 ### Current Capabilities
 - company CRUD
 - linkage to related records
+- auto-derived networking contacts from contact company assignments
+- multi-role-fit support
 
 ### Required End-State Behavior
 - company list should be driven primarily by actual target / applied companies
 - networking should link into companies, not accidentally define the main company universe
 - company pages should help with prep, positioning, and contact mapping
+- companies should show relevant networking contacts clearly
+- company-contact linkage should support:
+  - automatic company matching from contact `company_id`
+  - manual override links from the Company side when needed
+- role fit should support multiple relevant functions, not only one
 
 ### Main Gaps
-- stronger separation between target company tracking and passive contact-company data
+- stronger Company detail visibility for:
+  - linked networking contacts
+  - linked applications
+  - warm-contact coverage
+  - referral-path visibility
 
 ## 11.5 Networking / Contacts
 
@@ -344,12 +355,14 @@ Act as the recruiting CRM for people, follow-ups, referral paths, and relationsh
 - multi-tag behavior
 - link to companies and applications
 - follow-up fields
+- automatic visibility inside linked Company records when company matches
 
 ### Required End-State Behavior
 - fast contact entry
 - multiple tags
 - editable linked company and application context
 - visible next step and referral potential
+- contact-to-company linkage should remain company-driven on the Contact side
 - actions like:
   - send outreach
   - log takeaways
@@ -635,6 +648,9 @@ The future RecruitOS agent layer should help the user discover, evaluate, prepar
 ### Core Relationship Rules
 - Action Items link back to source records
 - Contacts link to companies and applications
+- Companies expose the union of:
+  - contacts whose `company_id` points to the company
+  - contacts manually linked through company `linked_contact_ids`
 - Applications link to companies, contacts, resumes, and prep
 - STAR Stories link many-to-many with interview questions
 - Cases can have many practice logs
