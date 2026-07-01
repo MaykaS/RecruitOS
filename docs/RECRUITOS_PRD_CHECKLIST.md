@@ -1,81 +1,105 @@
 # RecruitOS PRD Checklist
 
+Last updated: 2026-06-30
+Purpose: Acceptance tracker for demo-critical product behavior
+
+## How To Use This File
+
+- Each line should answer "accepted when..."
+- Check an item only after the related behavior has been tested in the app
+- If behavior exists but feels fragile, leave it unchecked and log the issue in `BUGS.md`
+
 ## Dashboard
-- [ ] Today’s Command Center exists.
-- [ ] Daily PAR suggestion is shown with practice controls.
-- [ ] Daily case suggestion is shown with practice controls.
-- [ ] Networking follow-ups due are shown.
-- [ ] Applications requiring action are shown.
-- [ ] Mock interview reminder appears when needed.
-- [ ] Open action items due today are shown and editable.
-- [ ] Brain dump quick capture exists.
-- [ ] Weekly Monday-Sunday view exists.
-- [ ] Weekly progress scoreboard exists.
+
+- [ ] Accepted when the dashboard shows a usable Today's Command Center rather than a generic landing page.
+- [ ] Accepted when a daily STAR suggestion appears with working practice controls.
+- [ ] Accepted when a daily case suggestion appears with working practice controls.
+- [ ] Accepted when networking follow-ups due now are surfaced clearly.
+- [ ] Accepted when applications requiring action are surfaced clearly.
+- [ ] Accepted when open action items due today or overdue are visible and actionable.
+- [ ] Accepted when weekly progress is visible and updates from real activity.
+- [ ] Accepted when quick Brain Dump capture works from the dashboard.
 
 ## Action Items
-- [ ] Action items support create, read, update, and delete.
-- [ ] Action items stay linked to source records.
-- [ ] Completion state syncs everywhere.
-- [ ] Today / Overdue / This Week / By Source / By Priority / Waiting / Completed views exist.
 
-## PARs
-- [ ] PAR story CRUD exists.
-- [ ] Interview question CRUD exists.
-- [ ] PARs can link to interview questions.
-- [ ] Questions view expands to show linked PAR stories.
-- [ ] PAR practice logs can be created.
-- [ ] Daily suggestion logic exists.
+- [ ] Accepted when a user can create, edit, complete, reopen, and delete action items.
+- [ ] Accepted when action items stay linked to their source records.
+- [ ] Accepted when marking an action item complete updates every place it appears.
+- [ ] Accepted when Today, Overdue, This Week, Waiting, and Completed views behave correctly.
 
-## Interview Questions
-- [ ] Questions are grouped and editable.
-- [ ] Linked PARs are visible per question.
+## PARs / STARs
+
+- [ ] Accepted when a user can create, edit, and delete STAR stories.
+- [ ] Accepted when interview questions can be created, edited, and linked to STAR stories.
+- [ ] Accepted when one STAR can link to many interview questions and the relationship is visible from both sides.
+- [ ] Accepted when STAR practice logs can be created and reflected back into the story record.
+- [ ] Accepted when the daily STAR suggestion logic produces a believable recommendation.
 
 ## Interview Answers
-- [ ] Interview answer CRUD exists.
-- [ ] Practice actions update practice metadata.
-- [ ] Answers can link to PARs, applications, and interview prep.
+
+- [ ] Accepted when a user can create, edit, and delete interview answers.
+- [ ] Accepted when practicing an interview answer updates practice metadata correctly.
+- [ ] Accepted when interview answers can link to STARs, applications, and interview prep records.
 
 ## Cases
-- [ ] Case CRUD exists.
-- [ ] Daily case suggestion logic exists.
-- [ ] Redo-needed and weakness tracking exists.
+
+- [ ] Accepted when a user can create, edit, and delete case records.
+- [ ] Accepted when a daily case suggestion is shown and can be acted on.
+- [ ] Accepted when case practice logs update scores, redo-needed behavior, and weakness tracking correctly.
+- [ ] Accepted when case learnings can be created from practice and reused later.
 
 ## Networking
-- [ ] Contact CRUD exists.
-- [ ] Follow-up workflow exists.
-- [ ] Contact links to company, applications, and action items.
+
+- [ ] Accepted when a user can create, edit, and delete contacts.
+- [ ] Accepted when follow-up workflow behavior feels usable for real networking.
+- [ ] Accepted when contacts link correctly to companies, applications, and action items.
+- [ ] Accepted when marking a networking touch complete updates the next-step state correctly.
 
 ## Companies
-- [ ] Company CRUD exists.
-- [ ] Company links to contacts and applications.
+
+- [ ] Accepted when a user can create, edit, and delete companies.
+- [ ] Accepted when companies show linked contacts and linked applications correctly.
+- [ ] Accepted when company context supports recruiting research and prep, not just storage.
 
 ## Applications
-- [ ] Application CRUD exists.
-- [ ] Recruiting track split exists.
-- [ ] Daily and weekly application progress exists.
-- [ ] Rejection conversion suggestion exists.
+
+- [ ] Accepted when a user can create, edit, and delete applications.
+- [ ] Accepted when an application can link to a company, contact, resume, and action items without broken references.
+- [ ] Accepted when recruiting track, status, and follow-up behavior reflect real workflow state.
+- [ ] Accepted when application progress contributes correctly to dashboard reporting.
+- [ ] Accepted when application triage recommendations are believable enough to trust in a demo.
 
 ## Interview Prep
-- [ ] Interview prep CRUD exists.
-- [ ] Checklist action items are generated on create.
-- [ ] Readiness score is calculated from linked checklist items.
+
+- [ ] Accepted when a user can create, edit, and delete interview prep records.
+- [ ] Accepted when checklist action items are generated on create.
+- [ ] Accepted when readiness score updates from linked checklist action items.
+- [ ] Accepted when interview prep can pull together company, application, STAR, answer, case, and task context into one coherent prep flow.
 
 ## Mock Interviews
-- [ ] Mock interview CRUD exists.
-- [ ] Weekly reminder logic exists.
-- [ ] Mocks can link to PARs, cases, and action items.
+
+- [ ] Accepted when a user can create, edit, and delete mock interview records.
+- [ ] Accepted when weekly mock reminder logic behaves correctly.
+- [ ] Accepted when mocks can link to STARs, cases, and action items.
+- [ ] Accepted when mock interview feedback can turn into follow-up work.
 
 ## Resumes
-- [ ] Resume CRUD exists.
-- [ ] Resume to application relationship exists.
+
+- [ ] Accepted when a user can create, edit, and delete resume versions.
+- [ ] Accepted when a PDF resume can be uploaded successfully when Supabase storage is configured.
+- [ ] Accepted when a resume can link to an application and reopen successfully later.
 
 ## Outreach Templates
-- [ ] Outreach template CRUD exists.
+
+- [ ] Accepted when a user can create, edit, and delete outreach templates.
+- [ ] Accepted when outreach templates are usable for networking and application follow-up workflows.
 
 ## Settings
-- [ ] Dashboard targets are editable.
-- [ ] Editable option lists exist for case types, statuses, priorities, and recruiting tracks.
+
+- [ ] Accepted when dashboard target settings are editable and update downstream behavior.
+- [ ] Accepted when editable option lists support case types, statuses, priorities, and recruiting tracks.
 
 ## Global Search And Filters
-- [ ] Global search is available.
-- [ ] Each major module can filter/search by key fields.
+
+- [ ] Accepted when global search returns useful results across major modules.
+- [ ] Accepted when each major module can search and sort by its key fields without confusing behavior.

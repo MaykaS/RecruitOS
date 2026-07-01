@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ApplicationInsight,
-  BRAIN_DUMP_CATEGORIES,
   ContactWorkflowInsight,
   CrudModuleSlug,
   FieldConfig,
@@ -25,7 +24,6 @@ import {
   getSourceSummary,
   getTopPriorityQueue,
   isActionDone,
-  isDueTodayOrOverdue,
   isInCurrentWeek,
   joinList,
   progressPercentage,
@@ -2297,38 +2295,14 @@ function DashboardView() {
     data,
     logParPractice,
     markCasePracticed,
-    markFollowUpDone,
     toggleActionItem,
     createActionItemFromSource,
-    convertBrainDumpToActionItem,
-    saveRecord,
   } = useRecruitOS();
   const [parIndex, setParIndex] = useState(0);
   const [caseIndex, setCaseIndex] = useState(0);
   const [practiceStoryId, setPracticeStoryId] = useState<string | null>(null);
   const [practiceCaseId, setPracticeCaseId] = useState<string | null>(null);
   const [selectedWeekDate, setSelectedWeekDate] = useState(toDateInput(new Date().toISOString()));
-  const [networkingModalOpen, setNetworkingModalOpen] = useState(false);
-  const [networkingEditing, setNetworkingEditing] = useState<Record<string, unknown> | null>(null);
-  const [brainDump, setBrainDump] = useState({
-    title: "",
-    note: "",
-    category: "General",
-  });
-  const openNetworkingContactEditor = useCallback(
-    (contact: RecruitOSData["contacts"][number], mode?: "takeaway") => {
-      const existingNotes = String(contact.conversation_notes ?? "").trim();
-      const takeawayStub = existingNotes
-        ? `${existingNotes}\nPost-call takeaway: `
-        : "Post-call takeaway: ";
-      setNetworkingEditing({
-        ...contact,
-        conversation_notes: mode === "takeaway" ? takeawayStub : contact.conversation_notes,
-      });
-      setNetworkingModalOpen(true);
-    },
-    [],
-  );
 
   const parCandidates = sortParSuggestions(data.parStories);
   const caseCandidates = sortCaseSuggestions(data.cases);
@@ -2336,23 +2310,6 @@ function DashboardView() {
   const caseSuggestion = caseCandidates[caseIndex % Math.max(caseCandidates.length, 1)];
   const queue = useMemo(() => getTopPriorityQueue(data), [data]);
   const applicationInsights = useMemo(() => getApplicationInsights(data), [data]);
-  const networkingInsights = useMemo(() => getNetworkingWorkflowInsights(data), [data]);
-  const prepPackets = useMemo(
-    () =>
-      data.interviewPrep
-        .map((prep) => buildInterviewPrepPacket(data, prep.id))
-        .filter((packet): packet is InterviewPrepPacket => Boolean(packet))
-        .sort(
-          (left, right) =>
-            new Date(left.prep.interview_date || "9999-12-31").getTime() -
-            new Date(right.prep.interview_date || "9999-12-31").getTime(),
-        )
-        .slice(0, 3),
-    [data],
-  );
-  const openActionItems = data.actionItems.filter(
-    (action) => !isActionDone(action) && isDueTodayOrOverdue(action.due_date),
-  );
   const mocksThisWeek = data.mockInterviews.filter((mock) => isInCurrentWeek(mock.date));
   const parRepsThisWeek = data.parPracticeLogs.filter((log) => isInCurrentWeek(log.date)).length;
   const caseRepsThisWeek = data.casePracticeLogs.filter((log) => isInCurrentWeek(log.date)).length;
@@ -2547,7 +2504,7 @@ function DashboardView() {
         </Card>
       </div>
 
-      <Card title="What To Do Now">
+      <Card title="Next Steps">
         <div className="space-y-3">
           {queue.length ? (
             queue.map((item) => (
@@ -2563,15 +2520,6 @@ function DashboardView() {
                     <div className="text-sm text-slate-700">{sanitizeText(item.reason)}</div>
                   </div>
                   <div className="flex flex-wrap gap-2 lg:justify-end">
-                    {item.kind === "contact" ? (
-                      <button
-                        type="button"
-                        onClick={() => markFollowUpDone(item.linkedId)}
-                        className={buttonClassName("secondary")}
-                      >
-                        Mark Touch Complete
-                      </button>
-                    ) : null}
                     {item.kind === "application" ? (
                       <button
                         type="button"
@@ -2590,9 +2538,14 @@ function DashboardView() {
                         Add Action
                       </button>
                     ) : null}
+                    {item.kind === "contact" ? (
+                      <Link href="/networking" className={buttonClassName("secondary")}>
+                        Open Networking
+                      </Link>
+                    ) : null}
                     {item.kind === "interview-prep" ? (
                       <Link href="/interview-prep" className={buttonClassName("secondary")}>
-                        Open Packet
+                        Open Interview Prep
                       </Link>
                     ) : null}
                   </div>
@@ -2610,150 +2563,6 @@ function DashboardView() {
           insights={applicationInsights.slice(0, 12)}
           createActionItemFromSource={createActionItemFromSource}
         />
-        <NetworkingWorkflowSection
-          insights={networkingInsights.slice(0, 10)}
-          markFollowUpDone={markFollowUpDone}
-          openContactEditor={openNetworkingContactEditor}
-        />
-        <InterviewPrepPacketsSection
-          packets={prepPackets}
-          toggleActionItem={toggleActionItem}
-          createActionItemFromSource={createActionItemFromSource}
-        />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_1fr_1fr]">
-        <Card title="Mock Interview Reminder">
-          {mocksThisWeek.length ? (
-            <div className="space-y-3 text-sm text-slate-700">
-              <p>You already logged {mocksThisWeek.length} mock interview(s) this week.</p>
-              <Link href="/mock-interviews" className={buttonClassName("secondary")}>
-                Review Mock Notes
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-slate-700">
-                No mock interview has been completed this week. Keep the cadence alive before live interviews.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Link href="/mock-interviews" className={buttonClassName("primary")}>
-                  Log Mock Interview
-                </Link>
-                <button
-                  type="button"
-                  onClick={() =>
-                    createActionItemFromSource({
-                      title: "Schedule this week's mock interview",
-                      source_type: "Mock Interview",
-                      source_id: "dashboard-weekly-mock",
-                    })
-                  }
-                  className={buttonClassName("secondary")}
-                >
-                  Create Mock Prep Action Item
-                </button>
-              </div>
-            </div>
-          )}
-        </Card>
-
-        <Card title="Open Action Items Due Today">
-          <div className="space-y-3">
-            {openActionItems.length ? (
-              openActionItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"
-                >
-                  <div>
-                    <div className="text-sm font-medium text-slate-900">{item.title}</div>
-                    <div className="text-xs text-slate-500">
-                      {item.priority} - {getSourceSummary(data, item)}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleActionItem(item.id)}
-                    className={buttonClassName("secondary")}
-                  >
-                    Check Off
-                  </button>
-                </div>
-              ))
-            ) : (
-              <EmptyState label="No due action items right now." />
-            )}
-          </div>
-        </Card>
-
-        <Card title="Brain Dump / Quick Capture">
-          <div className="space-y-3">
-            <input
-              value={brainDump.title}
-              onChange={(event) => setBrainDump((current) => ({ ...current, title: event.target.value }))}
-              placeholder="Quick title"
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
-            />
-            <textarea
-              value={brainDump.note}
-              onChange={(event) => setBrainDump((current) => ({ ...current, note: event.target.value }))}
-              placeholder="Write anything you do not want to lose..."
-              rows={4}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-300 focus:bg-white"
-            />
-            <select
-              value={brainDump.category}
-              onChange={(event) => setBrainDump((current) => ({ ...current, category: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
-            >
-              {BRAIN_DUMP_CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => {
-                if (!brainDump.title.trim()) return;
-                saveRecord("brain-dump", {
-                  ...brainDump,
-                  converted_action_item_id: "",
-                  linked_contact_id: "",
-                  linked_company_id: "",
-                  linked_application_id: "",
-                  linked_par_id: "",
-                  linked_case_id: "",
-                  linked_mock_interview_id: "",
-                  linked_resume_id: "",
-                  linked_interview_prep_id: "",
-                });
-                setBrainDump({ title: "", note: "", category: "General" });
-              }}
-              className={buttonClassName("primary")}
-            >
-              Save Brain Dump
-            </button>
-            <div className="space-y-2">
-              {data.brainDumps.slice(0, 3).map((item) => (
-                <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-sm font-medium text-slate-900">{item.title}</div>
-                  <div className="text-xs text-slate-500">{item.category}</div>
-                  <div className="mt-2 text-sm text-slate-700">{item.note}</div>
-                  <button
-                    type="button"
-                    onClick={() => convertBrainDumpToActionItem(item.id)}
-                    disabled={Boolean(item.converted_action_item_id)}
-                    className={buttonClassName("secondary")}
-                  >
-                    {item.converted_action_item_id ? "Converted" : "Convert to Action Item"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
       </div>
 
       <Card title="Weekly View">
@@ -2858,18 +2667,6 @@ function DashboardView() {
         </div>
       </Card>
 
-      <RecordModal
-        key={`${networkingEditing?.id ? String(networkingEditing.id) : "new"}-${networkingModalOpen ? "open" : "closed"}`}
-        title={
-          networkingEditing?.id
-            ? `Edit ${String(networkingEditing.name ?? "networking contact")}`
-            : "Edit Networking Contact"
-        }
-        open={networkingModalOpen}
-        onClose={() => setNetworkingModalOpen(false)}
-        module="networking"
-        initial={networkingEditing}
-      />
       <PracticeStarModal
         key={`${practiceStoryId ?? "none"}-${practiceStoryId ? "open" : "closed"}`}
         open={Boolean(practiceStoryId)}
@@ -3395,6 +3192,28 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
     () => config.sortOptions.find((option) => option.key === sortKey) ?? config.sortOptions[0],
     [config.sortOptions, sortKey],
   );
+  const effectiveSort = useMemo(() => {
+    if (slug === "action-items" && actionView === "By Priority") {
+      return {
+        option:
+          config.sortOptions.find((option) => option.key === "priority") ?? activeSortOption,
+        direction: "desc" as SortDirection,
+      };
+    }
+
+    if (slug === "action-items" && actionView === "By Source") {
+      return {
+        option:
+          config.sortOptions.find((option) => option.key === "source_type") ?? activeSortOption,
+        direction: "asc" as SortDirection,
+      };
+    }
+
+    return {
+      option: activeSortOption,
+      direction: sortDirection,
+    };
+  }, [actionView, activeSortOption, config.sortOptions, slug, sortDirection]);
 
   const filteredRecords = useMemo(() => {
     const base = records.filter((record) =>
@@ -3410,15 +3229,22 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
       if (actionView === "This Week") return !isActionDone(item) && isInCurrentWeek(item.due_date);
       if (actionView === "Waiting") return item.status === "Waiting";
       if (actionView === "Completed") return item.status === "Done";
+      if (actionView === "By Priority") return !isActionDone(item);
+      if (actionView === "By Source") return !isActionDone(item);
       return true;
     });
   }, [actionView, config.searchKeys, query, records, slug]);
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((left, right) =>
-      compareSortValues(left[activeSortOption.key], right[activeSortOption.key], activeSortOption, sortDirection),
+      compareSortValues(
+        left[effectiveSort.option.key],
+        right[effectiveSort.option.key],
+        effectiveSort.option,
+        effectiveSort.direction,
+      ),
     );
-  }, [activeSortOption, filteredRecords, sortDirection]);
+  }, [effectiveSort, filteredRecords]);
 
   const openContactEditor = useCallback(
     (contact: RecruitOSData["contacts"][number], mode: "takeaway" | "edit" = "edit") => {

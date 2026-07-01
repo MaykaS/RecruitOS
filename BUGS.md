@@ -1,6 +1,6 @@
 # RecruitOS Bug Tracker
 
-Last updated: 2026-06-18
+Last updated: 2026-06-30
 
 ## How to use this file
 
@@ -26,23 +26,41 @@ Last updated: 2026-06-18
 - Medium: inconvenient but usable
 - Low: polish, copy, minor UX
 
-## Open Issues
+## Priority Tags
 
-### BUG-005: Supabase schema ID types are incompatible with frontend seed and runtime records
-- Status: Fixed
-- Severity: Critical
-- Module: Data Layer
-- Fixed date: 2026-05-21
-- Description: The current schema uses `uuid` primary/foreign keys, while the app currently generates and seeds string IDs such as `company-oracle` and `application-adobe`.
-- Fix summary: Reworked the Supabase schema to use text IDs that match the seeded frontend records and added a Supabase-backed repository/provider flow that seeds empty databases and persists linked module data.
-- Files changed: `supabase/schema.sql`, `src/lib/recruitos-repository.ts`, `src/lib/recruitos-store.tsx`
-- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
-- Notes: The app now uses Supabase as the primary runtime store whenever env vars are present, with local fallback only when Supabase is unavailable.
+- Fix Before Demo
+- Fix After Demo
+- Won't Fix
+
+## Top 5 Demo Gaps
+
+### DEMO-001: Persistence still needs live end-to-end verification against the real Supabase project
+- Priority tag: Fix Before Demo
+- Why it matters: If records reset, fail to save, or silently fall back during a demo, trust in the whole product collapses.
+
+### DEMO-002: Some core workflows still feel like generic CRUD instead of recruiting-native flows
+- Priority tag: Fix Before Demo
+- Why it matters: The product story weakens if applications, companies, and prep feel like database rows instead of a recruiting operating system.
+
+### DEMO-003: Dashboard polish and symmetry are not yet strong enough for a confident external walkthrough
+- Priority tag: Fix Before Demo
+- Why it matters: The dashboard is the first thing people see, so layout roughness or weak prioritization damages the product narrative immediately.
+
+### DEMO-004: Linked-record integrity still needs explicit manual verification across all critical relationships
+- Priority tag: Fix Before Demo
+- Why it matters: Broken links between applications, companies, contacts, resumes, prep, and tasks would undermine the core operating-system promise.
+
+### DEMO-005: Open text-encoding and UI polish defects still make parts of the product feel unfinished
+- Priority tag: Fix Before Demo
+- Why it matters: Mojibake, uneven cards, and rough copy make a working product look broken.
+
+## Open Issues
 
 ### BUG-006: Multiple UI labels render with mojibake characters instead of clean punctuation
 - Status: In Progress
 - Severity: Medium
 - Module: UI
+- Priority tag: Fix Before Demo
 - Discovered: 2026-05-21
 - Description: Several labels show characters like `â€”`, `Â·`, and `â€™` instead of em dashes, middots, and apostrophes.
 - Expected behavior: All labels and summaries should render clean ASCII/Unicode punctuation consistently.
@@ -59,6 +77,7 @@ Last updated: 2026-06-18
 - Status: In Progress
 - Severity: Medium
 - Module: Dashboard UI
+- Priority tag: Fix Before Demo
 - Discovered: 2026-05-21
 - Description: Paired dashboard cards do not align well because headings, support text, and action rows have inconsistent heights and wrapping behavior.
 - Expected behavior: Top cards should align to a shared internal structure with stable button placement.
@@ -70,6 +89,74 @@ Last updated: 2026-06-18
 - Verification steps: Check desktop and tablet layouts to confirm paired cards align cleanly.
 - Files changed:
 - Notes:
+
+### BUG-021: Action Items exposes By Priority and By Source views that do not actually change the data view
+- Status: In Progress
+- Severity: Medium
+- Module: Action Items
+- Priority tag: Fix Before Demo
+- Discovered: 2026-06-30
+- Description: The Action Items filter chips include `By Priority` and `By Source`, but the filtering logic only handles Today, Overdue, This Week, Waiting, and Completed.
+- Expected behavior: Each visible filter/view option should produce a distinct, meaningful view of action items.
+- Actual behavior: Clicking `By Priority` or `By Source` leaves the table in the default catch-all state.
+- Reproduction steps: Open Action Items and click the `By Priority` and `By Source` chips.
+- Suspected cause: The UI exposes more view states than the `filteredRecords` logic implements.
+- Files likely involved: `src/components/recruitos/module-view.tsx`
+- Fix plan: Either implement these views properly or remove them until they exist.
+- Verification steps: Confirm each filter chip produces the expected dataset and ordering.
+- Files changed: `src/components/recruitos/module-view.tsx`
+- Notes: Sorting and filtering logic has been updated so these views do real work, but a manual UI pass is still needed before closing.
+
+### BUG-022: Deleting linked records leaves orphaned references across related modules
+- Status: In Progress
+- Severity: High
+- Module: Linked Records
+- Priority tag: Fix Before Demo
+- Discovered: 2026-06-30
+- Description: Deleting a record currently removes it from its own collection, but most cross-module link fields and arrays are not cleaned up, which can leave orphaned references in related records.
+- Expected behavior: Deleting a linked record should either cascade safely or clear dependent links predictably across the in-memory model and persistence layer.
+- Actual behavior: Only the Cases path currently cleans up a subset of dependent records; other modules mostly leave stale IDs behind.
+- Reproduction steps: Review `deleteRecord` logic and delete linked records such as companies, contacts, applications, or PARs after creating cross-links.
+- Suspected cause: Delete behavior is implemented as collection removal, not relationship-aware cleanup.
+- Files likely involved: `src/lib/recruitos-store.tsx`, `src/lib/recruitos.ts`
+- Fix plan: Centralize relationship-aware delete cleanup and add unit tests for linked-record deletion safety.
+- Verification steps: Delete linked records across major modules and verify remaining records do not retain stale relationships.
+- Files changed: `src/lib/recruitos-store.tsx`, `src/lib/recruitos-store-helpers.ts`, `src/lib/recruitos-store-helpers.test.ts`
+- Notes: Relationship-aware delete cleanup and automated tests were added for major linked paths, but a full manual matrix pass is still needed before closing.
+
+### BUG-023: Configured Supabase project host is not resolvable from the local environment
+- Status: Open
+- Severity: Critical
+- Module: Persistence
+- Priority tag: Fix Before Demo
+- Discovered: 2026-06-30
+- Description: The current `NEXT_PUBLIC_SUPABASE_URL` host in `.env.local` fails DNS resolution, which blocks live persistence verification from this machine.
+- Expected behavior: The configured Supabase host should resolve and accept HTTPS connections so RecruitOS can use cloud persistence.
+- Actual behavior: `Test-NetConnection` and `Invoke-WebRequest` both fail because the hostname cannot be resolved.
+- Reproduction steps: Run `Test-NetConnection <supabase-host> -Port 443` or request the `/rest/v1/` endpoint from this environment.
+- Suspected cause: The Supabase project URL is wrong, stale, deleted, or not reachable from the current environment.
+- Files likely involved: `.env.local`
+- Fix plan: Confirm the active Supabase project URL, update `.env.local` and deployment env vars if needed, then rerun live persistence verification.
+- Verification steps: Confirm DNS resolution, successful HTTPS response, then rerun the live persistence probe across core tables.
+- Files changed:
+- Notes:
+
+### BUG-024: Dashboard tries to host too many module workflows at once and feels cognitively heavy
+- Status: In Progress
+- Severity: Medium
+- Module: Dashboard UX
+- Priority tag: Fix Before Demo
+- Discovered: 2026-06-30
+- Description: The dashboard currently mixes command-center content with deeper module execution surfaces, which makes the home page feel dense and less friendly to scan.
+- Expected behavior: The dashboard should orient the user quickly, show progress, surface next steps and triage, and leave deeper execution inside the module pages.
+- Actual behavior: Networking execution, prep packet depth, reminder cards, and quick-capture surfaces compete for attention on the same page.
+- Reproduction steps: Open the dashboard and scan from top to bottom as a first-time reviewer.
+- Suspected cause: The dashboard accumulated too many secondary surfaces while trying to expose value across modules.
+- Files likely involved: `src/components/recruitos/module-view.tsx`
+- Fix plan: Simplify the dashboard to Today's Command Center, Weekly Progress, Next Steps, Triage, and Weekly View; remove duplicate deep workflow sections from the home page.
+- Verification steps: Run the app, verify the dashboard contains only the agreed sections, and confirm scanability is improved on desktop and tablet.
+- Files changed: `src/components/recruitos/module-view.tsx`
+- Notes: The dashboard has been reduced to Today's Command Center, Weekly Progress, Next Steps, Triage, and Weekly View. Visual/manual verification is still needed before closing.
 
 
 
@@ -283,6 +370,7 @@ Last updated: 2026-06-18
 - Status: Open
 - Severity: Medium
 - Module: Data Layer
+- Priority tag: Fix Before Demo
 - PRD requirement: Use Supabase for the database and preserve app relationships in deployed use.
 - Current state: The runtime now uses a Supabase-backed repository/provider flow and seeds empty databases, but the deployed project still needs production Supabase environment variables and a live database rollout.
 - Desired state: Production and local environments should both point at the real Supabase project so all CRUD and relationship syncing happen in the cloud by default.
@@ -295,6 +383,7 @@ Last updated: 2026-06-18
 - Status: Needs Clarification
 - Severity: High
 - Module: Deployment
+- Priority tag: Fix After Demo
 - PRD requirement: Connect the repo to GitHub and publish on Vercel so the user can keep using it.
 - Current state: Local git is initialized and `origin` points to `https://github.com/MaykaS/RecruitOS.git`, but GitHub API access returned `404` for that repo and the Vercel CLI is not installed/authenticated in this environment.
 - Desired state: Push this code to the intended GitHub repo and connect the project to Vercel with the required environment variables.
@@ -307,6 +396,7 @@ Last updated: 2026-06-18
 - Status: Open
 - Severity: Medium
 - Module: UX
+- Priority tag: Fix After Demo
 - PRD requirement: Rich specialized views such as fully differentiated Action Item views, deeper weekly planning, and exhaustive module-specific workflows.
 - Current state: The app includes the core modules, CRUD, dashboard, linked action items, search, weekly view, and question mapping, but some views are intentionally simplified into shared tables and modal editing for MVP speed.
 - Desired state: Expand the remaining module-specific workflows without losing the low-friction feel.
@@ -314,6 +404,19 @@ Last updated: 2026-06-18
 - Verification steps: Manual UX walkthrough for dashboard, action items, applications, networking, PARs, and interview prep after each enhancement.
 - Files changed:
 - Notes: This is a deliberate MVP tradeoff, not a broken core workflow.
+
+### GAP-004: RecruitOS does not yet have automated tests covering critical product logic
+- Status: In Progress
+- Severity: High
+- Module: Quality
+- Priority tag: Fix Before Demo
+- PRD requirement: Core workflows should be reliable enough for inspection and repeated iteration.
+- Current state: The repo now has an initial Vitest harness with coverage for core domain, persistence fallback, task sync, and linked-record cleanup, but coverage is not yet exhaustive.
+- Desired state: RecruitOS should have automated tests for critical linked-record, task-sync, persistence, and workflow logic so regressions are visible early.
+- Fix plan: Add a lightweight test runner, write focused tests around domain and store helper logic, and use those tests to validate Phase 1 behaviors.
+- Verification steps: Run the test suite locally and confirm coverage of Phase 1 critical logic.
+- Files changed: `package.json`, `vitest.config.ts`, `src/lib/recruitos-repository.test.ts`, `src/lib/recruitos-store-helpers.test.ts`
+- Notes: This is now a narrowing gap rather than a blank spot.
 
 ## Regression Checklist
 

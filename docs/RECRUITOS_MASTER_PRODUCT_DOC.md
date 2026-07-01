@@ -164,9 +164,13 @@ RecruitOS already has a meaningful MVP foundation.
 - Applications, Companies, Networking, Interview Prep, Mock Interviews
 - STAR workspace with story library, question bank, and coverage matrix
 - Case workspace with practice logs and learnings
-- Interview Answers, Resumes, Outreach Templates, Brain Dump, Settings
+- Interview Answers, Resumes, Outreach Templates, and Settings
 - sorting, filtering, search patterns across modules
 - editable forms and linked relationships in core flows
+- dashboard quick capture for Brain Dump records
+- local browser-storage fallback when Supabase is unavailable
+- resume PDF upload to Supabase Storage when configured
+- heuristic recommendation layers for dashboard, applications, networking, and interview prep
 
 ### What Is Still In Progress
 - recruiting workflows should feel more native and less database-like
@@ -175,6 +179,12 @@ RecruitOS already has a meaningful MVP foundation.
 - more complete prompt-assisted prep flows
 - stronger documentation of target product state
 - a structured roadmap for agent-assisted job search and application support
+
+### Important Current-State Notes
+- Brain Dump exists in the data model and dashboard capture flow, but not as a standalone left-nav module today.
+- The product currently relies on a shared app shell, a single global state provider, and one large metadata-driven module renderer rather than many specialized route files.
+- Supabase is the intended primary persistence path, but actual cloud persistence depends on valid environment variables and the live schema being applied.
+- Several modules already have workflow-specific logic, but some still use generic table-and-modal CRUD patterns as an MVP tradeoff.
 
 ## 9. End-State Product Definition
 
@@ -609,6 +619,13 @@ The future RecruitOS agent layer should help the user discover, evaluate, prepar
 - Supabase-backed repository architecture
 - shared typed domain model
 - client-side normalization and linked-record sync
+- local browser-storage fallback when cloud persistence is unavailable
+
+### State And UI Architecture
+- one global React provider for RecruitOS state loading, mutations, and persistence status
+- metadata-driven module configs for forms, tables, search, and sorting
+- one shared app shell plus one primary module renderer that contains most module-specific UI logic
+- decision helpers derived from application, networking, prep, and action-item data
 
 ### Deployment
 - Vercel
@@ -750,6 +767,8 @@ RecruitOS is in a strong demo-ready state if:
 ### Technical Risks
 - single-user assumptions leaking too deeply into architecture
 - future user auth and tenancy requiring large refactors
+- too much product logic concentrated in a few large files, which may slow safe iteration
+- derived client-side relationship syncing becoming harder to reason about as workflows expand
 - agent logging and observability complexity
 - external-source scraping or ingestion complexity
 
@@ -757,6 +776,7 @@ RecruitOS is in a strong demo-ready state if:
 - cluttered forms
 - inconsistent layout quality across modules
 - recommendation cards that look polished but are not truly useful
+- generic CRUD surfaces remaining in places that should feel more like recruiting workflows
 
 ## 19. Documentation Maintenance Rules
 
