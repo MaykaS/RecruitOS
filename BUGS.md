@@ -160,6 +160,17 @@ Last updated: 2026-08-24
 
 ## Fixed Issues
 
+### BUG-027: Applications lack a visual recruiting timeline and structured step logging
+- Status: Fixed
+- Severity: Medium
+- Module: Applications
+- Fixed date: 2026-08-24
+- Description: Application records did not show a stage-by-stage recruiting timeline and did not provide structured UI for logging steps like applied, referral, outreach, or interview rounds.
+- Fix summary: Replaced the generic Applications table with recruiting cards that show a horizontal timeline, added quick-add timeline steps on each card, and added a timeline editor inside the application modal with persistence-safe structured storage.
+- Files changed: `src/components/recruitos/module-view.tsx`, `src/lib/recruitos.ts`, `src/lib/recruitos-store.tsx`, `BUGS.md`
+- Verification performed: `npm run typecheck`, `npm exec eslint src/components/recruitos/module-view.tsx src/lib/recruitos.ts src/lib/recruitos-store.tsx`, `npm run build`
+- Notes: Timeline events are stored behind the scenes inside the application notes payload so this UI can ship without requiring a new Supabase column first.
+
 ### BUG-026: Application triage buckets cannot collapse and dashboard actions feel broken
 - Status: Fixed
 - Severity: Medium

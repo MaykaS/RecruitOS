@@ -2,11 +2,14 @@
 
 import {
   ActionItem,
+  composeApplicationNotes,
   CrudModuleSlug,
   MODULE_CONFIGS,
   RecruitOSData,
   createId,
   dateOffset,
+  getApplicationTimelineEventsFromNotes,
+  getApplicationVisibleNotes,
   getCollectionKey,
   lookupCompanyName,
   nowIso,
@@ -83,6 +86,10 @@ interface RecruitOSContextValue {
   markInterviewAnswerPracticed: (answerId: string) => void;
   markFollowUpDone: (contactId: string) => void;
   markApplicationActionDone: (applicationId: string) => void;
+  logApplicationTimelineEvent: (
+    applicationId: string,
+    input: { label: string; date?: string; kind?: string },
+  ) => void;
   convertBrainDumpToActionItem: (brainDumpId: string) => void;
   createActionItemFromSource: (
     partial: Partial<ActionItem> & { title: string; source_type: string; source_id: string },
@@ -565,6 +572,72 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
     [applyMutation],
   );
 
+  const logApplicationTimelineEvent = useCallback(
+    (
+      applicationId: string,
+      input: { label: string; date?: string; kind?: string },
+    ) => {
+      applyMutation(["applications"], (current) => ({
+        ...current,
+        applications: current.applications.map((application) => {
+          if (application.id !== applicationId) return application;
+
+          const eventDate = input.date || toDateInput(nowIso());
+          const nextNotes = composeApplicationNotes(
+            getApplicationVisibleNotes(application.notes),
+            [
+              ...getApplicationTimelineEventsFromNotes(application.notes),
+              {
+                id: createId("timeline"),
+                label: input.label,
+                date: eventDate,
+                kind: input.kind || input.label,
+              },
+            ],
+          );
+
+          const nextStatus =
+            input.label === "Applied"
+              ? "Applied"
+              : input.label === "Assessment"
+                ? "Assessment"
+                : input.label === "Final Round"
+                  ? "Final Round"
+                  : input.label === "Offer"
+                    ? "Offer"
+                    : input.label === "Rejected"
+                      ? "Rejected"
+                      : input.label.includes("Interview") || input.label === "Recruiter Screen"
+                        ? "Interviewing"
+                        : application.status;
+
+          return {
+            ...application,
+            notes: nextNotes,
+            status: nextStatus,
+            date_applied:
+              input.label === "Applied" && !application.date_applied
+                ? eventDate
+                : application.date_applied,
+            referral_date:
+              (input.label === "Referral Submitted" || input.label === "Referral Ask") &&
+              !application.referral_date
+                ? eventDate
+                : application.referral_date,
+            referral_status:
+              input.label === "Referral Submitted"
+                ? "Submitted"
+                : input.label === "Referral Ask"
+                  ? "Asked"
+                  : application.referral_status,
+            updated_at: nowIso(),
+          };
+        }),
+      }));
+    },
+    [applyMutation],
+  );
+
   const createActionItemFromSource = useCallback(
     (
       partial: Partial<ActionItem> & {
@@ -633,6 +706,7 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
       markInterviewAnswerPracticed,
       markFollowUpDone,
       markApplicationActionDone,
+      logApplicationTimelineEvent,
       convertBrainDumpToActionItem,
       createActionItemFromSource,
       saveSettings,
@@ -652,6 +726,7 @@ export function RecruitOSProvider({ children }: { children: React.ReactNode }) {
       markCasePracticed,
       markFollowUpDone,
       markInterviewAnswerPracticed,
+      logApplicationTimelineEvent,
       persistenceMode,
       rescheduleActionItem,
       saveInterviewQuestion,

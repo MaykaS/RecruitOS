@@ -260,6 +260,21 @@ export interface Application extends BaseRecord {
   rejection_follow_up_sent: boolean;
 }
 
+export interface ApplicationTimelineEvent {
+  id: string;
+  label: string;
+  date: string;
+  kind: string;
+  source: "manual" | "derived";
+}
+
+interface StoredApplicationTimelineEvent {
+  id: string;
+  label: string;
+  date: string;
+  kind: string;
+}
+
 export interface InterviewPrep extends BaseRecord {
   company_id: string;
   application_id: string;
@@ -501,6 +516,152 @@ export const APPLICATION_STATUSES = [
   "Offer",
   "Closed",
 ];
+export const APPLICATION_TIMELINE_STEP_OPTIONS = [
+  "Outreach",
+  "Referral Ask",
+  "Referral Submitted",
+  "Applied",
+  "Recruiter Screen",
+  "Interview 1",
+  "Interview 2",
+  "Interview 3",
+  "Assessment",
+  "Final Round",
+  "Offer",
+  "Rejected",
+];
+
+const APPLICATION_TIMELINE_MARKER_START = "\n\n[RECRUITOS_TIMELINE]";
+const APPLICATION_TIMELINE_MARKER_END = "[/RECRUITOS_TIMELINE]";
+
+function normalizeTimelineEvent(
+  event: Partial<StoredApplicationTimelineEvent>,
+): StoredApplicationTimelineEvent | null {
+  const label = String(event.label ?? "").trim();
+  const date = String(event.date ?? "").trim();
+  if (!label || !date) return null;
+  return {
+    id: String(event.id ?? createId("timeline")),
+    label,
+    date,
+    kind: String(event.kind ?? label).trim() || label,
+  };
+}
+
+export function getApplicationTimelineEventsFromNotes(notes: string) {
+  const start = notes.indexOf(APPLICATION_TIMELINE_MARKER_START);
+  const end = notes.indexOf(APPLICATION_TIMELINE_MARKER_END);
+  if (start === -1 || end === -1 || end <= start) return [] as StoredApplicationTimelineEvent[];
+
+  const payload = notes
+    .slice(start + APPLICATION_TIMELINE_MARKER_START.length, end)
+    .trim();
+
+  if (!payload) return [];
+
+  try {
+    const parsed = JSON.parse(payload);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => normalizeTimelineEvent(item as Partial<StoredApplicationTimelineEvent>))
+      .filter((item): item is StoredApplicationTimelineEvent => Boolean(item));
+  } catch {
+    return [];
+  }
+}
+
+export function getApplicationVisibleNotes(notes: string) {
+  const start = notes.indexOf(APPLICATION_TIMELINE_MARKER_START);
+  const end = notes.indexOf(APPLICATION_TIMELINE_MARKER_END);
+  if (start === -1 || end === -1 || end <= start) return notes.trim();
+
+  return `${notes.slice(0, start).trim()}\n${notes.slice(end + APPLICATION_TIMELINE_MARKER_END.length).trim()}`
+    .trim();
+}
+
+export function composeApplicationNotes(
+  visibleNotes: string,
+  events: Array<Partial<StoredApplicationTimelineEvent>>,
+) {
+  const sanitizedEvents = events
+    .map((event) => normalizeTimelineEvent(event))
+    .filter((event): event is StoredApplicationTimelineEvent => Boolean(event))
+    .sort((left, right) => left.date.localeCompare(right.date));
+
+  const baseNotes = visibleNotes.trim();
+  if (!sanitizedEvents.length) return baseNotes;
+
+  const serialized = JSON.stringify(sanitizedEvents, null, 2);
+  return `${baseNotes}${baseNotes ? "\n\n" : ""}${APPLICATION_TIMELINE_MARKER_START}\n${serialized}\n${APPLICATION_TIMELINE_MARKER_END}`;
+}
+
+export function getApplicationTimelineEvents(
+  application: Application,
+  data: RecruitOSData,
+): ApplicationTimelineEvent[] {
+  const derived: ApplicationTimelineEvent[] = [];
+
+  if (application.referral_date) {
+    const referralLabel =
+      application.referral_status === "Submitted"
+        ? "Referral Submitted"
+        : application.referral_status === "Agreed"
+          ? "Referral Agreed"
+          : application.referral_status === "Declined"
+            ? "Referral Declined"
+            : "Referral Ask";
+    derived.push({
+      id: `${application.id}-referral`,
+      label: referralLabel,
+      date: application.referral_date,
+      kind: "Referral",
+      source: "derived",
+    });
+  }
+
+  if (application.date_applied) {
+    derived.push({
+      id: `${application.id}-applied`,
+      label: "Applied",
+      date: application.date_applied,
+      kind: "Applied",
+      source: "derived",
+    });
+  }
+
+  data.interviewPrep
+    .filter((prep) => prep.application_id === application.id && prep.interview_date)
+    .forEach((prep) => {
+      derived.push({
+        id: prep.id,
+        label: prep.interview_round?.trim() || "Interview",
+        date: prep.interview_date,
+        kind: "Interview",
+        source: "derived",
+      });
+    });
+
+  const manual = getApplicationTimelineEventsFromNotes(application.notes).map((event) => ({
+    ...event,
+    source: "manual" as const,
+  }));
+
+  return [...derived, ...manual]
+    .sort((left, right) => {
+      const dateComparison = left.date.localeCompare(right.date);
+      if (dateComparison !== 0) return dateComparison;
+      return left.label.localeCompare(right.label);
+    })
+    .filter(
+      (event, index, events) =>
+        events.findIndex(
+          (candidate) =>
+            candidate.date === event.date &&
+            candidate.label === event.label &&
+            candidate.kind === event.kind,
+        ) === index,
+    );
+}
 export const CASE_TYPES = [
   "PM Product Design",
   "PM Metrics",

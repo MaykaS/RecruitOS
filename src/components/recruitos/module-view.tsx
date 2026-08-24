@@ -4,8 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Application,
   ApplicationInsight,
+  APPLICATION_TIMELINE_STEP_OPTIONS,
+  ApplicationTimelineEvent,
   ContactWorkflowInsight,
+  composeApplicationNotes,
   CrudModuleSlug,
   FieldConfig,
   InterviewPrepPacket,
@@ -17,9 +21,13 @@ import {
   SortDirection,
   SortOption,
   buildInterviewPrepPacket,
+  createId,
   formatDate,
   formatDateTime,
   getApplicationInsights,
+  getApplicationTimelineEvents,
+  getApplicationTimelineEventsFromNotes,
+  getApplicationVisibleNotes,
   getLinkedActionItems,
   getNetworkingWorkflowInsights,
   getSourceSummary,
@@ -1552,10 +1560,26 @@ function RecordModal({
   const { data, saveRecord, toggleActionItem } = useRecruitOS();
   const config = MODULE_CONFIGS[module];
   const initialForm = useMemo(
-    () => ({ ...config.defaultValues, ...(initial ?? {}) }),
-    [config.defaultValues, initial],
+    () => {
+      const base = { ...config.defaultValues, ...(initial ?? {}) };
+      if (module === "applications") {
+        base.notes = getApplicationVisibleNotes(String(base.notes ?? ""));
+      }
+      return base;
+    },
+    [config.defaultValues, initial, module],
   );
   const [form, setForm] = useState<Record<string, unknown>>(initialForm);
+  const [timelineEvents, setTimelineEvents] = useState(
+    module === "applications"
+      ? getApplicationTimelineEventsFromNotes(String(initial?.notes ?? ""))
+      : [],
+  );
+  const [timelineDraft, setTimelineDraft] = useState({
+    label: "",
+    date: toDateInput(new Date().toISOString()),
+    kind: "",
+  });
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const companyNameValue =
@@ -1697,6 +1721,140 @@ function RecordModal({
             );
           })}
         </div>
+
+        {module === "applications" ? (
+          <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50/75 p-4">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="text-sm font-medium text-slate-900">Timeline Steps</div>
+                <div className="text-sm text-slate-600">
+                  Add dated milestones like outreach, referral, interviews, or offer updates.
+                </div>
+              </div>
+              <div className="text-xs uppercase tracking-[0.16em] text-slate-500">
+                {timelineEvents.length} manual steps
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+              <ApplicationTimelineRail
+                events={getApplicationTimelineEvents(
+                  {
+                    ...(initialForm as unknown as Application),
+                    ...(form as unknown as Application),
+                    id: String(initial?.id ?? "draft-application"),
+                    notes: composeApplicationNotes(String(form.notes ?? ""), timelineEvents),
+                  },
+                  data,
+                )}
+              />
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_180px_auto]">
+              <select
+                value={timelineDraft.label}
+                onChange={(event) =>
+                  setTimelineDraft((current) => ({
+                    ...current,
+                    label: event.target.value,
+                    kind: event.target.value,
+                  }))
+                }
+                className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300"
+              >
+                <option value="">Choose a step</option>
+                {APPLICATION_TIMELINE_STEP_OPTIONS.map((step) => (
+                  <option key={step} value={step}>
+                    {step}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="date"
+                value={timelineDraft.date}
+                onChange={(event) =>
+                  setTimelineDraft((current) => ({
+                    ...current,
+                    date: event.target.value,
+                  }))
+                }
+                className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!timelineDraft.label || !timelineDraft.date) return;
+                  setTimelineEvents((current) => [
+                    ...current,
+                    {
+                      id: createId("timeline"),
+                      label: timelineDraft.label,
+                      date: timelineDraft.date,
+                      kind: timelineDraft.kind || timelineDraft.label,
+                    },
+                  ]);
+                  setTimelineDraft((current) => ({
+                    ...current,
+                    label: "",
+                    kind: "",
+                  }));
+                }}
+                className={buttonClassName("secondary")}
+              >
+                Add Step
+              </button>
+            </div>
+
+            {timelineEvents.length ? (
+              <div className="mt-4 space-y-2">
+                {timelineEvents
+                  .slice()
+                  .sort((left, right) => left.date.localeCompare(right.date))
+                  .map((event) => (
+                    <div
+                      key={event.id}
+                      className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 lg:flex-row lg:items-center"
+                    >
+                      <input
+                        value={event.label}
+                        onChange={(changeEvent) =>
+                          setTimelineEvents((current) =>
+                            current.map((item) =>
+                              item.id === event.id
+                                ? { ...item, label: changeEvent.target.value, kind: changeEvent.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                        className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+                      />
+                      <input
+                        type="date"
+                        value={event.date}
+                        onChange={(changeEvent) =>
+                          setTimelineEvents((current) =>
+                            current.map((item) =>
+                              item.id === event.id ? { ...item, date: changeEvent.target.value } : item,
+                            ),
+                          )
+                        }
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-300 focus:bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTimelineEvents((current) => current.filter((item) => item.id !== event.id))
+                        }
+                        className={buttonClassName("secondary")}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {module === "resumes" ? (
           <div className="mt-4 rounded-[24px] border border-dashed border-cyan-200 bg-cyan-50/60 p-4">
@@ -1978,6 +2136,11 @@ function RecordModal({
             onClick={() => {
               saveRecord(module, {
                 ...form,
+                ...(module === "applications"
+                  ? {
+                      notes: composeApplicationNotes(String(form.notes ?? ""), timelineEvents),
+                    }
+                  : {}),
                 id: initial?.id ? String(initial.id) : undefined,
               });
               onClose();
@@ -2129,6 +2292,162 @@ function PipelineTriageSection({
         })}
       </div>
     </Card>
+  );
+}
+
+function ApplicationTimelineRail({ events }: { events: ApplicationTimelineEvent[] }) {
+  if (!events.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-3 py-4 text-sm text-slate-500">
+        No timeline steps yet.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto pb-2">
+      <div className="relative flex min-w-max items-start gap-0 px-5 py-2">
+        <div className="absolute left-5 right-5 top-[2.4rem] h-px bg-amber-300" />
+        {events.map((event) => (
+          <div key={event.id} className="relative w-[148px] shrink-0 pr-4 last:pr-0">
+            <div className="mb-3 text-xs font-medium text-slate-500">
+              {formatDate(event.date)}
+            </div>
+            <div className="relative mb-3 h-3 w-3 rounded-full border-2 border-white bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.22)]" />
+            <div className="text-sm font-medium leading-5 text-slate-800">
+              {sanitizeText(event.label)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ApplicationsWorkspaceSection({
+  applications,
+  data,
+  openApplication,
+  deleteApplication,
+  createActionItemFromSource,
+  logApplicationTimelineEvent,
+}: {
+  applications: Application[];
+  data: RecruitOSData;
+  openApplication: (application: Application) => void;
+  deleteApplication: (applicationId: string) => void;
+  createActionItemFromSource: ReturnType<typeof useRecruitOS>["createActionItemFromSource"];
+  logApplicationTimelineEvent: ReturnType<typeof useRecruitOS>["logApplicationTimelineEvent"];
+}) {
+  const [selectedSteps, setSelectedSteps] = useState<Record<string, string>>({});
+
+  if (!applications.length) {
+    return <EmptyState label="No applications match this view yet." />;
+  }
+
+  return (
+    <div className="grid gap-4">
+      {applications.map((application) => {
+        const timeline = getApplicationTimelineEvents(application, data);
+        const selectedStep = selectedSteps[application.id] || APPLICATION_TIMELINE_STEP_OPTIONS[0];
+        return (
+          <div
+            key={application.id}
+            className="rounded-[26px] border border-slate-200 bg-white/92 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]"
+          >
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-lg font-semibold text-slate-900">
+                    {sanitizeText(application.company_name || "Untitled company")}
+                  </div>
+                  <StatusBadge value={application.status} />
+                  <StatusBadge value={application.priority} />
+                </div>
+                <div className="text-sm text-slate-600">{sanitizeText(application.role_title)}</div>
+                <div className="flex flex-wrap gap-4 text-xs uppercase tracking-[0.16em] text-slate-500">
+                  <span>{sanitizeText(application.recruiting_track || "Track not set")}</span>
+                  <span>Next: {sanitizeText(application.next_step || "Not set")}</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    createActionItemFromSource({
+                      title: `${application.company_name}: ${application.next_step || "Follow up"}`,
+                      source_type: "Application",
+                      source_id: application.id,
+                      linked_application_id: application.id,
+                      linked_company_id: application.company_id,
+                    })
+                  }
+                  className={buttonClassName("secondary")}
+                >
+                  Add Action
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openApplication(application)}
+                  className={buttonClassName("secondary")}
+                >
+                  Edit
+                </button>
+                <IconButton
+                  label={`Delete ${application.company_name} application`}
+                  icon={<TrashIcon />}
+                  tone="danger"
+                  onClick={() => deleteApplication(application.id)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-[24px] border border-slate-200 bg-slate-50/85 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="text-sm font-medium text-slate-900">Process Timeline</div>
+                <div className="text-xs uppercase tracking-[0.16em] text-slate-500">
+                  {timeline.length} steps
+                </div>
+              </div>
+              <ApplicationTimelineRail events={timeline} />
+              <div className="mt-4 flex flex-col gap-2 lg:flex-row lg:items-center">
+                <select
+                  value={selectedStep}
+                  onChange={(event) =>
+                    setSelectedSteps((current) => ({
+                      ...current,
+                      [application.id]: event.target.value,
+                    }))
+                  }
+                  className="min-w-[220px] rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-teal-300"
+                >
+                  {APPLICATION_TIMELINE_STEP_OPTIONS.map((step) => (
+                    <option key={step} value={step}>
+                      {step}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() =>
+                    logApplicationTimelineEvent(application.id, {
+                      label: selectedStep,
+                      kind: selectedStep,
+                    })
+                  }
+                  className={buttonClassName("primary")}
+                >
+                  Log Step for Today
+                </button>
+                <div className="text-xs text-slate-500">
+                  Need a different label or date? Open the application and add it in the timeline editor.
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -3205,7 +3524,15 @@ function ActionItemsFilters({
 }
 
 function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
-  const { data, deleteRecord, markFollowUpDone, markInterviewAnswerPracticed, toggleActionItem, createActionItemFromSource } = useRecruitOS();
+  const {
+    data,
+    deleteRecord,
+    markFollowUpDone,
+    markInterviewAnswerPracticed,
+    toggleActionItem,
+    createActionItemFromSource,
+    logApplicationTimelineEvent,
+  } = useRecruitOS();
   const config = MODULE_CONFIGS[slug];
   const records = data[config.collection] as unknown as Array<Record<string, unknown>>;
   const [query, setQuery] = useState("");
@@ -3450,7 +3777,19 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
             <ActionItemsFilters active={actionView} setActive={setActionView} />
           </div>
         ) : null}
-        {sortedRecords.length ? (
+        {slug === "applications" ? (
+          <ApplicationsWorkspaceSection
+            applications={sortedRecords as unknown as Application[]}
+            data={data}
+            openApplication={(application) => {
+              setEditing(application as unknown as Record<string, unknown>);
+              setModalOpen(true);
+            }}
+            deleteApplication={(applicationId) => deleteRecord("applications", applicationId)}
+            createActionItemFromSource={createActionItemFromSource}
+            logApplicationTimelineEvent={logApplicationTimelineEvent}
+          />
+        ) : sortedRecords.length ? (
           <div className="overflow-x-auto rounded-[24px] border border-slate-200 bg-white/80 p-2">
             <table className="min-w-full border-separate border-spacing-y-2">
               <thead>
@@ -3548,20 +3887,11 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                             {(record.status as string) === "Done" ? "Reopen" : "Check Off"}
                           </button>
                         ) : null}
-                        {(slug === "applications" || slug === "mock-interviews" || slug === "networking") ? (
+                        {(slug === "mock-interviews" || slug === "networking") ? (
                           <button
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              if (slug === "applications") {
-                                createActionItemFromSource({
-                                  title: `${String(record.company_name || "")}: ${String(record.next_step || "Follow up")}`,
-                                  source_type: "Application",
-                                  source_id: String(record.id),
-                                  linked_application_id: String(record.id),
-                                  linked_company_id: String(record.company_id || ""),
-                                });
-                              }
                               if (slug === "networking") {
                                 createActionItemFromSource({
                                   title: `Follow up with ${String(record.name)}`,
