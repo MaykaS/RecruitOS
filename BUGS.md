@@ -1,6 +1,6 @@
 # RecruitOS Bug Tracker
 
-Last updated: 2026-06-30
+Last updated: 2026-08-24
 
 ## How to use this file
 
@@ -158,13 +158,18 @@ Last updated: 2026-06-30
 - Files changed: `src/components/recruitos/module-view.tsx`
 - Notes: The dashboard has been reduced to Today's Command Center, Weekly Progress, Next Steps, Triage, and Weekly View. Visual/manual verification is still needed before closing.
 
-
-
-
-
-
-
 ## Fixed Issues
+
+### BUG-025: Application triage cards are oversized and expose unexplained score badges
+- Status: Fixed
+- Severity: Low
+- Module: Applications
+- Fixed date: 2026-08-24
+- Description: The Applications pipeline triage cards used large layouts with extra metadata and numeric side badges that took too much space and were not self-explanatory.
+- Fix summary: Reduced triage cards to company name, role title, and primary reason, tightened spacing, and removed the visible application priority score pill from the dashboard card view.
+- Files changed: `src/components/recruitos/module-view.tsx`, `BUGS.md`
+- Verification performed: `npm run typecheck`, `npm run lint`, `npm run build`
+- Notes: The hidden numbers were internal application priority scores used to rank triage items before slicing the top items per bucket.
 
 ### BUG-020: Networking rows and execution cards do not open from the full item click target
 - Status: Fixed

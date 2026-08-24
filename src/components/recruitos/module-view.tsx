@@ -2032,21 +2032,17 @@ function PipelineTriageSection({
               </div>
               <div className="grid gap-3 lg:grid-cols-3">
                 {items.map((insight) => (
-                  <div key={insight.application.id} className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-medium text-slate-900">
-                          {sanitizeText(insight.application.company_name)} - {sanitizeText(insight.application.role_title)}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {sanitizeText(insight.application.status)} - {sanitizeText(insight.dueLabel)}
-                        </div>
+                  <div key={insight.application.id} className="rounded-[24px] border border-slate-200 bg-slate-50 p-3.5">
+                    <div>
+                      <div className="text-sm font-medium text-slate-900">
+                        {sanitizeText(insight.application.company_name)}
                       </div>
-                      <StatusBadge value={insight.applicationPriorityScore} />
+                      <div className="text-sm text-slate-600">
+                        {sanitizeText(insight.application.role_title)}
+                      </div>
                     </div>
-                    <p className="mt-3 text-sm text-slate-700">{sanitizeText(insight.primaryReason)}</p>
-                    <MiniList title="Drivers" items={insight.applicationRiskFlags.slice(0, 4)} />
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <p className="mt-2 text-sm leading-6 text-slate-700">{sanitizeText(insight.primaryReason)}</p>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
                       <button
                         type="button"
                         onClick={() =>
