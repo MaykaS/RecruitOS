@@ -160,6 +160,17 @@ Last updated: 2026-08-24
 
 ## Fixed Issues
 
+### BUG-026: Application triage buckets cannot collapse and dashboard actions feel broken
+- Status: Fixed
+- Severity: Medium
+- Module: Applications
+- Fixed date: 2026-08-24
+- Description: The dashboard pipeline triage stayed fully expanded, took too much space, and its action controls did not feel dependable from the user perspective.
+- Fix summary: Made triage buckets collapsible, reduced the card footprint, made the full card open the Applications pipeline via router navigation, and kept a smaller explicit action-item button inside each card.
+- Files changed: `src/components/recruitos/module-view.tsx`, `BUGS.md`
+- Verification performed: `npm run typecheck`, `npm exec eslint src/components/recruitos/module-view.tsx`, `npm run build`
+- Notes:
+
 ### BUG-025: Application triage cards are oversized and expose unexplained score badges
 - Status: Fixed
 - Severity: Low

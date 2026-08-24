@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ApplicationInsight,
@@ -2016,36 +2017,82 @@ function PipelineTriageSection({
   insights: ApplicationInsight[];
   createActionItemFromSource: ReturnType<typeof useRecruitOS>["createActionItemFromSource"];
 }) {
+  const router = useRouter();
+  const [collapsedBuckets, setCollapsedBuckets] = useState<Record<string, boolean>>({
+    "Apply This Week": true,
+    "Double Down": true,
+    "Network First": true,
+    Drop: true,
+  });
+
   return (
     <Card title="Pipeline Triage">
-      <div className="space-y-4">
+      <div className="space-y-3">
         {APPLICATION_BUCKET_ORDER.map((label) => {
           const items = insights.filter((insight) => insight.applicationStrategyLabel === label).slice(0, 3);
           if (!items.length) return null;
+          const collapsed = collapsedBuckets[label] ?? false;
           return (
-            <div key={label} className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <InsightBadge label={label} />
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                  {items.length} in focus
+            <div key={label} className="rounded-[26px] border border-slate-200/80 bg-white/70 p-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setCollapsedBuckets((current) => ({
+                    ...current,
+                    [label]: !collapsed,
+                  }))
+                }
+                className="flex w-full items-center justify-between gap-3 text-left"
+                aria-expanded={!collapsed}
+              >
+                <div className="flex items-center gap-2">
+                  <InsightBadge label={label} />
+                  <div className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                    {items.length} in focus
+                  </div>
                 </div>
-              </div>
-              <div className="grid gap-3 lg:grid-cols-3">
+                <span
+                  className={cx(
+                    "text-slate-500 transition-transform",
+                    collapsed ? "-rotate-90" : "rotate-0",
+                  )}
+                >
+                  <ChevronDownIcon />
+                </span>
+              </button>
+
+              {collapsed ? null : (
+                <div className="mt-3 grid gap-2.5 lg:grid-cols-3">
                 {items.map((insight) => (
-                  <div key={insight.application.id} className="rounded-[24px] border border-slate-200 bg-slate-50 p-3.5">
+                  <div
+                    key={insight.application.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => router.push("/applications")}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        router.push("/applications");
+                      }
+                    }}
+                    className="rounded-[22px] border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-slate-300 hover:bg-white"
+                  >
                     <div>
-                      <div className="text-sm font-medium text-slate-900">
+                      <div className="text-[0.95rem] font-medium text-slate-900">
                         {sanitizeText(insight.application.company_name)}
                       </div>
-                      <div className="text-sm text-slate-600">
+                      <div className="text-sm leading-5 text-slate-600">
                         {sanitizeText(insight.application.role_title)}
                       </div>
                     </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">{sanitizeText(insight.primaryReason)}</p>
-                    <div className="mt-3 flex flex-wrap gap-1.5">
+                    <p className="mt-2 text-sm leading-5 text-slate-700">
+                      {sanitizeText(insight.primaryReason)}
+                    </p>
+                    <div className="mt-3 flex items-center justify-between gap-2">
                       <button
                         type="button"
-                        onClick={() =>
+                        onClick={(event) => {
+                          event.stopPropagation();
                           createActionItemFromSource({
                             title:
                               label === "Network First"
@@ -2059,25 +2106,24 @@ function PipelineTriageSection({
                             source_id: insight.application.id,
                             linked_application_id: insight.application.id,
                             linked_company_id: insight.application.company_id,
-                          })
-                        }
+                          });
+                        }}
                         className={buttonClassName("secondary")}
                       >
                         {label === "Network First"
-                          ? "Referral Ask"
+                          ? "Ask"
                           : label === "Apply This Week"
-                            ? "Submit Application"
+                            ? "Submit"
                             : label === "Waiting Too Long"
                               ? "Re-Engage"
-                              : "Recruiter Follow-Up"}
+                              : "Follow Up"}
                       </button>
-                      <Link href="/applications" className={buttonClassName("quiet")}>
-                        Open Pipeline
-                      </Link>
+                      <span className="text-xs font-medium text-slate-500">Open pipeline</span>
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
             </div>
           );
         })}
