@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Application,
@@ -2180,7 +2179,7 @@ function PipelineTriageSection({
   insights: ApplicationInsight[];
   createActionItemFromSource: ReturnType<typeof useRecruitOS>["createActionItemFromSource"];
 }) {
-  const router = useRouter();
+  const [editingApplication, setEditingApplication] = useState<Application | null>(null);
   const [collapsedBuckets, setCollapsedBuckets] = useState<Record<string, boolean>>({
     "Apply This Week": true,
     "Double Down": true,
@@ -2190,6 +2189,16 @@ function PipelineTriageSection({
 
   return (
     <Card title="Pipeline Triage">
+      {editingApplication ? (
+        <RecordModal
+          key={editingApplication.id}
+          title="Edit Application"
+          open
+          onClose={() => setEditingApplication(null)}
+          module="applications"
+          initial={editingApplication as unknown as Record<string, unknown>}
+        />
+      ) : null}
       <div className="space-y-3">
         {APPLICATION_BUCKET_ORDER.map((label) => {
           const items = insights.filter((insight) => insight.applicationStrategyLabel === label).slice(0, 3);
@@ -2229,25 +2238,16 @@ function PipelineTriageSection({
                 {items.map((insight) => (
                   <div
                     key={insight.application.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => router.push("/applications")}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        router.push("/applications");
-                      }
-                    }}
                     className="rounded-[22px] border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-slate-300 hover:bg-white"
                   >
-                    <div>
+                    <button type="button" onClick={() => setEditingApplication(insight.application)} className="w-full text-left hover:underline focus-visible:outline-teal-600">
                       <div className="text-[0.95rem] font-medium text-slate-900">
                         {sanitizeText(insight.application.company_name)}
                       </div>
                       <div className="text-sm leading-5 text-slate-600">
                         {sanitizeText(insight.application.role_title)}
                       </div>
-                    </div>
+                    </button>
                     <p className="mt-2 text-sm leading-5 text-slate-700">
                       {sanitizeText(insight.primaryReason)}
                     </p>
@@ -2281,7 +2281,7 @@ function PipelineTriageSection({
                               ? "Re-Engage"
                               : "Follow Up"}
                       </button>
-                      <span className="text-xs font-medium text-slate-500">Open pipeline</span>
+                      <button type="button" onClick={() => setEditingApplication(insight.application)} className="text-xs font-medium text-slate-600 hover:underline focus-visible:outline-teal-600">Open pipeline</button>
                     </div>
                   </div>
                 ))}
@@ -2358,13 +2358,13 @@ function ApplicationsWorkspaceSection({
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="text-lg font-semibold text-slate-900">
+                  <button type="button" onClick={() => openApplication(application)} className="text-left text-lg font-semibold text-slate-900 hover:underline focus-visible:outline-teal-600">
                     {sanitizeText(application.company_name || "Untitled company")}
-                  </div>
+                  </button>
                   <StatusBadge value={application.status} />
                   <StatusBadge value={application.priority} />
                 </div>
-                <div className="text-sm text-slate-600">{sanitizeText(application.role_title)}</div>
+                <button type="button" onClick={() => openApplication(application)} className="block text-left text-sm text-slate-600 hover:underline focus-visible:outline-teal-600">{sanitizeText(application.role_title)}</button>
                 <div className="flex flex-wrap gap-4 text-xs uppercase tracking-[0.16em] text-slate-500">
                   <span>{sanitizeText(application.recruiting_track || "Track not set")}</span>
                   <span>Next: {sanitizeText(application.next_step || "Not set")}</span>
@@ -2579,6 +2579,7 @@ function InterviewPrepPacketsSection({
   toggleActionItem: ReturnType<typeof useRecruitOS>["toggleActionItem"];
   createActionItemFromSource: ReturnType<typeof useRecruitOS>["createActionItemFromSource"];
 }) {
+  const [editingPrep, setEditingPrep] = useState<InterviewPrepPacket["prep"] | null>(null);
   return (
     <Card title="Interview Prep Packets">
       <div className="space-y-4">
@@ -2586,9 +2587,9 @@ function InterviewPrepPacketsSection({
           <div key={packet.prep.id} className="rounded-[28px] border border-slate-200 bg-slate-50 p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <div className="text-lg font-semibold text-slate-900">
+                <button type="button" onClick={() => setEditingPrep(packet.prep)} className="text-left text-lg font-semibold text-slate-900 hover:underline focus-visible:outline-teal-600">
                   {sanitizeText(packet.company?.name || "Interview")} - {sanitizeText(packet.prep.interview_round || packet.prep.interview_type)}
-                </div>
+                </button>
                 <div className="text-sm text-slate-500">
                   {sanitizeText(formatDateTime(packet.prep.interview_date))} - readiness {packet.prep.readiness_score}%
                 </div>
@@ -2640,13 +2641,18 @@ function InterviewPrepPacketsSection({
               >
                 Create Missing Prep Action
               </button>
-              <Link href="/interview-prep" className={buttonClassName("quiet")}>
+              <button type="button" onClick={() => setEditingPrep(packet.prep)} className={buttonClassName("quiet")}>
                 Open Packet
-              </Link>
+              </button>
             </div>
           </div>
         )) : <EmptyState label="No upcoming interviews need a packet yet." />}
       </div>
+      {editingPrep ? (
+        <RecordModal key={editingPrep.id} title="Edit Interview Prep" open
+          onClose={() => setEditingPrep(null)} module="interview-prep"
+          initial={editingPrep as unknown as Record<string, unknown>} />
+      ) : null}
     </Card>
   );
 }
@@ -3825,10 +3831,13 @@ function GenericModuleView({ slug }: { slug: CrudModuleSlug }) {
                   >
                     {config.columns.map((column) => (
                       <td key={column.key} className="px-3 py-3.5 text-sm text-slate-700">
-                        {slug === "networking" && column.key === "name" ? (
-                          <span className="font-medium text-slate-900">
+                        {column.key === config.columns[0].key ? (
+                          <button type="button" onClick={(event) => {
+                            event.stopPropagation();
+                            openGenericRecordEditor(record);
+                          }} className="text-left font-medium text-slate-900 hover:underline focus-visible:outline-teal-600">
                             {renderValue(record[column.key])}
-                          </span>
+                          </button>
                         ) : ["status", "priority", "target_category", "referral_status", "prep_status"].includes(column.key) ||
                         typeof record[column.key] === "boolean" ? (
                           <StatusBadge value={record[column.key] as string} />

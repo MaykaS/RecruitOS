@@ -1,6 +1,6 @@
 # RecruitOS Bug Tracker
 
-Last updated: 2026-08-24
+Last updated: 2026-09-05
 
 ## How to use this file
 
@@ -159,6 +159,15 @@ Last updated: 2026-08-24
 - Notes: The dashboard has been reduced to Today's Command Center, Weekly Progress, Next Steps, Triage, and Weekly View. Visual/manual verification is still needed before closing.
 
 ## Fixed Issues
+
+### BUG-028: Application navigation and triage ignore record intent
+- Status: Fixed
+- Severity: Medium
+- Discovered: 2026-09-05
+- Description: Open Pipeline navigated to the same page instead of editing the selected application; record titles were not consistently clickable; rejected applications remained in triage.
+- Fix: Triage opens the selected application editor on Dashboard and Applications. Application company/role titles, module list titles, and interview prep packet titles open their editors. Shared application insights exclude rejected records without deleting their history.
+- Files changed: src/components/recruitos/module-view.tsx, src/lib/recruitos.ts, src/lib/application-triage.test.ts.
+- Verification: Full lint, targeted lint, typecheck, production build, and all 13 tests passed. Regression test verifies rejection removes suggestions and reopening restores eligibility. Browser interaction was not manually verified.
 
 ### BUG-027: Applications lack a visual recruiting timeline and structured step logging
 - Status: Fixed

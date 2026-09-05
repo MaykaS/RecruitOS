@@ -2492,6 +2492,7 @@ function splitMultilineText(value: string) {
 
 export function getApplicationInsights(data: RecruitOSData): ApplicationInsight[] {
   return [...data.applications]
+    .filter((application) => application.status !== "Rejected")
     .map((application) => {
       const company = getApplicationCompany(data, application);
       const linkedContacts = getApplicationContacts(data, application);
